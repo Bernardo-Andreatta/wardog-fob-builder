@@ -299,8 +299,13 @@ const CATALOG = {
   gate:     {name:'Gate',         w:4, h:1},
   sandbags: {name:'Sandbags',     w:2, h:0.5},
   tower:    {name:'Lookout Tower',w:4, h:4},
+  mortar:   {name:'Mortar',       w:2, h:2},
+  drill:    {name:'Drill',        w:2, h:2},
+  aa:       {name:'AA Gun',       w:2, h:2},
+  sam:      {name:'SAM',          w:2, h:2},
+  spawn:    {name:'Spawn Vehicle',w:2, h:1},
 };
-const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','tower'];
+const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','tower','mortar','drill','aa','sam','spawn'];
 const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
 
 let view = {ox:0, oy:0, scale:1};
@@ -480,8 +485,88 @@ function drawTower(g,W,H){
   g.stroke();
   g.beginPath(); g.rect(-P,-P,2*P,2*P); g.stroke();
 }
+function roundRect(g,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  g.beginPath();
+  g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
+  g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
+}
+// mortar pit: pallet base, ring of sandbags, mortar tube + bipod in the middle
+function drawMortar(g,W,H){
+  const R=Math.min(W,H)/2;
+  const ps=R*0.9;                                  // pallet
+  g.beginPath(); g.rect(-ps,-ps,2*ps,2*ps); g.stroke();
+  g.beginPath();
+  for(let k=1;k<4;k++){ const x=-ps+(2*ps)*k/4; g.moveTo(x,-ps); g.lineTo(x,ps); }
+  g.stroke();
+  const rr=R*0.72, sb=R*0.15, n=10;                // sandbag ring
+  for(let k=0;k<n;k++){ const a=k/n*Math.PI*2; g.beginPath(); g.arc(Math.cos(a)*rr,Math.sin(a)*rr,sb,0,Math.PI*2); g.stroke(); }
+  g.beginPath(); g.arc(0,0,R*0.14,0,Math.PI*2); g.stroke();        // baseplate
+  g.beginPath(); g.moveTo(0,0); g.lineTo(0,-R*0.5); g.stroke();    // barrel
+  g.beginPath(); g.arc(0,-R*0.5,R*0.07,0,Math.PI*2); g.stroke();   // muzzle
+  g.beginPath(); g.moveTo(0,-R*0.28); g.lineTo(-R*0.18,-R*0.02);   // bipod legs
+  g.moveTo(0,-R*0.28); g.lineTo(R*0.18,-R*0.02); g.stroke();
+}
+// drill / derrick tower, top-down: leg posts, outer frame, corner bracing, and a
+// drill-bit icon in the throat
+function drawDrill(g,W,H){
+  const S=Math.min(W,H)/2*0.9, lp=S*0.14;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([x,y])=>{ g.beginPath(); g.rect(x*S-lp,y*S-lp,2*lp,2*lp); g.stroke(); });
+  g.beginPath(); g.rect(-S,-S,2*S,2*S); g.stroke();
+  const rc=S*0.5;                                          // corner braces, stop short of center
+  g.beginPath(); [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([x,y])=>{ g.moveTo(x*S,y*S); g.lineTo(x*rc,y*rc); }); g.stroke();
+  g.beginPath(); g.arc(0,0,S*0.4,0,Math.PI*2); g.stroke(); // mount ring
+  // drill bit, pointing down
+  const b=S*0.14;
+  g.beginPath(); g.rect(-b*1.5,-S*0.34,b*3,S*0.16); g.stroke();          // motor body
+  const sy0=-S*0.18, sy1=S*0.16;
+  g.beginPath(); g.moveTo(-b,sy0); g.lineTo(-b,sy1); g.moveTo(b,sy0); g.lineTo(b,sy1); g.stroke();  // shaft sides
+  g.beginPath();
+  for(let k=0;k<3;k++){ const y=sy0+(sy1-sy0)*(k+0.35)/3; g.moveTo(-b,y-b*0.6); g.lineTo(b,y); g.lineTo(-b,y+b*0.6); }
+  g.stroke();                                                            // helical flutes
+  g.beginPath(); g.moveTo(-b,sy1); g.lineTo(0,S*0.36); g.lineTo(b,sy1); g.stroke();                 // tip
+}
+// CIWS (Phalanx-style) AA gun: circular mount, radome dome, gatling barrels up
+function drawAA(g,W,H){
+  const R=Math.min(W,H)/2*0.9;
+  g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.stroke();
+  g.beginPath(); g.arc(0,0,R*0.62,0,Math.PI*2); g.stroke();
+  g.beginPath(); g.arc(0,R*0.2,R*0.4,0,Math.PI*2); g.stroke();     // radome, aft
+  const by=-R*0.18, bl=R*0.8;
+  g.beginPath(); g.arc(0,by,R*0.16,0,Math.PI*2); g.stroke();       // barrel housing
+  for(let k=-1;k<=1;k++){ const x=k*R*0.08; g.beginPath(); g.moveTo(x,by); g.lineTo(x,by-bl); g.stroke(); }
+}
+// single-rail rocket launcher with a small operator console + seat
+function drawSAM(g,W,H){
+  const R=Math.min(W,H)/2, cx=-R*0.15;
+  roundRect(g,-R*0.9,-R*0.6,R*1.8,R*1.5,R*0.14); g.stroke();          // chassis
+  g.beginPath(); g.rect(cx-R*0.26,-R*0.5,R*0.52,R*0.95); g.stroke();  // launch rail
+  const mw=R*0.22, bodyTop=-R*0.42, bodyBot=R*0.4, noseY=-R*0.88;     // single rocket
+  g.beginPath(); g.rect(cx-mw/2,bodyTop,mw,bodyBot-bodyTop); g.stroke();
+  g.beginPath(); g.moveTo(cx-mw/2,bodyTop); g.lineTo(cx,noseY); g.lineTo(cx+mw/2,bodyTop); g.closePath(); g.stroke();
+  g.beginPath(); g.moveTo(cx-mw/2,bodyBot-R*0.12); g.lineTo(cx-mw*0.95,bodyBot);
+  g.moveTo(cx+mw/2,bodyBot-R*0.12); g.lineTo(cx+mw*0.95,bodyBot); g.stroke();   // tail fins
+  const ox=R*0.55;                                                   // operator station
+  g.beginPath(); g.rect(ox-R*0.28,-R*0.55,R*0.5,R*0.34); g.stroke();          // console
+  g.beginPath(); g.moveTo(ox-R*0.28,-R*0.38); g.lineTo(ox+R*0.22,-R*0.38); g.stroke(); // screen line
+  g.beginPath(); g.arc(ox-R*0.03,R*0.08,R*0.19,0,Math.PI*2); g.stroke();      // seat
+  g.beginPath(); g.arc(ox-R*0.03,R*0.08,R*0.09,0,Math.PI*2); g.stroke();      // operator
+}
+// spawn point: top-down car with a centered player marker
+function drawSpawnVeh(g,W,H){
+  const L=W*0.9, B=H*0.62, ww=L*0.14, wt=B*0.3;
+  [-1,1].forEach(sy=>{ [-1,1].forEach(sx=>{
+    g.beginPath(); g.rect(sx*L*0.28-ww/2, sy*B/2-wt/2, ww, wt); g.stroke(); });});  // wheels
+  roundRect(g,-L/2,-B/2,L,B,B*0.32); g.stroke();                                    // body
+  g.beginPath(); g.moveTo(-L*0.1,-B/2); g.lineTo(-L*0.16,B/2);                       // cabin lines
+  g.moveTo(L*0.1,-B/2); g.lineTo(L*0.16,B/2); g.stroke();
+  const hy=-H*0.02;
+  g.beginPath(); g.arc(0,hy,H*0.14,0,Math.PI*2); g.stroke();                         // head
+  g.beginPath(); g.arc(0,hy+H*0.32,H*0.24,Math.PI,2*Math.PI,false); g.stroke();      // shoulders
+}
 const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door:drawDoor,
-  barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower};
+  barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower,
+  mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh};
 
 function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
