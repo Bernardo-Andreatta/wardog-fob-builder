@@ -1193,23 +1193,45 @@ $('file-export').onclick=()=>{ exportFile(); closeFile(); };
 $('file-import').onclick=importFile;
 $('file-png').onclick=()=>{ closeFile(); exportPNG(); };
 // ---- shareable build code (base64 of the build JSON) ----
-const CODE_PREFIX='FOB1.';
+// Fixed type list for share codes: APPEND-ONLY (indices must never change, or
+// old codes break). Decoupled from PIECE_ORDER so the rail can be reordered.
+const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn'];
+function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64dec(str){ return decodeURIComponent(escape(atob(str))); }
+// v2: compact arrays, type as an index, no ids, default rot/flip trimmed
 function encodeBuild(){
-  const json=JSON.stringify({pieces,strokes});
-  return CODE_PREFIX + btoa(unescape(encodeURIComponent(json)));
+  const P=pieces.map(p=>{
+    const a=[CODE_TYPES.indexOf(p.type), Math.round(p.x), Math.round(p.y), Math.round(p.rot)||0, p.flip?1:0];
+    while(a.length>3 && a[a.length-1]===0) a.pop();   // trim trailing flip / rot zeros
+    return a;
+  });
+  const obj={p:P};
+  const S=(strokes||[]).filter(s=>s.pts&&s.pts.length).map(s=>[s.color, Math.round(s.width),
+    s.pts.flatMap(pt=>[Math.round(pt.x),Math.round(pt.y)])]);
+  if(S.length) obj.s=S;
+  return 'FOB2.'+b64enc(JSON.stringify(obj));
 }
 function decodeBuild(code){
-  let s=(code||'').trim();
-  if(s.startsWith(CODE_PREFIX)) s=s.slice(CODE_PREFIX.length);
-  s=s.replace(/\s+/g,'');
-  const json=decodeURIComponent(escape(atob(s)));
-  const o=JSON.parse(json);
+  let s=(code||'').trim().replace(/\s+/g,'');
+  if(s.startsWith('FOB2.')){
+    const o=JSON.parse(b64dec(s.slice(5)));
+    if(!o||!Array.isArray(o.p)) throw new Error('bad');
+    const pieces=o.p.map(a=>{ const t=CODE_TYPES[a[0]]; if(!t) throw new Error('bad');
+      return {type:t, x:a[1], y:a[2], rot:a[3]||0, flip:!!a[4]}; });
+    const strokes=(o.s||[]).map(a=>{ const f=a[2]||[], pts=[];
+      for(let i=0;i+1<f.length;i+=2) pts.push({x:f[i],y:f[i+1]});
+      return {color:a[0], width:a[1], pts}; });
+    return {pieces, strokes};
+  }
+  // legacy FOB1: base64 of the full JSON
+  if(s.startsWith('FOB1.')) s=s.slice(5);
+  const o=JSON.parse(b64dec(s));
   if(!o || !Array.isArray(o.pieces)) throw new Error('bad');
   return o;
 }
 function loadBuild(o){
-  pieces=o.pieces||[]; strokes=o.strokes||[];
-  uid=Math.max(1,...pieces.map(p=>p.id||0))+1;
+  pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip}));
+  strokes=o.strokes||[];
   clearSelection(); snapshot(); render(); updateStatus();
 }
 function openCode(){
