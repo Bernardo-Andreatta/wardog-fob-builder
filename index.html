@@ -658,6 +658,16 @@ function rotateGroup(step){
     else      { p.x=cx+dy; p.y=cy-dx; }   // -90 counter-clockwise
     p.rot=(((p.rot+step)%360)+360)%360;
   });
+  // 90deg rotation about the bbox center can land the whole arrangement a
+  // half-cell off the grid (pivot falls on a cell edge-midpoint whenever the
+  // bbox is even-cells on one axis and odd on the other). The offset is uniform
+  // for every piece, so snap ONE anchor and shift the rest by the same delta:
+  // keeps the exact shape while putting all cells back on grid lines.
+  if(snapOn){
+    const a=items[0], s=snapCenter(a.type,a.rot,a.x,a.y);
+    const dx=s.x-a.x, dy=s.y-a.y;
+    if(dx||dy) items.forEach(p=>{ p.x+=dx; p.y+=dy; });
+  }
   snapshot(); render(); updateStatus();
 }
 function deleteSel(){ if(!selected.length)return; pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); snapshot(); render(); updateStatus(); }
