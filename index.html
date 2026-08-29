@@ -125,6 +125,9 @@
   .ebtn.danger:hover{border-color:var(--bad)}
   .ebtn.danger:hover svg{stroke:var(--bad)}
   .ebtn.danger:hover .cap{color:var(--bad)}
+  .ebtn.on{border-color:var(--accent); background:var(--panel)}
+  .ebtn.on svg{stroke:var(--accent)}
+  .ebtn.on .cap{color:var(--accent)}
 
   .modal{position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;}
   .modal[hidden]{display:none;}
@@ -163,10 +166,6 @@
   .status .seg{display:flex; gap:6px; align-items:center}
   .status .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
   .status .sp{flex:1}
-  .snaptog{cursor:pointer; user-select:none; display:flex; gap:6px; align-items:center; color:var(--ink)}
-  .snaptog .box{width:13px;height:13px;border:1px solid var(--line); border-radius:3px; display:inline-flex; align-items:center; justify-content:center;}
-  .snaptog.on .box{background:var(--accent); border-color:var(--accent)}
-  .snaptog.on .box svg{width:9px;height:9px;stroke:var(--bg);stroke-width:2.6;fill:none}
 
   .rail-resize{position:absolute; left:0; top:0; bottom:0; width:10px; z-index:6; cursor:col-resize; user-select:none;}
   .rail-resize::after{content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:transparent; transition:background .12s;}
@@ -188,7 +187,7 @@
   <div class="topbar">
     <div class="brand">
       <span class="mark">WARDOGS <b>FOB</b> BUILDER</span>
-      <span class="sub">forward operating base &middot; tactical layout</span>
+      <span class="sub">built by Stradiz</span>
     </div>
     <div class="spacer"></div>
     <div class="cmd">
@@ -209,10 +208,11 @@
     <div class="sec">
       <button class="group-label" data-sec="edit">Edit<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="edit-grid">
-        <button class="ebtn" id="btn-rotate" title="Rotate selection 90&deg; (R)"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
+        <button class="ebtn" id="btn-rotate" title="Rotate (R) &middot; 45&deg; snapped, 15&deg; free"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
         <button class="ebtn" id="btn-mirror" title="Mirror / flip (F)"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg><span class="cap">Mirror</span></button>
         <button class="ebtn" id="btn-duplicate" title="Duplicate (Ctrl+C)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span class="cap">Copy</span></button>
         <button class="ebtn danger" id="btn-delete" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="cap">Delete</span></button>
+        <button class="ebtn on" id="btn-snap" title="Snap to grid (G) &middot; on: 45&deg; rotate, off: free"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="cap">Snap</span></button>
       </div></div>
     </div>
     <div class="sec" id="recent-wrap" style="display:none">
@@ -251,7 +251,7 @@
     <div class="seg"><span>SELECTED</span> <span class="v" id="st-sel">&mdash;</span></div>
     <div class="seg"><span>UNITS</span> <span class="v" id="st-count">0</span></div>
     <div class="sp"></div>
-    <div class="snaptog on" id="snaptog" title="Toggle snap to grid (G)"><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span> SNAP TO GRID</div>
+    <div class="seg"><span>SNAP</span> <span class="v" id="st-snap">ON</span></div>
     <div class="seg"><span>ZOOM</span> <span class="v" id="st-zoom">100%</span></div>
   </div>
 
@@ -266,7 +266,7 @@
         <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
         <div class="k">Right-click</div><div class="d">Deselect &amp; back to Select tool</div>
         <div class="k">Drag selection &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd></div><div class="d">Move &middot; nudge by grid</div>
-        <div class="k"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd></div><div class="d">Rotate 90&deg; &middot; reverse</div>
+        <div class="k"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd></div><div class="d">Rotate (snap: 45&deg; &middot; free: 15&deg;) &middot; reverse</div>
         <div class="k"><kbd>F</kbd></div><div class="d">Mirror / flip selection</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>C</kbd></div><div class="d">Duplicate &rarr; reusable stamp</div>
         <div class="k"><kbd>Del</kbd> / <kbd>Backspace</kbd></div><div class="d">Delete selection</div>
@@ -274,7 +274,7 @@
         <div class="k">Scroll</div><div class="d">Zoom</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
         <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
-        <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid</div>
+        <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid (Edit &rarr; Snap)</div>
       </div>
     </div>
   </div>
@@ -635,7 +635,7 @@ function drawGrid(col,colM){
 }
 function drawSelection(p,col,showHandle){
   const c=CATALOG[p.type], W=c.w*GRID, H=c.h*GRID;
-  ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+  ctx.save(); ctx.translate(p.x,p.y); if(p.flip) ctx.scale(-1,1); ctx.rotate(p.rot*Math.PI/180);
   ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale;
   ctx.setLineDash([6/view.scale,4/view.scale]);
   const pad=5/view.scale;
@@ -808,7 +808,7 @@ window.addEventListener('keydown', e=>{
     if(k==='w'||k==='a'||k==='s'||k==='d'){ e.preventDefault(); panKeys.add(k); startPanLoop(); return; } }
   const selPs=selectedPieces();
   if(e.key==='r'||e.key==='R'){
-    const step=e.shiftKey?-90:90;
+    const step=e.shiftKey?-rotStep():rotStep();
     if(selPs.length){ rotateGroup(step); }
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeRot=(((placeRot+step)%360)+360)%360; render(); }
   }
@@ -857,6 +857,8 @@ function panStep(now){
 // ---------------- actions
 // rigid rotation of the whole selection by +/-90 around its bounding-box center,
 // so the arrangement keeps its shape (connections preserved) at a new angle
+// rotation increment: 45deg while snap is on, finer 15deg while snap is off
+function rotStep(){ return snapOn ? 45 : 15; }
 function rotateGroup(step){
   const items=selectedPieces(); if(!items.length) return;
   let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
@@ -864,18 +866,21 @@ function rotateGroup(step){
     minx=Math.min(minx,b.minx); miny=Math.min(miny,b.miny);
     maxx=Math.max(maxx,b.maxx); maxy=Math.max(maxy,b.maxy); });
   const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
+  const rad=step*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
   items.forEach(p=>{
     const dx=p.x-cx, dy=p.y-cy;
-    if(step>0){ p.x=cx-dy; p.y=cy+dx; }   // +90 clockwise
-    else      { p.x=cx+dy; p.y=cy-dx; }   // -90 counter-clockwise
-    p.rot=(((p.rot+step)%360)+360)%360;
+    p.x=cx + dx*cs - dy*sn;               // clockwise rotation (canvas y-down)
+    p.y=cy + dx*sn + dy*cs;
+    // drawPiece applies flip BEFORE rotate, so a mirrored piece rotates the
+    // opposite way on screen: R(step)*S = S*R(-step). Subtract for flipped ones.
+    const st=p.flip?-step:step;
+    p.rot=(((p.rot+st)%360)+360)%360;
   });
-  // 90deg rotation about the bbox center can land the whole arrangement a
-  // half-cell off the grid (pivot falls on a cell edge-midpoint whenever the
-  // bbox is even-cells on one axis and odd on the other). The offset is uniform
-  // for every piece, so snap ONE anchor and shift the rest by the same delta:
-  // keeps the exact shape while putting all cells back on grid lines.
-  if(snapOn){
+  // A rotation about the bbox center can land the whole arrangement a half-cell
+  // off the grid. The offset is uniform for every piece, so snap ONE anchor and
+  // shift the rest by the same delta: keeps the shape while putting cells back on
+  // grid lines. Only meaningful at right angles, so skip it for 45deg/free steps.
+  if(snapOn && ((Math.round(items[0].rot)%90)===0)){
     const a=items[0], s=snapCenter(a.type,a.rot,a.x,a.y);
     const dx=s.x-a.x, dy=s.y-a.y;
     if(dx||dy) items.forEach(p=>{ p.x+=dx; p.y+=dy; });
@@ -917,11 +922,10 @@ function stampName(items){
 }
 function stampKey(st){ return st.parts.map(p=>p.type+'@'+Math.round(p.dx)+','+Math.round(p.dy)+':'+p.rot).join('|'); }
 // rotate an offset by a right-angle multiple (screen space, y-down)
-function rot90(dx,dy,r){
-  if(r===90) return [-dy,dx];
-  if(r===180) return [-dx,-dy];
-  if(r===270) return [dy,-dx];
-  return [dx,dy];
+// rotate an offset by any angle (matches the discrete 90/180/270 cases exactly)
+function rotOff(dx,dy,r){
+  const rad=r*Math.PI/180, c=Math.cos(rad), s=Math.sin(rad);
+  return [dx*c - dy*s, dx*s + dy*c];
 }
 // resolve a stamp to concrete piece placements at (cx,cy) with extra rotation R.
 // Snap only the anchor, keep every offset rigid -> whole stamp lands on grid.
@@ -929,8 +933,10 @@ function stampInstance(st, cx, cy, R, flip){
   R=((Math.round(R||0)%360)+360)%360;
   const a=st.parts[0], aRot=((a.rot+R)%360+360)%360;
   const snap=snapCenter(a.type, aRot, cx, cy);
-  return st.parts.map(pt=>{ const o=rot90(pt.dx,pt.dy,R); const ox=flip?-o[0]:o[0];
-    return {type:pt.type, x:snap.x+ox, y:snap.y+o[1], rot:((pt.rot+R)%360+360)%360, flip:(!!pt.flip)!==!!flip}; });
+  return st.parts.map(pt=>{ const o=rotOff(pt.dx,pt.dy,R); const ox=flip?-o[0]:o[0];
+    // a part stored flipped rotates the opposite way: rot' = prot - R (see rotateGroup)
+    const pr=pt.flip?-R:R;
+    return {type:pt.type, x:snap.x+ox, y:snap.y+o[1], rot:((pt.rot+pr)%360+360)%360, flip:(!!pt.flip)!==!!flip}; });
 }
 function addStamp(st){
   const key=stampKey(st);
@@ -1086,7 +1092,7 @@ $('btn-theme').onclick=()=>{
   refreshIcons(); render();
 };
 $('btn-delete').onclick=deleteSel;
-$('btn-rotate').onclick=()=>rotateGroup(90);
+$('btn-rotate').onclick=()=>{ if(selectedPieces().length) rotateGroup(rotStep()); else { placeRot=(((placeRot+rotStep())%360)+360)%360; render(); } };
 $('btn-mirror').onclick=()=>{
   if(selectedPieces().length) mirrorGroup();
   else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
@@ -1163,8 +1169,8 @@ $('zoom-out').onclick=()=>zoomBy(1/1.2);
 $('zoom-fit').onclick=()=>{ view={ox:stage.clientWidth/2, oy:stage.clientHeight/2, scale:1}; render(); updateStatus(); persist(); };
 
 // snap toggle
-function toggleSnap(){ snapOn=!snapOn; $('snaptog').classList.toggle('on',snapOn); render(); updateStatus(); }
-$('snaptog').onclick=toggleSnap;
+function toggleSnap(){ snapOn=!snapOn; $('btn-snap').classList.toggle('on',snapOn); $('st-snap').textContent=snapOn?'ON':'OFF'; render(); updateStatus(); }
+$('btn-snap').onclick=toggleSnap;
 
 // draggable rail width (persisted)
 (function(){
