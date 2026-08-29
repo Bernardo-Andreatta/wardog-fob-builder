@@ -173,7 +173,16 @@
   .swatches{display:flex; gap:5px}
   .sw{width:20px;height:20px;border-radius:50%; border:2px solid transparent; cursor:pointer; box-shadow:0 0 0 1px var(--line)}
   .sw.active{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink)}
+  .colors{display:flex; gap:8px; flex-wrap:wrap; padding:2px;}
+  .cswatch{width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer;
+    box-shadow:0 0 0 1px var(--line); transition:transform .08s;}
+  .cswatch:hover{transform:scale(1.08)}
+  .cswatch.active{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
   .drawopts input[type=range]{width:90px; accent-color:var(--accent)}
+  .text-edit{position:absolute; z-index:20; transform:translate(-50%,-50%); background:var(--panel);
+    color:var(--ink); border:1px solid var(--accent); border-radius:6px; padding:2px 7px; outline:none;
+    min-width:70px; text-align:center; font-family:var(--font-disp); font-weight:600;
+    box-shadow:0 4px 16px var(--shadow);}
 
   .status{grid-area:status; display:flex; align-items:center; gap:18px; padding:6px 16px;
     background:var(--panel); border-top:1px solid var(--line); font-family:var(--font-mono);
@@ -222,13 +231,17 @@
     <div class="sec">
       <button class="group-label" data-sec="edit">Edit<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="edit-grid">
-        <button class="ebtn" id="btn-rotate" title="Rotate (R) &middot; 45&deg; snapped, 15&deg; free"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
+        <button class="ebtn" id="btn-rotate" title="Rotate (R) &middot; 45&deg; snapped, 5&deg; free"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
         <button class="ebtn" id="btn-mirror" title="Mirror / flip (F)"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg><span class="cap">Mirror</span></button>
         <button class="ebtn" id="btn-duplicate" title="Duplicate (Ctrl+C)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span class="cap">Copy</span></button>
         <button class="ebtn danger" id="btn-delete" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="cap">Delete</span></button>
         <button class="ebtn on" id="btn-snap" title="Snap to grid (G) &middot; on: 45&deg; rotate, off: free"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="cap">Snap</span></button>
         <button class="ebtn danger" id="btn-clear" title="Clear the whole board"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg><span class="cap">Clear</span></button>
       </div></div>
+    </div>
+    <div class="sec">
+      <button class="group-label" data-sec="color">Color<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="colors" id="color-grid"></div></div>
     </div>
     <div class="sec" id="recent-wrap" style="display:none">
       <button class="group-label" data-sec="recent">Recent<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -239,6 +252,10 @@
     <div class="sec">
       <button class="group-label" data-sec="structures">Structures<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="pieces" id="piece-grid"></div></div>
+    </div>
+    <div class="sec">
+      <button class="group-label" data-sec="logistics">Logistics<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="pieces" id="logi-grid"></div></div>
     </div>
   </div>
 
@@ -276,7 +293,7 @@
         <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
         <div class="k">Right-click</div><div class="d">Deselect &amp; back to Select tool</div>
         <div class="k">Drag selection &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd></div><div class="d">Move &middot; nudge by grid</div>
-        <div class="k"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd></div><div class="d">Rotate (snap: 45&deg; &middot; free: 15&deg;) &middot; reverse</div>
+        <div class="k"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd></div><div class="d">Rotate (snap: 45&deg; &middot; free: 5&deg;) &middot; reverse</div>
         <div class="k"><kbd>F</kbd></div><div class="d">Mirror / flip selection</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>C</kbd></div><div class="d">Duplicate &rarr; reusable stamp</div>
         <div class="k"><kbd>Del</kbd> / <kbd>Backspace</kbd></div><div class="d">Delete selection</div>
@@ -342,10 +359,16 @@ const CATALOG = {
   drill:    {name:'Drill',        w:2, h:2},
   aa:       {name:'AA Gun',       w:2, h:2},
   sam:      {name:'SAM',          w:2, h:2},
-  spawn:    {name:'Spawn Vehicle',w:3, h:2},
+  spawn:    {name:'Spawn Vehicle',w:2, h:3},
   hedgehog: {name:'Hedgehog',     w:1, h:1},
+  fob:      {name:'FOB',          w:2, h:2},
+  helipad:  {name:'Helipad',      w:2, h:2},
+  supply:   {name:'Supply Area',  w:2, h:2},
+  parking:  {name:'Parking',      w:2, h:2},
+  codetower:{name:'Code Tower',   w:10, h:10},
 };
-const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn'];
+const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
+const LOGI_ORDER = ['helipad','supply','parking','codetower'];
 const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
 
 let view = {ox:0, oy:0, scale:1};
@@ -361,16 +384,34 @@ let stamps = [];            // reusable stamps: {sid,name,parts:[{type,dx,dy,rot
 let activeStamp = null;     // stamp currently in ghost-placement mode (parts[0] = snap anchor)
 let stampUid = 1;
 const STAMP_CAP = 14;       // max non-favorite recents kept
+let images = [];            // uploaded overlays: {id,x,y,w,h,src,_img}  (center x,y)
+let texts = [];             // labels: {id,x,y,text,size,color}          (center x,y)
+let selImages = [], selTexts = [], selStrokes = [];   // multi-select of overlays (ids / stroke refs)
+let inkColor = null;        // global structure/text colour; null = theme default
+// Wardogs team colours (red / green / blue) + the theme default
+const INK_COLORS = [
+  {name:'Default', val:null},
+  {name:'Red',   val:'#e23b3b'},
+  {name:'Green', val:'#43c43a'},
+  {name:'Blue',  val:'#5bc0eb'},
+];
+function curInk(){ return inkColor || cssVar('--piece'); }
 
 // ---------------- selection helpers
 function isSel(id){ return selected.indexOf(id)!==-1; }
 function selectedPieces(){ return pieces.filter(p=>isSel(p.id)); }
 function clearSelection(){ selected = []; }
+function clearOverlaySel(){ selImages = []; selTexts = []; selStrokes = []; }
+function anySelected(){ return selected.length||selImages.length||selTexts.length||selStrokes.length; }
+// strip the runtime-only _img cache before serializing
+function imagesData(){ return images.map(im=>({id:im.id,x:im.x,y:im.y,w:im.w,h:im.h,src:im.src})); }
+// rebuild the HTMLImageElement cache after loading images from data
+function hydrateImages(){ images.forEach(im=>{ if(!im._img && im.src){ const i=new Image(); i.onload=render; i.src=im.src; im._img=i; } }); }
 
 // ---------------- history / persistence
 let history = [], hidx = -1;
 function snapshot(){
-  const s = JSON.stringify({pieces, strokes, uid});
+  const s = JSON.stringify({pieces, strokes, uid, images:imagesData(), texts});
   if(history[hidx] === s) return;
   history = history.slice(0, hidx+1);
   history.push(s);
@@ -381,8 +422,13 @@ function snapshot(){
 function undo(){ if(hidx>0){ hidx--; restore(history[hidx]); } }
 function redo(){ if(hidx<history.length-1){ hidx++; restore(history[hidx]); } }
 function restore(s){ const o=JSON.parse(s); pieces=o.pieces; strokes=o.strokes; uid=o.uid||uid;
-  selected = selected.filter(id=>pieces.some(p=>p.id===id)); render(); updateStatus(); persist(); }
-function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid})); }catch(e){} }
+  images=o.images||[]; texts=o.texts||[]; hydrateImages();
+  selected = selected.filter(id=>pieces.some(p=>p.id===id));
+  selImages = selImages.filter(id=>images.some(i=>i.id===id));
+  selTexts = selTexts.filter(id=>texts.some(t=>t.id===id));
+  selStrokes = selStrokes.filter(s=>strokes.indexOf(s)!==-1);
+  render(); updateStatus(); persist(); }
+function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,ink:inkColor})); }catch(e){} }
 
 // ---------------- geometry
 function snapVal(v){ return snapOn ? Math.round(v/SNAP)*SNAP : v; }
@@ -597,17 +643,105 @@ function drawSAM(g,W,H){
   g.beginPath(); g.arc(ox-R*0.03,R*0.08,R*0.19,0,Math.PI*2); g.stroke();      // seat
   g.beginPath(); g.arc(ox-R*0.03,R*0.08,R*0.09,0,Math.PI*2); g.stroke();      // operator
 }
-// spawn point: top-down car with a centered player marker
+// vehicle spawn marker: a solid placard filling the footprint, with a knocked-out
+// deploy-beacon glyph tilted 45deg -> reads like the red sign with a white icon
 function drawSpawnVeh(g,W,H){
-  const L=W*0.9, B=H*0.72, ww=L*0.14, wt=B*0.3;
-  [-1,1].forEach(sy=>{ [-1,1].forEach(sx=>{
-    g.beginPath(); g.rect(sx*L*0.28-ww/2, sy*B/2-wt/2, ww, wt); g.stroke(); });});  // wheels
-  roundRect(g,-L/2,-B/2,L,B,B*0.32); g.stroke();                                    // body
-  g.beginPath(); g.moveTo(-L*0.1,-B/2); g.lineTo(-L*0.16,B/2);                       // cabin lines
-  g.moveTo(L*0.1,-B/2); g.lineTo(L*0.16,B/2); g.stroke();
-  const hy=-H*0.02;
-  g.beginPath(); g.arc(0,hy,H*0.14,0,Math.PI*2); g.stroke();                         // head
-  g.beginPath(); g.arc(0,hy+H*0.32,H*0.24,Math.PI,2*Math.PI,false); g.stroke();      // shoulders
+  const bg=cssVar('--canvas-bg');
+  g.save(); g.fillStyle=g.strokeStyle;
+  const rw=W*0.9, rh=H*0.92;
+  roundRect(g,-rw/2,-rh/2,rw,rh,Math.min(rw,rh)*0.16); g.fill();   // solid placard rectangle
+  // beacon glyph, knocked out, rotated 45deg
+  g.rotate(Math.PI/4); g.fillStyle=bg;
+  const s=Math.min(W,H)*0.52;
+  g.beginPath(); g.arc(0,-s*0.16,s*0.5,Math.PI,2*Math.PI); g.closePath(); g.fill();  // dome cap
+  g.fillRect(-s*0.5,-s*0.18,s,s*0.1);                  // cap underside
+  g.fillRect(-s*0.06,-s*0.12,s*0.12,s*0.34);           // antenna / stalk (thinner + shorter)
+  g.fillRect(-s*0.28,s*0.22,s*0.56,s*0.11);            // base
+  g.restore();
+}
+// parking zone: corner brackets + a bold, centered P
+function drawParking(g,W,H){
+  const S=Math.min(W,H)/2;
+  zoneCorners(g,S);
+  const top=-S*0.36, bot=S*0.36, bowlBot=S*0.08; // loop runs a bit below centre
+  const r=(bowlBot-top)/2;                        // bigger, rounder loop
+  const x=-r/2;                                   // centre the P on its bounding box
+  g.beginPath();
+  g.moveTo(x,bot); g.lineTo(x,top);               // stem
+  g.arc(x, top+r, r, -Math.PI/2, Math.PI/2, false);   // loop (right side)
+  g.lineTo(x,bowlBot);                            // close loop back onto the stem
+  g.stroke();
+}
+// FOB: a square perimeter with a chess-rook tower silhouette
+function drawFOB(g,W,H){
+  const S=Math.min(W,H)/2;
+  g.beginPath(); g.rect(-S*0.94,-S*0.94,S*1.88,S*1.88); g.stroke();               // FOB square
+  const shaftW=S*0.5;
+  g.beginPath(); g.rect(-shaftW/2,-S*0.22,shaftW,S*0.62); g.stroke();             // shaft
+  g.beginPath(); g.rect(-S*0.4,S*0.4,S*0.8,S*0.22); g.stroke();                   // base
+  const topW=S*0.74, bandY=-S*0.56, bandH=S*0.2;
+  g.beginPath(); g.rect(-topW/2,bandY,topW,bandH); g.stroke();                    // battlement band
+  const mW=topW/5;
+  [-1,0,1].forEach(i=>{ g.beginPath(); g.rect(i*(topW/3)-mW/2,bandY-bandH*0.7,mW,bandH*0.7); g.stroke(); }); // merlons
+}
+// corner-bracket helper for zone markers (organizational, no in-game object)
+function zoneCorners(g,S){
+  const c=S*0.9, len=S*0.42;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{
+    g.beginPath();
+    g.moveTo(sx*c, sy*c - sy*len); g.lineTo(sx*c, sy*c); g.lineTo(sx*c - sx*len, sy*c);
+    g.stroke();
+  });
+}
+// helipad zone: corner brackets + a centered H
+function drawHelipad(g,W,H){
+  const S=Math.min(W,H)/2;
+  zoneCorners(g,S);
+  const hw=S*0.26, hh=S*0.42;
+  g.beginPath();
+  g.moveTo(-hw,-hh); g.lineTo(-hw,hh);
+  g.moveTo(hw,-hh); g.lineTo(hw,hh);
+  g.moveTo(-hw,0); g.lineTo(hw,0);
+  g.stroke();
+}
+// supply zone: corner brackets + two crates
+function drawSupply(g,W,H){
+  const S=Math.min(W,H)/2;
+  zoneCorners(g,S);
+  const cs=S*0.44;
+  [-1,1].forEach(sx=>{ const cx=sx*cs*0.62;
+    g.beginPath(); g.rect(cx-cs/2,-cs/2,cs,cs); g.stroke();
+    g.beginPath(); g.moveTo(cx-cs/2,-cs/2); g.lineTo(cx+cs/2,cs/2);
+    g.moveTo(cx+cs/2,-cs/2); g.lineTo(cx-cs/2,cs/2); g.stroke();
+  });
+}
+// Code Tower: a 10x10 perimeter square with a tiered petrol-rig silhouette
+function drawCodeTower(g,W,H){
+  const S=Math.min(W,H)/2;
+  g.beginPath(); g.rect(-S*0.97,-S*0.97,S*1.94,S*1.94); g.stroke();   // 10x10 perimeter
+  const u=S*0.5;
+  // base legs (X-braced trapezoid)
+  const bl=-u*0.55, br=u*0.55, by=u*1.0, ty=u*0.35, tl=-u*0.4, tr=u*0.4;
+  g.beginPath();
+  g.moveTo(bl,by); g.lineTo(tl,ty); g.moveTo(br,by); g.lineTo(tr,ty);
+  g.moveTo(bl,by); g.lineTo(tr,ty); g.moveTo(br,by); g.lineTo(tl,ty);
+  g.moveTo(tl,ty); g.lineTo(tr,ty);
+  g.stroke();
+  // lower tier box (with windows)
+  g.beginPath(); g.rect(-u*0.45,u*0.02,u*0.9,u*0.33); g.stroke();
+  g.beginPath(); g.rect(-u*0.28,u*0.12,u*0.16,u*0.14); g.rect(u*0.12,u*0.12,u*0.16,u*0.14); g.stroke();
+  // stilts up to the main deck
+  g.beginPath();
+  g.moveTo(-u*0.35,u*0.02); g.lineTo(-u*0.35,-u*0.25);
+  g.moveTo(u*0.35,u*0.02); g.lineTo(u*0.35,-u*0.25);
+  g.moveTo(0,u*0.02); g.lineTo(0,-u*0.25);
+  g.stroke();
+  // upper main deck (wider, overhangs)
+  g.beginPath(); g.rect(-u*0.62,-u*0.62,u*1.24,u*0.37); g.stroke();
+  // rooftop units
+  g.beginPath(); g.rect(-u*0.42,-u*0.77,u*0.3,u*0.15); g.rect(u*0.06,-u*0.77,u*0.3,u*0.15); g.stroke();
+  // smokestack
+  g.beginPath(); g.rect(u*0.16,-u*1.06,u*0.13,u*0.31); g.stroke();
 }
 // Czech hedgehog anti-tank obstacle: three crossed I-beams, a 6-point star
 function drawHedgehog(g,W,H){
@@ -625,7 +759,8 @@ function drawHedgehog(g,W,H){
 const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door:drawDoor,
   barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower,
   mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh,
-  hedgehog:drawHedgehog};
+  hedgehog:drawHedgehog, fob:drawFOB, helipad:drawHelipad, supply:drawSupply, parking:drawParking,
+  codetower:drawCodeTower};
 
 function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
@@ -648,8 +783,10 @@ function render(){
   const dpr=cv._dpr||1;
   ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
   ctx.setTransform(dpr*view.scale,0,0,dpr*view.scale, dpr*view.ox, dpr*view.oy);
-  const colInk=cssVar('--piece'), colAcc=cssVar('--accent');
+  const colInk=curInk(), colAcc=cssVar('--accent');
   drawGrid(cssVar('--grid'), cssVar('--grid-major'));
+  for(const im of images){ if(im._img && im._img.complete){
+    ctx.globalAlpha=1; ctx.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); } }
   for(const s of strokes){
     if(!s.pts.length) continue;
     ctx.beginPath(); ctx.moveTo(s.pts[0].x,s.pts[0].y);
@@ -659,8 +796,14 @@ function render(){
     ctx.stroke();
   }
   for(const p of pieces) drawPiece(ctx,p,colInk,1);
+  for(const t of texts) drawText(ctx,t,colInk);
   const selPs=selectedPieces();
-  selPs.forEach(p=>drawSelection(p, colAcc, selPs.length===1));
+  const soloPiece = selPs.length===1 && !selImages.length && !selTexts.length && !selStrokes.length;
+  selPs.forEach(p=>drawSelection(p, colAcc, soloPiece));
+  const soloImg = selImages.length===1 && !selected.length && !selTexts.length && !selStrokes.length;
+  selImages.forEach(id=>{ const im=images.find(i=>i.id===id); if(im) drawImageSel(im,colAcc,soloImg); });
+  selTexts.forEach(id=>{ const t=texts.find(x=>x.id===id); if(t) drawTextSel(t,colAcc); });
+  selStrokes.forEach(s=>drawStrokeSel(s,colAcc));
   if(marquee) drawMarquee(colAcc);
   if(tool==='stamp' && activeStamp){
     stampInstance(activeStamp, hover.x, hover.y, placeRot, placeFlip).forEach(ip=>drawPiece(ctx,ip,colAcc,0.5));
@@ -715,6 +858,83 @@ function pieceAABB(p){
   return {minx:p.x-w/2, miny:p.y-h/2, maxx:p.x+w/2, maxy:p.y+h/2};
 }
 
+// ---------------- text + image overlays
+function drawText(g,t,col){
+  g.save(); g.globalAlpha=1; g.fillStyle=col||t.color||cssVar('--piece');
+  g.font='600 '+t.size+'px Oswald, sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(t.text||'', t.x, t.y); g.restore();
+}
+function textBox(t){
+  ctx.save(); ctx.font='600 '+t.size+'px Oswald, sans-serif';
+  const w=Math.max(ctx.measureText(t.text||' ').width, t.size*0.5), h=t.size*1.25;
+  ctx.restore(); return {w,h};
+}
+function hitText(pt){ const pad=4/view.scale;
+  for(let i=texts.length-1;i>=0;i--){ const t=texts[i], b=textBox(t);
+    if(Math.abs(pt.x-t.x)<=b.w/2+pad && Math.abs(pt.y-t.y)<=b.h/2+pad) return t; }
+  return null;
+}
+function drawTextSel(t,col){ const b=textBox(t), pad=6/view.scale;
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
+  ctx.strokeRect(t.x-b.w/2-pad, t.y-b.h/2-pad, b.w+2*pad, b.h+2*pad); ctx.setLineDash([]); ctx.restore();
+}
+function hitImage(pt){ for(let i=images.length-1;i>=0;i--){ const im=images[i];
+  if(Math.abs(pt.x-im.x)<=im.w/2 && Math.abs(pt.y-im.y)<=im.h/2) return im; } return null; }
+function hitStroke(pt){
+  for(let i=strokes.length-1;i>=0;i--){ const s=strokes[i], th=s.width/2 + 9/view.scale;
+    if(s.pts.length<2){ if(Math.hypot(pt.x-s.pts[0].x, pt.y-s.pts[0].y)<th) return s; }
+    else { for(let k=1;k<s.pts.length;k++){
+      if(segDist(pt.x,pt.y, s.pts[k-1].x,s.pts[k-1].y, s.pts[k].x,s.pts[k].y)<th) return s; } }
+  }
+  return null; }
+function imgHandleXY(im){ return {x:im.x+im.w/2, y:im.y+im.h/2}; }
+function drawImageSel(im,col,handle){
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
+  ctx.strokeRect(im.x-im.w/2, im.y-im.h/2, im.w, im.h); ctx.setLineDash([]);
+  if(handle){ const h=imgHandleXY(im), r=6/view.scale; ctx.fillStyle=col; ctx.fillRect(h.x-r,h.y-r,2*r,2*r); }
+  ctx.restore();
+}
+function strokeBBox(s){ if(!s.pts||!s.pts.length) return null;
+  let a=Infinity,b=Infinity,c=-Infinity,d=-Infinity;
+  s.pts.forEach(pt=>{ a=Math.min(a,pt.x);c=Math.max(c,pt.x);b=Math.min(b,pt.y);d=Math.max(d,pt.y); });
+  return {minx:a,miny:b,maxx:c,maxy:d}; }
+function drawStrokeSel(s,col){ const bb=strokeBBox(s); if(!bb) return; const pad=6/view.scale;
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
+  ctx.strokeRect(bb.minx-pad,bb.miny-pad,(bb.maxx-bb.minx)+2*pad,(bb.maxy-bb.miny)+2*pad); ctx.setLineDash([]); ctx.restore(); }
+function uploadImage(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; const rd=new FileReader();
+    rd.onload=()=>{ const src=rd.result, img=new Image();
+      img.onload=()=>{ const ctr=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
+        const scl=(GRID*8)/Math.max(img.naturalWidth, img.naturalHeight);
+        const im={id:uid++, x:ctr.x, y:ctr.y, w:img.naturalWidth*scl, h:img.naturalHeight*scl, src, _img:img};
+        images.push(im); clearSelection(); clearOverlaySel(); selImages=[im.id]; setTool('select');
+        snapshot(); render(); };
+      img.src=src; };
+    rd.readAsDataURL(f); };
+  inp.click();
+}
+function addText(pt){
+  const t={id:uid++, x:pt.x, y:pt.y, text:'', size:GRID*0.6, color:cssVar('--piece')};
+  texts.push(t); clearSelection(); clearOverlaySel(); selTexts=[t.id];
+  openTextEditor(t, true); render();
+}
+function openTextEditor(t, isNew){
+  const ed=document.createElement('input'); ed.type='text'; ed.value=t.text||''; ed.className='text-edit'; ed.spellcheck=false;
+  const place=()=>{ const s=worldToScreen(t.x,t.y); ed.style.left=s.x+'px'; ed.style.top=s.y+'px';
+    ed.style.font='600 '+Math.max(13,t.size*view.scale)+'px Oswald, sans-serif'; };
+  stage.appendChild(ed); place(); setTimeout(()=>{ ed.focus(); ed.select(); },0);
+  let done=false;
+  const finish=(keep)=>{ if(done) return; done=true;
+    if(keep) t.text=ed.value.trim(); ed.remove();
+    if(!t.text){ texts=texts.filter(x=>x.id!==t.id); selTexts=selTexts.filter(id=>id!==t.id); }
+    snapshot(); render(); };
+  ed.addEventListener('keydown', ev=>{ ev.stopPropagation();
+    if(ev.key==='Enter'){ ev.preventDefault(); finish(true); }
+    else if(ev.key==='Escape'){ ev.preventDefault(); finish(!isNew); } });
+  ed.addEventListener('blur', ()=>finish(true));
+}
+
 // ================= interaction =================
 let drag=null, spaceDown=false;
 function evtW(e){ const rc=cv.getBoundingClientRect(); return screenToWorld(e.clientX-rc.left,e.clientY-rc.top); }
@@ -760,66 +980,109 @@ cv.addEventListener('pointerdown', e=>{
   if(CATALOG[tool]){
     const c=snapCenter(tool,placeRot,w.x,w.y);
     const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip};
-    pieces.push(np); clearSelection(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
+    pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
   }
+  if(tool==='text'){ clearSelection(); addText(w); drag={mode:'placed'}; return; }
   // --- select tool ---
-  // rotate handle (single selection only)
-  if(selected.length===1){
+  const singlePieceSel = selected.length===1 && !selImages.length && !selTexts.length && !selStrokes.length;
+  const singleImgSel   = selImages.length===1 && !selected.length && !selTexts.length && !selStrokes.length;
+  // rotate handle (single piece only)
+  if(singlePieceSel){
     const sel=pieces.find(p=>p.id===selected[0]);
     if(sel){ const hs=handleXY(sel); const hss=worldToScreen(hs.x,hs.y);
       if(Math.hypot(hss.x-sc.x,hss.y-sc.y)<=13){ drag={mode:'rotate',p:sel}; return; } }
   }
-  const hit=hitPiece(w.x,w.y);
+  // image resize handle (single image only)
+  if(singleImgSel){ const im=images.find(i=>i.id===selImages[0]);
+    if(im){ const h=worldToScreen(im.x+im.w/2, im.y+im.h/2);
+      if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){ drag={mode:'imgresize', im, ar:im.w/im.h, startW:{x:w.x,y:w.y}, ow:im.w, moved:false}; return; } } }
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-  if(hit){
+  // hit test top -> bottom: text, piece, drawing, image
+  const tHit=hitText(w);
+  const pHit=tHit?null:hitPiece(w.x,w.y);
+  const sHit=(tHit||pHit)?null:hitStroke(w);
+  const iHit=(tHit||pHit||sHit)?null:hitImage(w);
+  if(tHit||pHit||sHit||iHit){
+    const inStr = s=>selStrokes.indexOf(s)!==-1;
+    const wasSel = (pHit&&isSel(pHit.id)) || (tHit&&selTexts.includes(tHit.id)) || (iHit&&selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
     if(additive){
-      // toggle membership
-      if(isSel(hit.id)) selected = selected.filter(id=>id!==hit.id);
-      else selected = selected.concat(hit.id);
-    } else if(!isSel(hit.id)){
-      selected = [hit.id];
+      if(pHit){ if(isSel(pHit.id)) selected=selected.filter(id=>id!==pHit.id); else selected.push(pHit.id); }
+      else if(tHit){ if(selTexts.includes(tHit.id)) selTexts=selTexts.filter(id=>id!==tHit.id); else selTexts.push(tHit.id); }
+      else if(iHit){ if(selImages.includes(iHit.id)) selImages=selImages.filter(id=>id!==iHit.id); else selImages.push(iHit.id); }
+      else if(sHit){ if(inStr(sHit)) selStrokes=selStrokes.filter(x=>x!==sHit); else selStrokes.push(sHit); }
+    } else if(!wasSel){
+      clearSelection(); clearOverlaySel();
+      if(pHit) selected=[pHit.id]; else if(tHit) selTexts=[tHit.id]; else if(iHit) selImages=[iHit.id]; else if(sHit) selStrokes=[sHit];
     }
-    // begin group move (if the clicked piece is still selected)
-    if(isSel(hit.id)){
-      const items=selectedPieces().map(p=>({p, ox:p.x, oy:p.y}));
-      drag={mode:'move', primary:hit, pox:hit.x, poy:hit.y, startW:{x:w.x,y:w.y}, items, moved:false};
-      stage.classList.add('c-move');
-    }
-    render(); updateStatus();
-  } else {
-    // empty ground => rubber-band multi-select
-    if(!additive) clearSelection();
-    marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y, base:selected.slice()};
-    drag={mode:'marquee'};
-    render(); updateStatus();
+    const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&selTexts.includes(tHit.id)) || (iHit&&selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
+    if(nowSel) startGroupMove(w, pHit||null);
+    render(); updateStatus(); return;
   }
+  // empty ground => rubber-band multi-select (pieces + overlays + drawings)
+  if(!additive){ clearSelection(); clearOverlaySel(); }
+  marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
+    base:{pieces:selected.slice(), texts:selTexts.slice(), imgs:selImages.slice(), strokes:selStrokes.slice()}};
+  drag={mode:'marquee'};
+  render(); updateStatus();
 });
+function startGroupMove(w, primary){
+  drag={ mode:'gmove', primary: primary||null,
+    pox: primary?primary.x:0, poy: primary?primary.y:0, anchor:null,
+    startW:{x:w.x,y:w.y}, moved:false,
+    ps: selectedPieces().map(p=>({p,ox:p.x,oy:p.y})),
+    ims: images.filter(i=>selImages.includes(i.id)).map(im=>({im,ox:im.x,oy:im.y})),
+    ts: texts.filter(t=>selTexts.includes(t.id)).map(t=>({t,ox:t.x,oy:t.y})),
+    ss: strokes.filter(s=>selStrokes.indexOf(s)!==-1).map(s=>({s,pts:s.pts.map(pt=>({x:pt.x,y:pt.y}))})) };
+  if(!primary){
+    if(drag.ims[0]) drag.anchor={ox:drag.ims[0].ox, oy:drag.ims[0].oy};
+    else if(drag.ts[0]) drag.anchor={ox:drag.ts[0].ox, oy:drag.ts[0].oy};
+    else if(drag.ss[0]) drag.anchor={ox:drag.ss[0].pts[0].x, oy:drag.ss[0].pts[0].y};
+  }
+  stage.classList.add('c-move');
+}
 cv.addEventListener('pointermove', e=>{
   const w=evtW(e), sc=evtS(e); hover=w;
   if(drag){
     if(drag.mode==='pan'){ view.ox=drag.ox+(sc.x-drag.sx); view.oy=drag.oy+(sc.y-drag.sy); render(); }
-    else if(drag.mode==='move'){
-      // snap the group by the grabbed (primary) piece, keeping relative offsets
+    else if(drag.mode==='gmove'){
+      // move the whole selection (pieces + images + texts + drawings) as one
       const rawdx=w.x-drag.startW.x, rawdy=w.y-drag.startW.y;
-      const sc=snapCenter(drag.primary.type, drag.primary.rot, drag.pox+rawdx, drag.poy+rawdy);
-      const ddx=sc.x-drag.pox, ddy=sc.y-drag.poy;
-      drag.items.forEach(it=>{ it.p.x=it.ox+ddx; it.p.y=it.oy+ddy; });
+      let ddx=rawdx, ddy=rawdy;
+      if(drag.primary){ const s=snapCenter(drag.primary.type, drag.primary.rot, drag.pox+rawdx, drag.poy+rawdy);
+        ddx=s.x-drag.pox; ddy=s.y-drag.poy; }
+      else if(snapOn && drag.anchor){ ddx=Math.round((drag.anchor.ox+rawdx)/SNAP)*SNAP-drag.anchor.ox;
+        ddy=Math.round((drag.anchor.oy+rawdy)/SNAP)*SNAP-drag.anchor.oy; }
+      drag.ps.forEach(it=>{ it.p.x=it.ox+ddx; it.p.y=it.oy+ddy; });
+      drag.ims.forEach(it=>{ it.im.x=it.ox+ddx; it.im.y=it.oy+ddy; });
+      drag.ts.forEach(it=>{ it.t.x=it.ox+ddx; it.t.y=it.oy+ddy; });
+      drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x+ddx; pt.y=it.pts[k].y+ddy; }); });
       drag.moved=true; render(); updateStatus();
     }
     else if(drag.mode==='rotate'){
       let ang=Math.atan2(w.x-drag.p.x, -(w.y-drag.p.y))*180/Math.PI;
-      if(!e.shiftKey) ang=Math.round(ang/15)*15;
+      if(!e.shiftKey) ang=Math.round(ang/5)*5;
       drag.p.rot=((ang%360)+360)%360; render(); updateStatus();
     }
     else if(drag.mode==='marquee'){
       marquee.x1=w.x; marquee.y1=w.y;
       const bx0=Math.min(marquee.x0,marquee.x1), by0=Math.min(marquee.y0,marquee.y1);
       const bx1=Math.max(marquee.x0,marquee.x1), by1=Math.max(marquee.y0,marquee.y1);
-      const inside=pieces.filter(p=>{ const b=pieceAABB(p);
-        return b.minx<=bx1 && b.maxx>=bx0 && b.miny<=by1 && b.maxy>=by0; }).map(p=>p.id);
-      selected = marquee.base.slice();
-      inside.forEach(id=>{ if(!isSel(id)) selected.push(id); });
+      const B=marquee.base;
+      selected=B.pieces.slice();
+      pieces.forEach(p=>{ const b=pieceAABB(p);
+        if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) selected.push(p.id); });
+      selTexts=B.texts.slice();
+      texts.forEach(t=>{ if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !selTexts.includes(t.id)) selTexts.push(t.id); });
+      selImages=B.imgs.slice();
+      images.forEach(im=>{ if(im.x-im.w/2<=bx1&&im.x+im.w/2>=bx0&&im.y-im.h/2<=by1&&im.y+im.h/2>=by0 && !selImages.includes(im.id)) selImages.push(im.id); });
+      selStrokes=B.strokes.slice();
+      strokes.forEach(s=>{ const bb=strokeBBox(s);
+        if(bb && bb.minx<=bx1&&bb.maxx>=bx0&&bb.miny<=by1&&bb.maxy>=by0 && selStrokes.indexOf(s)===-1) selStrokes.push(s); });
       render(); updateStatus();
+    }
+    else if(drag.mode==='imgresize'){
+      let nw=drag.ow+(w.x-drag.startW.x); nw=Math.max(GRID, nw);
+      drag.im.w=nw; drag.im.h=nw/drag.ar; drag.moved=true; render();
     }
     else if(drag.mode==='draw'){
       const last=drag.s.pts[drag.s.pts.length-1];
@@ -831,14 +1094,20 @@ cv.addEventListener('pointermove', e=>{
 });
 cv.addEventListener('pointerup', ()=>{
   if(drag){
-    if((drag.mode==='move'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)) snapshot();
+    if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
+      || (drag.mode==='imgresize'&&drag.moved)) snapshot();
   }
   drag=null; marquee=null; stage.classList.remove('c-panning','c-move'); render();
+});
+// double-click a text label to edit it
+cv.addEventListener('dblclick', e=>{
+  const w=evtW(e); const tt=hitText(w);
+  if(tt){ clearSelection(); clearOverlaySel(); selTexts=[tt.id]; render(); openTextEditor(tt, false); }
 });
 // right-click: clear the current selection and return to the Select tool
 cv.addEventListener('contextmenu', e=>{
   e.preventDefault();
-  clearSelection();
+  clearSelection(); clearOverlaySel();
   if(tool!=='select') setTool('select');
   render(); updateStatus();
 });
@@ -861,19 +1130,21 @@ window.addEventListener('keydown', e=>{
   if(meta && e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
   if(meta && e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
   if(meta && e.key.toLowerCase()==='c'){ e.preventDefault(); duplicateSel(); return; }
-  if(meta && e.key.toLowerCase()==='a'){ e.preventDefault(); selected=pieces.map(p=>p.id); render(); updateStatus(); return; }
+  if(meta && e.key.toLowerCase()==='a'){ e.preventDefault();
+    selected=pieces.map(p=>p.id); selImages=images.map(i=>i.id); selTexts=texts.map(t=>t.id); selStrokes=strokes.slice();
+    render(); updateStatus(); return; }
   // WASD = free camera pan. Works in every tool/mode and never touches the
   // selection or an active ghost, so the camera and the item move independently.
   if(!meta){ const k=e.key.toLowerCase();
     if(k==='w'||k==='a'||k==='s'||k==='d'){ e.preventDefault(); panKeys.add(k); startPanLoop(); return; } }
   const selPs=selectedPieces();
   if(e.key==='r'||e.key==='R'){
-    const step=e.shiftKey?-rotStep():rotStep();
-    if(selPs.length){ rotateGroup(step); }
-    else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeRot=(((placeRot+step)%360)+360)%360; render(); }
+    const dir=e.shiftKey?-1:1;
+    if(selPs.length){ rotateGroup(dir*rotStep()); }
+    else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ stepPlaceRot(dir); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp') setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); clearOverlaySel(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp'||tool==='text') setTool('select'); render(); updateStatus(); }
   if(e.key==='f'||e.key==='F'){
     if(selPs.length) mirrorGroup();
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
@@ -882,12 +1153,15 @@ window.addEventListener('keydown', e=>{
   if(e.key==='v'||e.key==='V') setTool('select');
   if(e.key==='b'||e.key==='B') setTool('draw');
   if(e.key==='e'||e.key==='E') setTool('erase');
-  if(selPs.length && e.key.startsWith('Arrow')){
+  if((selPs.length||selImages.length||selTexts.length||selStrokes.length) && e.key.startsWith('Arrow')){
     e.preventDefault(); const d=e.shiftKey?SNAP:(snapOn?GRID:1);
     let dx=0,dy=0;
     if(e.key==='ArrowLeft')dx=-d; if(e.key==='ArrowRight')dx=d;
     if(e.key==='ArrowUp')dy=-d; if(e.key==='ArrowDown')dy=d;
     selPs.forEach(p=>{ p.x+=dx; p.y+=dy; });
+    images.filter(i=>selImages.includes(i.id)).forEach(im=>{ im.x+=dx; im.y+=dy; });
+    texts.filter(t=>selTexts.includes(t.id)).forEach(t=>{ t.x+=dx; t.y+=dy; });
+    strokes.filter(s=>selStrokes.indexOf(s)!==-1).forEach(s=>s.pts.forEach(pt=>{ pt.x+=dx; pt.y+=dy; }));
     snapshot(); render(); updateStatus();
   }
 });
@@ -917,10 +1191,24 @@ function panStep(now){
 // ---------------- actions
 // rigid rotation of the whole selection by +/-90 around its bounding-box center,
 // so the arrangement keeps its shape (connections preserved) at a new angle
-// rotation increment: 45deg while snap is on, finer 15deg while snap is off
-function rotStep(){ return snapOn ? 45 : 15; }
+// rotation increment: 45deg while snap is on, finer 5deg while snap is off
+function rotStep(){ return snapOn ? 45 : 5; }
+// with snap on, land on the 45deg grid (align an off-grid angle first), not +45
+function snapRotTarget(cur, dir){ return dir>0 ? Math.floor(cur/45)*45+45 : Math.ceil(cur/45)*45-45; }
+function stepPlaceRot(dir){
+  if(snapOn) placeRot = ((snapRotTarget(placeRot,dir))%360+360)%360;
+  else placeRot = ((placeRot + dir*5)%360+360)%360;
+  render();
+}
 function rotateGroup(step){
   const items=selectedPieces(); if(!items.length) return;
+  // snap on: rotate to the nearest 45deg cardinal (fixes a freely-rotated object
+  // that would otherwise gain 45deg on top of its off-grid angle)
+  if(snapOn){
+    const r0=items[0].rot, dir=step<0?-1:1;
+    const want=snapRotTarget(r0,dir)-r0;
+    step = items[0].flip ? -want : want;   // flipped pieces store the opposite sense
+  }
   let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
   items.forEach(p=>{ const b=pieceAABB(p);
     minx=Math.min(minx,b.minx); miny=Math.min(miny,b.miny);
@@ -958,7 +1246,14 @@ function mirrorGroup(){
   items.forEach(p=>{ p.x=2*cx-p.x; p.flip=!p.flip; });
   snapshot(); render(); updateStatus();
 }
-function deleteSel(){ if(!selected.length)return; pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); snapshot(); render(); updateStatus(); }
+function deleteSel(){
+  let changed=false;
+  if(selected.length){ pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); changed=true; }
+  if(selImages.length){ images=images.filter(i=>!selImages.includes(i.id)); selImages=[]; changed=true; }
+  if(selTexts.length){ texts=texts.filter(t=>!selTexts.includes(t.id)); selTexts=[]; changed=true; }
+  if(selStrokes.length){ strokes=strokes.filter(s=>selStrokes.indexOf(s)===-1); selStrokes=[]; changed=true; }
+  if(changed){ snapshot(); render(); updateStatus(); }
+}
 // Duplicate = capture the selection as a reusable "stamp", drop it into Recent,
 // and enter ghost-placement so it can be stamped down as many times as you like.
 function duplicateSel(){ const items=selectedPieces(); if(!items.length)return;
@@ -1023,7 +1318,7 @@ function setTool(t){
   highlightRecent();
   $('drawopts').classList.toggle('show', t==='draw');
   stage.classList.remove('c-cross','c-pan');
-  if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp') stage.classList.add('c-cross');
+  if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text') stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
   updateStatus(); render();
 }
@@ -1090,17 +1385,28 @@ const TOOL_ICONS = {
   draw:'<svg viewBox="0 0 24 24"><path d="M15 4l5 5L9 20l-5 1 1-5z"/><path d="M13 6l5 5"/></svg>',
   erase:'<svg viewBox="0 0 24 24"><path d="M4 15l7-7 6 6-5 5H8z"/><path d="M9 20h11"/><path d="M11 8l6 6"/></svg>',
   pan:'<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 8l-4 4 4 4M16 8l4 4-4 4M8 4l4-1 4 1M8 20l4 1 4-1"/></svg>',
+  text:'<svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>',
+  image:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>',
 };
 function buildRail(){
   const tg=$('tool-grid'); tg.innerHTML='';
-  [['select','Select'],['pan','Pan'],['draw','Draw'],['erase','Erase']].forEach(([t,label])=>{
+  [['select','Select'],['pan','Pan'],['draw','Draw'],['erase','Erase'],['text','Text']].forEach(([t,label])=>{
     const b=document.createElement('button');
     b.className='tool'; b.dataset.tool=t; b.title=label;
     b.innerHTML=TOOL_ICONS[t]+'<span class="cap">'+label+'</span>';
     b.onclick=()=>setTool(t); tg.appendChild(b);
   });
-  const pg=$('piece-grid'); pg.innerHTML='';
-  PIECE_ORDER.forEach(type=>{
+  // Image = an action (opens the file picker), not a persistent tool
+  const ib=document.createElement('button');
+  ib.className='tool'; ib.title='Upload an image overlay';
+  ib.innerHTML=TOOL_ICONS.image+'<span class="cap">Image</span>';
+  ib.onclick=uploadImage; tg.appendChild(ib);
+  fillPieceGrid('piece-grid', PIECE_ORDER);
+  fillPieceGrid('logi-grid', LOGI_ORDER);
+}
+function fillPieceGrid(gridId, order){
+  const pg=$(gridId); if(!pg) return; pg.innerHTML='';
+  order.forEach(type=>{
     const b=document.createElement('button');
     b.className='piece-tool'; b.dataset.tool=type; b.title=CATALOG[type].name+' - click, then place on grid';
     const img=document.createElement('img'); img.src=makeIcon(type); img.alt=CATALOG[type].name;
@@ -1112,9 +1418,23 @@ function buildRail(){
 }
 function refreshIcons(){
   document.querySelectorAll('#piece-grid .piece-tool img').forEach((img,i)=>{ img.src=makeIcon(PIECE_ORDER[i]); });
+  document.querySelectorAll('#logi-grid .piece-tool img').forEach((img,i)=>{ img.src=makeIcon(LOGI_ORDER[i]); });
   buildRecent();   // stamp icons use theme colors too
 }
 
+// ---------------- structure/text colour picker
+function buildColors(){
+  const g=$('color-grid'); if(!g) return; g.innerHTML='';
+  INK_COLORS.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='cswatch'+(inkColor===c.val?' active':'');
+    b.title=c.name+(c.val?'':' (theme)'); b.style.background = c.val || 'var(--piece)';
+    b.onclick=()=>{ inkColor=c.val;
+      document.querySelectorAll('.cswatch').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+      persist(); render(); };
+    g.appendChild(b);
+  });
+}
 // ---------------- swatches
 function buildSwatches(){
   const sw=$('swatches'); sw.innerHTML='';
@@ -1142,7 +1462,7 @@ $('btn-theme').onclick=()=>{
   refreshIcons(); render();
 };
 $('btn-delete').onclick=deleteSel;
-$('btn-rotate').onclick=()=>{ if(selectedPieces().length) rotateGroup(rotStep()); else { placeRot=(((placeRot+rotStep())%360)+360)%360; render(); } };
+$('btn-rotate').onclick=()=>{ if(selectedPieces().length) rotateGroup(rotStep()); else stepPlaceRot(1); };
 $('btn-mirror').onclick=()=>{
   if(selectedPieces().length) mirrorGroup();
   else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
@@ -1159,7 +1479,7 @@ $('btn-clear').onclick=()=>{
     clearTimer=setTimeout(resetClearBtn, 2600); return;
   }
   clearTimeout(clearTimer); resetClearBtn();
-  pieces=[]; strokes=[]; clearSelection(); snapshot(); render(); updateStatus();
+  pieces=[]; strokes=[]; images=[]; texts=[]; clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
 };
 // unified save: uses the artifact downloads capability when present, else a normal browser download
 async function saveFile(filename, data){
@@ -1174,12 +1494,14 @@ async function saveFile(filename, data){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function exportFile(){ saveFile('fob-layout.json', JSON.stringify({pieces,strokes,view},null,2)); }
+function exportFile(){ saveFile('fob-layout.json', JSON.stringify({pieces,strokes,view,images:imagesData(),texts,ink:inkColor},null,2)); }
 function importFile(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const rd=new FileReader();
     rd.onload=()=>{ try{ const o=JSON.parse(rd.result); pieces=o.pieces||[]; strokes=o.strokes||[];
-      if(o.view)view=o.view; uid=Math.max(1,...pieces.map(p=>p.id||0))+1; clearSelection();
+      images=o.images||[]; texts=o.texts||[]; hydrateImages(); clearOverlaySel();
+      if('ink' in o){ inkColor=o.ink; buildColors(); }
+      if(o.view)view=o.view; uid=Math.max(1,...pieces.map(p=>p.id||0), ...images.map(i=>i.id||0), ...texts.map(t=>t.id||0))+1; clearSelection();
       snapshot(); render(); updateStatus(); closeFile(); }catch(err){ alert('Could not read that file.'); } };
     rd.readAsText(f); };
   inp.click();
@@ -1195,7 +1517,7 @@ $('file-png').onclick=()=>{ closeFile(); exportPNG(); };
 // ---- shareable build code (base64 of the build JSON) ----
 // Fixed type list for share codes: APPEND-ONLY (indices must never change, or
 // old codes break). Decoupled from PIECE_ORDER so the rail can be reordered.
-const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn'];
+const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob','helipad','supply','parking','codetower'];
 // URL/Reddit-safe base64: no + / = (those wrap or get mangled in links & comments)
 function b64enc(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function b64dec(str){ let s=str.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return decodeURIComponent(escape(atob(s))); }
@@ -1210,6 +1532,10 @@ function encodeBuild(){
   const S=(strokes||[]).filter(s=>s.pts&&s.pts.length).map(s=>[s.color, Math.round(s.width),
     s.pts.flatMap(pt=>[Math.round(pt.x),Math.round(pt.y)])]);
   if(S.length) obj.s=S;
+  // labels ride along (small); uploaded images do not (too large for a code)
+  const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color]);
+  if(T.length) obj.t=T;
+  if(inkColor) obj.c=inkColor;   // global structure/text colour
   return 'FOB2.'+b64enc(JSON.stringify(obj));
 }
 function decodeBuild(code){
@@ -1222,7 +1548,8 @@ function decodeBuild(code){
     const strokes=(o.s||[]).map(a=>{ const f=a[2]||[], pts=[];
       for(let i=0;i+1<f.length;i+=2) pts.push({x:f[i],y:f[i+1]});
       return {color:a[0], width:a[1], pts}; });
-    return {pieces, strokes};
+    const texts=(o.t||[]).map(a=>({text:a[0], x:a[1], y:a[2], size:a[3]||GRID*0.6, color:a[4]}));
+    return {pieces, strokes, texts, ink:o.c||null};
   }
   // legacy FOB1: base64 of the full JSON
   if(s.startsWith('FOB1.')) s=s.slice(5);
@@ -1233,6 +1560,9 @@ function decodeBuild(code){
 function loadBuild(o){
   pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip}));
   strokes=o.strokes||[];
+  texts=(o.texts||[]).map(t=>({id:uid++, text:t.text, x:t.x, y:t.y, size:t.size||GRID*0.6, color:t.color||cssVar('--piece')}));
+  images=[]; clearOverlaySel();
+  inkColor = o.ink||null; buildColors();
   clearSelection(); snapshot(); render(); updateStatus();
 }
 function openCode(){
@@ -1262,7 +1592,7 @@ $('code-load').onclick=()=>{
 };
 
 function exportPNG(){
-  if(!pieces.length && !strokes.length){ alert('Nothing to export yet.'); return; }
+  if(!pieces.length && !strokes.length && !images.length && !texts.length){ alert('Nothing to export yet.'); return; }
   // compute bounds of all content
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   pieces.forEach(p=>{ const c=CATALOG[p.type]; const rad=Math.abs(p.rot%180)===90;
@@ -1270,6 +1600,8 @@ function exportPNG(){
     minX=Math.min(minX,p.x-hw); maxX=Math.max(maxX,p.x+hw);
     minY=Math.min(minY,p.y-hh); maxY=Math.max(maxY,p.y+hh); });
   strokes.forEach(s=>s.pts.forEach(pt=>{ minX=Math.min(minX,pt.x);maxX=Math.max(maxX,pt.x);minY=Math.min(minY,pt.y);maxY=Math.max(maxY,pt.y); }));
+  images.forEach(im=>{ minX=Math.min(minX,im.x-im.w/2); maxX=Math.max(maxX,im.x+im.w/2); minY=Math.min(minY,im.y-im.h/2); maxY=Math.max(maxY,im.y+im.h/2); });
+  texts.forEach(t=>{ const b=textBox(t); minX=Math.min(minX,t.x-b.w/2); maxX=Math.max(maxX,t.x+b.w/2); minY=Math.min(minY,t.y-b.h/2); maxY=Math.max(maxY,t.y+b.h/2); });
   const m=GRID; minX-=m;minY-=m;maxX+=m;maxY+=m;
   const W=maxX-minX, H=maxY-minY, sc=2;
   const c=document.createElement('canvas'); c.width=W*sc; c.height=H*sc;
@@ -1279,9 +1611,12 @@ function exportPNG(){
   g.strokeStyle=cssVar('--grid'); g.lineWidth=1;
   for(let x=Math.ceil(minX/GRID)*GRID;x<maxX;x+=GRID){ g.beginPath();g.moveTo(x,minY);g.lineTo(x,maxY);g.stroke(); }
   for(let y=Math.ceil(minY/GRID)*GRID;y<maxY;y+=GRID){ g.beginPath();g.moveTo(minX,y);g.lineTo(maxX,y);g.stroke(); }
+  images.forEach(im=>{ if(im._img&&im._img.complete) g.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); });
   strokes.forEach(s=>{ if(!s.pts.length)return; g.beginPath(); g.moveTo(s.pts[0].x,s.pts[0].y);
     s.pts.forEach(pt=>g.lineTo(pt.x,pt.y)); g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round';g.lineCap='round'; g.stroke(); });
-  pieces.forEach(p=>drawPiece(g,p,cssVar('--piece'),1));
+  const ink=curInk();
+  pieces.forEach(p=>drawPiece(g,p,ink,1));
+  texts.forEach(t=>drawText(g,t,ink));
   c.toBlob(blob=>{ if(blob) saveFile('fob-layout.png', blob); }, 'image/png');
 }
 
@@ -1338,7 +1673,10 @@ function init(){
   buildRail(); buildSwatches(); initCollapsibles();
   try{ const saved=JSON.parse(localStorage.getItem('wardog-fob')||'null');
     if(saved){ pieces=saved.pieces||[]; strokes=saved.strokes||[];
-      if(saved.view)view=saved.view; uid=saved.uid||Math.max(1,...pieces.map(p=>p.id||0),0)+1; }
+      images=saved.images||[]; texts=saved.texts||[]; hydrateImages();
+      if('ink' in saved) inkColor=saved.ink;
+      if(saved.view)view=saved.view;
+      uid=saved.uid||Math.max(1,...pieces.map(p=>p.id||0),...images.map(i=>i.id||0),...texts.map(t=>t.id||0),0)+1; }
   }catch(e){}
   try{ const sv=JSON.parse(localStorage.getItem('wardog-fob-stamps')||'null');
     if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
@@ -1349,12 +1687,14 @@ function init(){
   try{ const h=(location.hash||'').slice(1);
     if(/^FOB[12]\./.test(h)){ const o=decodeBuild(h);
       uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip}));
-      strokes=o.strokes||[]; sharedLoaded=true; }
+      strokes=o.strokes||[];
+      texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece')}));
+      images=[]; inkColor=o.ink||null; sharedLoaded=true; }
   }catch(e){}
-  buildRecent();
+  buildRecent(); buildColors();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
-  history=[JSON.stringify({pieces,strokes,uid})]; hidx=0;
+  history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts})]; hidx=0;
   resize();
   if(sharedLoaded){ centerOnContent(); render(); }
   updateStatus();
