@@ -342,7 +342,7 @@ const CATALOG = {
   drill:    {name:'Drill',        w:2, h:2},
   aa:       {name:'AA Gun',       w:2, h:2},
   sam:      {name:'SAM',          w:2, h:2},
-  spawn:    {name:'Spawn Vehicle',w:2, h:1},
+  spawn:    {name:'Spawn Vehicle',w:3, h:2},
   hedgehog: {name:'Hedgehog',     w:1, h:1},
 };
 const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn'];
@@ -599,7 +599,7 @@ function drawSAM(g,W,H){
 }
 // spawn point: top-down car with a centered player marker
 function drawSpawnVeh(g,W,H){
-  const L=W*0.9, B=H*0.62, ww=L*0.14, wt=B*0.3;
+  const L=W*0.9, B=H*0.72, ww=L*0.14, wt=B*0.3;
   [-1,1].forEach(sy=>{ [-1,1].forEach(sx=>{
     g.beginPath(); g.rect(sx*L*0.28-ww/2, sy*B/2-wt/2, ww, wt); g.stroke(); });});  // wheels
   roundRect(g,-L/2,-B/2,L,B,B*0.32); g.stroke();                                    // body
