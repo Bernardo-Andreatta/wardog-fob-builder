@@ -1036,7 +1036,7 @@ function makeIcon(type, px){
   const cat=CATALOG[type], s=(size-pad*2)/(Math.max(cat.w,cat.h)*GRID);
   g.translate(size/2,size/2); g.scale(s,s);
   g.strokeStyle=cssVar('--ink'); g.fillStyle=g.strokeStyle;
-  g.lineWidth=2.6/s; g.lineJoin='round'; g.lineCap='round';
+  g.lineWidth=1.8/s; g.lineJoin='round'; g.lineCap='round';
   DRAWERS[type](g, cat.w*GRID, cat.h*GRID);
   return c.toDataURL();
 }
@@ -1054,7 +1054,7 @@ function makeStampIcon(st, px){
   const s=(size-pad*2)/Math.max(bw,bh,GRID);
   g.translate(size/2,size/2); g.scale(s,s); g.translate(-ox,-oy);
   g.strokeStyle=cssVar('--ink'); g.fillStyle=g.strokeStyle;
-  g.lineWidth=2.2/s; g.lineJoin='round'; g.lineCap='round';
+  g.lineWidth=1.8/s; g.lineJoin='round'; g.lineCap='round';
   st.parts.forEach(pt=>{ const cat=CATALOG[pt.type];
     g.save(); g.translate(pt.dx,pt.dy); g.rotate(pt.rot*Math.PI/180);
     DRAWERS[pt.type](g, cat.w*GRID, cat.h*GRID); g.restore(); });
