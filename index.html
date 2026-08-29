@@ -43,7 +43,7 @@
   html,body{height:100%;margin:0; -webkit-text-size-adjust:100%; text-size-adjust:100%;}
   body{background:var(--bg); color:var(--ink); font-family:var(--font-ui);
     overflow:hidden; -webkit-font-smoothing:antialiased;}
-  .app{display:grid; grid-template-rows:auto 1fr auto; grid-template-columns:120px 1fr;
+  .app{display:grid; grid-template-rows:auto 1fr auto; grid-template-columns:var(--rail-w,120px) 1fr;
     grid-template-areas:"top top" "rail stage" "rail status"; height:100vh; width:100vw;}
 
   .topbar{grid-area:top; display:flex; align-items:center; gap:14px; padding:10px 16px;
@@ -67,7 +67,7 @@
   .btn.armed{background:var(--bad); border-color:var(--bad); color:#fff}
   .btn.armed:hover{background:var(--bad); color:#fff}
 
-  .rail{grid-area:rail; width:120px; background:var(--panel); border-right:1px solid var(--line);
+  .rail{grid-area:rail; width:100%; user-select:none; -webkit-user-select:none; background:var(--panel); border-right:1px solid var(--line);
     padding:12px 10px; overflow-x:hidden; overflow-y:auto; display:flex; flex-direction:column; gap:14px;}
   .sec-body{margin-top:7px;}
   .group-label{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.16em;
@@ -80,28 +80,28 @@
   .sec.collapsed .chev{transform:rotate(-90deg);}
   .sec.collapsed .sec-body{display:none;}
   .tools{display:grid; grid-template-columns:1fr 1fr; gap:7px;}
-  .tool{position:relative; aspect-ratio:1; min-width:0; background:var(--panel-2); border:1px solid var(--line);
-    border-radius:9px; display:flex; align-items:center; justify-content:center; padding:8px;
-    transition:border-color .12s, background .12s;}
+  .tool{position:relative; min-width:0; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    padding:9px 3px; transition:border-color .12s, background .12s;}
   .tool:hover{border-color:var(--accent)}
   .tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
-  .tool svg{width:100%; height:100%; stroke:var(--ink); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
-  .tool .cap{position:absolute; bottom:3px; left:0; right:0; text-align:center; font-size:8px;
-    letter-spacing:.04em; color:var(--muted); text-transform:uppercase; font-family:var(--font-disp);
-    font-weight:600; pointer-events:none;}
-  .pieces{display:flex; flex-direction:column; gap:7px;}
-  .piece-tool{position:relative; display:flex; align-items:center; gap:7px; padding:7px 8px; background:var(--panel-2);
-    border:1px solid var(--line); border-radius:9px; overflow:hidden; transition:border-color .12s, background .12s;}
+  .tool svg{width:22px; height:22px; stroke:var(--ink); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+  .tool .cap{width:100%; text-align:center; font-size:10px; transform:scale(.72); transform-origin:center;
+    letter-spacing:.02em; line-height:1; color:var(--muted); text-transform:uppercase;
+    font-family:var(--font-disp); font-weight:600; pointer-events:none; overflow-wrap:break-word;}
+  .pieces{display:grid; grid-template-columns:repeat(auto-fill, minmax(62px, 1fr)); gap:7px; align-content:start;}
+  .piece-tool{position:relative; display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 5px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px; overflow:hidden;
+    transition:border-color .12s, background .12s;}
   .piece-tool:hover{border-color:var(--accent)}
   .piece-tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
   .piece-tool img{width:30px; height:30px; flex:none; image-rendering:auto}
   .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:9px; letter-spacing:.02em;
-    text-transform:uppercase; line-height:1.15; text-align:left; min-width:0; overflow-wrap:break-word;}
-  .piece-tool .star{margin-left:auto; flex:none; background:none; border:none; cursor:pointer;
-    font-size:15px; line-height:1; color:var(--muted); padding:2px 1px;}
+    text-transform:uppercase; line-height:1.15; text-align:center; width:100%; overflow-wrap:break-word;}
+  .piece-tool .star{position:absolute; top:3px; right:4px; flex:none; background:none; border:none;
+    cursor:pointer; font-size:14px; line-height:1; color:var(--muted); padding:2px;}
   .piece-tool .star.on{color:var(--accent)}
   .piece-tool .star:hover{color:var(--ink)}
-  .recent-hint{font-size:9px; color:var(--muted); font-family:var(--font-mono); margin:-2px 0 6px; line-height:1.4;}
 
   .stage{grid-area:stage; position:relative; background:var(--canvas-bg); overflow:hidden;}
   #board{position:absolute; inset:0; display:block; touch-action:none;}
@@ -113,13 +113,14 @@
   .zoombar{position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:6px;}
   .zoombar .btn{padding:0; width:34px; height:34px; justify-content:center; background:var(--panel); font-size:17px;}
   .edit-grid{display:grid; grid-template-columns:1fr 1fr; gap:7px;}
-  .ebtn{position:relative; aspect-ratio:1; min-width:0; background:var(--panel-2); border:1px solid var(--line);
+  .ebtn{position:relative; min-width:0; background:var(--panel-2); border:1px solid var(--line);
     border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    padding:6px; transition:border-color .12s, background .12s;}
+    padding:9px 3px; transition:border-color .12s, background .12s;}
   .ebtn:hover{border-color:var(--accent)}
-  .ebtn svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-  .ebtn .cap{font-family:var(--font-disp); font-size:8px; letter-spacing:.04em; color:var(--muted);
-    text-transform:uppercase; font-weight:600; line-height:1;}
+  .ebtn svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .ebtn .cap{width:100%; text-align:center; font-family:var(--font-disp); font-size:10px;
+    transform:scale(.72); transform-origin:center; letter-spacing:.02em; color:var(--muted);
+    text-transform:uppercase; font-weight:600; line-height:1; overflow-wrap:break-word;}
   .ebtn.danger:hover{border-color:var(--bad)}
   .ebtn.danger:hover svg{stroke:var(--bad)}
   .ebtn.danger:hover .cap{color:var(--bad)}
@@ -166,14 +167,18 @@
   .snaptog.on .box{background:var(--accent); border-color:var(--accent)}
   .snaptog.on .box svg{width:9px;height:9px;stroke:var(--bg);stroke-width:2.6;fill:none}
 
+  .rail-resize{position:absolute; left:0; top:0; bottom:0; width:10px; z-index:6; cursor:col-resize; user-select:none;}
+  .rail-resize::after{content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:transparent; transition:background .12s;}
+  .rail-resize:hover::after, .rail-resize.drag::after{background:var(--accent);}
+
   @media (max-width:720px){
-    .app{grid-template-columns:88px 1fr} .rail{width:88px; padding:10px 6px} .brand .sub{display:none}
+    :root{--rail-w:92px} .rail{padding:10px 6px} .brand .sub{display:none}
     .tools, .edit-grid{gap:5px}
     .piece-tool{flex-direction:column; gap:3px; padding:6px 3px; text-align:center}
     .piece-tool img{width:26px; height:26px}
     .piece-tool .nm{font-size:8px; text-align:center; letter-spacing:.01em}
     .piece-tool .star{position:absolute; top:2px; right:3px; margin:0; font-size:12px}
-    .ebtn .cap, .tool .cap{font-size:7px}
+    .ebtn .cap, .tool .cap{font-size:10px; transform:scale(.66)}
     .group-label{font-size:9px; letter-spacing:.08em}
   }
 </style>
@@ -205,14 +210,13 @@
       <div class="sec-body"><div class="edit-grid">
         <button class="ebtn" id="btn-rotate" title="Rotate selection 90&deg; (R)"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
         <button class="ebtn" id="btn-mirror" title="Mirror / flip (F)"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg><span class="cap">Mirror</span></button>
-        <button class="ebtn" id="btn-duplicate" title="Duplicate (Ctrl+C)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span class="cap">Duplicate</span></button>
+        <button class="ebtn" id="btn-duplicate" title="Duplicate (Ctrl+C)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span class="cap">Copy</span></button>
         <button class="ebtn danger" id="btn-delete" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="cap">Delete</span></button>
       </div></div>
     </div>
     <div class="sec" id="recent-wrap" style="display:none">
       <button class="group-label" data-sec="recent">Recent<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body">
-        <div class="recent-hint">duplicate spawns a reusable stamp &middot; &#9733; keeps it</div>
         <div class="pieces" id="recent-grid"></div>
       </div>
     </div>
@@ -223,6 +227,7 @@
   </div>
 
   <div class="stage" id="stage">
+    <div class="rail-resize" id="rail-resize" title="Drag to resize the menu"></div>
     <canvas id="board"></canvas>
 
     <div class="drawopts" id="drawopts">
@@ -245,7 +250,7 @@
     <div class="seg"><span>SELECTED</span> <span class="v" id="st-sel">&mdash;</span></div>
     <div class="seg"><span>UNITS</span> <span class="v" id="st-count">0</span></div>
     <div class="sp"></div>
-    <div class="snaptog on" id="snaptog"><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span> SNAP TO GRID</div>
+    <div class="snaptog on" id="snaptog" title="Toggle snap to grid (G)"><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span> SNAP TO GRID</div>
     <div class="seg"><span>ZOOM</span> <span class="v" id="st-zoom">100%</span></div>
   </div>
 
@@ -268,6 +273,7 @@
         <div class="k">Scroll</div><div class="d">Zoom</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
         <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
+        <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid</div>
       </div>
     </div>
   </div>
@@ -726,6 +732,7 @@ window.addEventListener('keydown', e=>{
     if(selPs.length) mirrorGroup();
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
   }
+  if(e.key==='g'||e.key==='G') toggleSnap();
   if(e.key==='v'||e.key==='V') setTool('select');
   if(e.key==='b'||e.key==='B') setTool('draw');
   if(e.key==='e'||e.key==='E') setTool('erase');
@@ -1070,7 +1077,24 @@ $('zoom-out').onclick=()=>zoomBy(1/1.2);
 $('zoom-fit').onclick=()=>{ view={ox:stage.clientWidth/2, oy:stage.clientHeight/2, scale:1}; render(); updateStatus(); persist(); };
 
 // snap toggle
-$('snaptog').onclick=()=>{ snapOn=!snapOn; $('snaptog').classList.toggle('on',snapOn); };
+function toggleSnap(){ snapOn=!snapOn; $('snaptog').classList.toggle('on',snapOn); render(); updateStatus(); }
+$('snaptog').onclick=toggleSnap;
+
+// draggable rail width (persisted)
+(function(){
+  const h=$('rail-resize'), root=document.documentElement, MIN=80, MAX=300;
+  const cur=()=>{ const v=parseInt(getComputedStyle(root).getPropertyValue('--rail-w')); return isNaN(v)?120:v; };
+  h.addEventListener('pointerdown', e=>{
+    e.preventDefault(); try{ h.setPointerCapture(e.pointerId); }catch(_){} h.classList.add('drag');
+    const startX=e.clientX, startW=cur();
+    const mv=ev=>{ const w=Math.max(MIN,Math.min(MAX, startW+(ev.clientX-startX)));
+      root.style.setProperty('--rail-w', w+'px'); resize(); };
+    const up=()=>{ h.classList.remove('drag');
+      document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up);
+      try{ localStorage.setItem('wardog-fob-railw', cur()); }catch(e){} };
+    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
+  });
+})();
 // commands / controls modal
 function openCmd(){ $('cmd-modal').hidden=false; }
 function closeCmd(){ $('cmd-modal').hidden=true; }
@@ -1092,6 +1116,7 @@ function initCollapsibles(){
   });
 }
 function init(){
+  try{ const rw=localStorage.getItem('wardog-fob-railw'); if(rw) document.documentElement.style.setProperty('--rail-w', parseInt(rw)+'px'); }catch(e){}
   buildRail(); buildSwatches(); initCollapsibles();
   try{ const saved=JSON.parse(localStorage.getItem('wardog-fob')||'null');
     if(saved){ pieces=saved.pieces||[]; strokes=saved.strokes||[];
