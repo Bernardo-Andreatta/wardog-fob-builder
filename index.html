@@ -97,8 +97,9 @@
   .piece-tool:hover{border-color:var(--accent)}
   .piece-tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
   .piece-tool img{width:30px; height:30px; flex:none; image-rendering:auto}
-  .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:9px; letter-spacing:.02em;
-    text-transform:uppercase; line-height:1.15; text-align:center; width:100%; overflow-wrap:break-word;}
+  .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:10px; transform:scale(.72);
+    transform-origin:center; letter-spacing:.02em; color:var(--muted); text-transform:uppercase;
+    line-height:1; text-align:center; width:100%; overflow-wrap:break-word;}
   .piece-tool .star{position:absolute; top:3px; right:4px; flex:none; background:none; border:none;
     cursor:pointer; font-size:14px; line-height:1; color:var(--muted); padding:2px;}
   .piece-tool .star.on{color:var(--accent)}
@@ -191,7 +192,7 @@
     .tools, .edit-grid{gap:5px}
     .piece-tool{flex-direction:column; gap:3px; padding:6px 3px; text-align:center}
     .piece-tool img{width:26px; height:26px}
-    .piece-tool .nm{font-size:8px; text-align:center; letter-spacing:.01em}
+    .piece-tool .nm{font-size:10px; transform:scale(.66); text-align:center; letter-spacing:.01em}
     .piece-tool .star{position:absolute; top:2px; right:3px; margin:0; font-size:12px}
     .ebtn .cap, .tool .cap{font-size:10px; transform:scale(.66)}
     .group-label{font-size:9px; letter-spacing:.08em}
