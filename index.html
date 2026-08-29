@@ -89,6 +89,11 @@
   .piece-tool img{width:34px; height:34px; flex:none; image-rendering:auto}
   .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:10.5px; letter-spacing:.03em;
     text-transform:uppercase; line-height:1.1; text-align:left;}
+  .piece-tool .star{margin-left:auto; flex:none; background:none; border:none; cursor:pointer;
+    font-size:15px; line-height:1; color:var(--muted); padding:2px 1px;}
+  .piece-tool .star.on{color:var(--accent)}
+  .piece-tool .star:hover{color:var(--ink)}
+  .recent-hint{font-size:9px; color:var(--muted); font-family:var(--font-mono); margin:-2px 0 6px; line-height:1.4;}
 
   .stage{grid-area:stage; position:relative; background:var(--canvas-bg); overflow:hidden;}
   #board{position:absolute; inset:0; display:block; touch-action:none;}
@@ -155,6 +160,11 @@
     <div>
       <div class="group-label">Tools</div>
       <div class="tools" id="tool-grid"></div>
+    </div>
+    <div id="recent-wrap" style="display:none">
+      <div class="group-label">Recent</div>
+      <div class="recent-hint">duplicate spawns a reusable stamp &middot; &#9733; keeps it</div>
+      <div class="pieces" id="recent-grid"></div>
     </div>
     <div>
       <div class="group-label">Structures</div>
@@ -228,6 +238,10 @@ let marquee = null;         // {x0,y0,x1,y1} world coords, during rubber-band se
 let placeRot = 0, snapOn = true, uid = 1;
 let hover = {x:0,y:0};
 let drawColor = DRAW_COLORS[0], drawWidth = 3;
+let stamps = [];            // reusable stamps: {sid,name,parts:[{type,dx,dy,rot}],fav,ts}
+let activeStamp = null;     // stamp currently in ghost-placement mode (parts[0] = snap anchor)
+let stampUid = 1;
+const STAMP_CAP = 14;       // max non-favorite recents kept
 
 // ---------------- selection helpers
 function isSel(id){ return selected.indexOf(id)!==-1; }
@@ -428,7 +442,9 @@ function render(){
   const selPs=selectedPieces();
   selPs.forEach(p=>drawSelection(p, colAcc, selPs.length===1));
   if(marquee) drawMarquee(colAcc);
-  if(CATALOG[tool]){ const c=snapCenter(tool,placeRot,hover.x,hover.y);
+  if(tool==='stamp' && activeStamp){
+    stampInstance(activeStamp, hover.x, hover.y, placeRot).forEach(ip=>drawPiece(ctx,ip,colAcc,0.5));
+  } else if(CATALOG[tool]){ const c=snapCenter(tool,placeRot,hover.x,hover.y);
     drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot},colAcc,0.5); }
 }
 function drawMarquee(col){
@@ -516,6 +532,11 @@ cv.addEventListener('pointerdown', e=>{
     strokes.push(s); drag={mode:'draw',s}; render(); return;
   }
   if(tool==='erase'){ drag={mode:'erase',erased:false}; eraseAt(w); return; }
+  if(tool==='stamp' && activeStamp){
+    const inst=stampInstance(activeStamp, w.x, w.y, placeRot);
+    const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot}));
+    pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
+  }
   if(CATALOG[tool]){
     const c=snapCenter(tool,placeRot,w.x,w.y);
     const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot};
@@ -624,10 +645,10 @@ window.addEventListener('keydown', e=>{
   if(e.key==='r'||e.key==='R'){
     const step=e.shiftKey?-90:90;
     if(selPs.length){ rotateGroup(step); }
-    else if(CATALOG[tool]){ placeRot=(((placeRot+step)%360)+360)%360; render(); }
+    else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeRot=(((placeRot+step)%360)+360)%360; render(); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ clearSelection(); marquee=null; if(CATALOG[tool]||tool==='draw') setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ clearSelection(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp') setTool('select'); render(); updateStatus(); }
   if(e.key==='v'||e.key==='V') setTool('select');
   if(e.key==='b'||e.key==='B') setTool('draw');
   if(e.key==='e'||e.key==='E') setTool('erase');
@@ -671,18 +692,71 @@ function rotateGroup(step){
   snapshot(); render(); updateStatus();
 }
 function deleteSel(){ if(!selected.length)return; pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); snapshot(); render(); updateStatus(); }
+// Duplicate = capture the selection as a reusable "stamp", drop it into Recent,
+// and enter ghost-placement so it can be stamped down as many times as you like.
 function duplicateSel(){ const items=selectedPieces(); if(!items.length)return;
-  const nn=items.map(s=>({...s,id:uid++,x:s.x+SNAP*2,y:s.y+SNAP*2}));
-  pieces.push(...nn); selected=nn.map(p=>p.id); snapshot(); render(); updateStatus(); }
+  const st=addStamp(makeStampFromSel(items));
+  startPlacing(st);
+}
+
+// ---------------- stamps (reusable ghost brushes)
+// parts store each piece relative to an anchor (parts[0]); the anchor is the
+// top-left-most piece, which gives a stable point to snap the whole stamp by.
+function makeStampFromSel(items){
+  const a=items.reduce((best,p)=> (p.y<best.y || (p.y===best.y && p.x<best.x)) ? p : best, items[0]);
+  const rest=items.filter(p=>p!==a);
+  const ordered=[a,...rest];
+  const parts=ordered.map(p=>({type:p.type, dx:p.x-a.x, dy:p.y-a.y, rot:((Math.round(p.rot)%360)+360)%360}));
+  return {sid:0, name:stampName(items), parts, fav:false, ts:Date.now()};
+}
+function stampName(items){
+  if(items.length===1) return CATALOG[items[0].type].name;
+  return items.length+' PIECES';
+}
+function stampKey(st){ return st.parts.map(p=>p.type+'@'+Math.round(p.dx)+','+Math.round(p.dy)+':'+p.rot).join('|'); }
+// rotate an offset by a right-angle multiple (screen space, y-down)
+function rot90(dx,dy,r){
+  if(r===90) return [-dy,dx];
+  if(r===180) return [-dx,-dy];
+  if(r===270) return [dy,-dx];
+  return [dx,dy];
+}
+// resolve a stamp to concrete piece placements at (cx,cy) with extra rotation R.
+// Snap only the anchor, keep every offset rigid -> whole stamp lands on grid.
+function stampInstance(st, cx, cy, R){
+  R=((Math.round(R||0)%360)+360)%360;
+  const a=st.parts[0], aRot=((a.rot+R)%360+360)%360;
+  const snap=snapCenter(a.type, aRot, cx, cy);
+  return st.parts.map(pt=>{ const o=rot90(pt.dx,pt.dy,R);
+    return {type:pt.type, x:snap.x+o[0], y:snap.y+o[1], rot:((pt.rot+R)%360+360)%360}; });
+}
+function addStamp(st){
+  const key=stampKey(st);
+  const hit=stamps.find(s=>stampKey(s)===key);
+  if(hit){ hit.ts=Date.now(); sortStamps(); persistStamps(); buildRecent(); return hit; }
+  st.sid=stampUid++;
+  stamps.unshift(st);
+  // evict oldest non-favorites past the cap
+  const recents=stamps.filter(s=>!s.fav);
+  if(recents.length>STAMP_CAP){ const kill=new Set(recents.slice(STAMP_CAP).map(s=>s.sid));
+    stamps=stamps.filter(s=>!kill.has(s.sid)); }
+  sortStamps(); persistStamps(); buildRecent();
+  return st;
+}
+function sortStamps(){ stamps.sort((a,b)=> (b.fav-a.fav) || (b.ts-a.ts)); }
+function startPlacing(st){ activeStamp=st; placeRot=0; clearSelection(); setTool('stamp'); render(); updateStatus(); }
+function persistStamps(){ try{ localStorage.setItem('wardog-fob-stamps', JSON.stringify(stamps)); }catch(e){} }
 
 // ---------------- tool selection
 function setTool(t){
+  if(t!=='stamp') activeStamp=null;   // leaving placement drops the ghost
   tool=t;
   document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active', el.dataset.tool===t));
+  highlightRecent();
   $('drawopts').classList.toggle('show', t==='draw');
   $('hint').style.display = (t==='draw')?'none':'';
   stage.classList.remove('c-cross','c-pan');
-  if(CATALOG[t]||t==='draw'||t==='erase') stage.classList.add('c-cross');
+  if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp') stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
   updateStatus(); render();
 }
@@ -698,6 +772,49 @@ function makeIcon(type, px){
   g.lineWidth=2.6/s; g.lineJoin='round'; g.lineCap='round';
   DRAWERS[type](g, cat.w*GRID, cat.h*GRID);
   return c.toDataURL();
+}
+// render a whole stamp (all parts) fitted into one small icon
+function makeStampIcon(st, px){
+  const size=px||36, pad=5, dpr=2;
+  let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+  st.parts.forEach(pt=>{ const c=CATALOG[pt.type], r=((Math.round(pt.rot)%360)+360)%360;
+    const w=(r===90||r===270?c.h:c.w)*GRID, h=(r===90||r===270?c.w:c.h)*GRID;
+    mnx=Math.min(mnx,pt.dx-w/2); mxx=Math.max(mxx,pt.dx+w/2);
+    mny=Math.min(mny,pt.dy-h/2); mxy=Math.max(mxy,pt.dy+h/2); });
+  const bw=mxx-mnx, bh=mxy-mny, ox=(mnx+mxx)/2, oy=(mny+mxy)/2;
+  const c=document.createElement('canvas'); c.width=size*dpr; c.height=size*dpr;
+  const g=c.getContext('2d'); g.scale(dpr,dpr);
+  const s=(size-pad*2)/Math.max(bw,bh,GRID);
+  g.translate(size/2,size/2); g.scale(s,s); g.translate(-ox,-oy);
+  g.strokeStyle=cssVar('--ink'); g.fillStyle=g.strokeStyle;
+  g.lineWidth=2.2/s; g.lineJoin='round'; g.lineCap='round';
+  st.parts.forEach(pt=>{ const cat=CATALOG[pt.type];
+    g.save(); g.translate(pt.dx,pt.dy); g.rotate(pt.rot*Math.PI/180);
+    DRAWERS[pt.type](g, cat.w*GRID, cat.h*GRID); g.restore(); });
+  return c.toDataURL();
+}
+function highlightRecent(){
+  document.querySelectorAll('#recent-grid .piece-tool').forEach(b=>
+    b.classList.toggle('active', !!activeStamp && +b.dataset.sid===activeStamp.sid));
+}
+function buildRecent(){
+  const wrap=$('recent-wrap'), grid=$('recent-grid'); if(!grid) return;
+  sortStamps(); grid.innerHTML='';
+  wrap.style.display = stamps.length ? '' : 'none';
+  stamps.forEach(st=>{
+    const b=document.createElement('button');
+    b.className='piece-tool'+(activeStamp&&activeStamp.sid===st.sid?' active':'');
+    b.dataset.sid=st.sid; b.title='Place '+st.name+' - click, then stamp on grid';
+    const img=document.createElement('img'); img.src=makeStampIcon(st); img.alt=st.name;
+    const nm=document.createElement('span'); nm.className='nm'; nm.textContent=st.name;
+    const star=document.createElement('button'); star.className='star'+(st.fav?' on':'');
+    star.innerHTML = st.fav?'&#9733;':'&#9734;';
+    star.title = st.fav?'Unstar':'Star to keep in Recent';
+    star.onclick=(e)=>{ e.stopPropagation(); st.fav=!st.fav; persistStamps(); buildRecent(); };
+    b.appendChild(img); b.appendChild(nm); b.appendChild(star);
+    b.onclick=()=>{ startPlacing(st); };
+    grid.appendChild(b);
+  });
 }
 
 // ---------------- build rail UI
@@ -726,7 +843,10 @@ function buildRail(){
     pg.appendChild(b);
   });
 }
-function refreshIcons(){ document.querySelectorAll('.piece-tool img').forEach((img,i)=>{ img.src=makeIcon(PIECE_ORDER[i]); }); }
+function refreshIcons(){
+  document.querySelectorAll('#piece-grid .piece-tool img').forEach((img,i)=>{ img.src=makeIcon(PIECE_ORDER[i]); });
+  buildRecent();   // stamp icons use theme colors too
+}
 
 // ---------------- swatches
 function buildSwatches(){
@@ -742,7 +862,8 @@ function buildSwatches(){
 // ---------------- status
 function updateCursor(w){ $('st-cursor').textContent = Math.round(w.x/GRID*10)/10+', '+Math.round(w.y/GRID*10)/10; }
 function updateStatus(){
-  const toolName = CATALOG[tool]?('Place: '+CATALOG[tool].name) : (tool.charAt(0).toUpperCase()+tool.slice(1));
+  const toolName = (tool==='stamp'&&activeStamp) ? ('Stamp: '+activeStamp.name)
+    : CATALOG[tool]?('Place: '+CATALOG[tool].name) : (tool.charAt(0).toUpperCase()+tool.slice(1));
   $('st-tool').textContent=toolName;
   const selPs=selectedPieces();
   if(selPs.length===1){ const s=selPs[0];
@@ -848,6 +969,11 @@ function init(){
     if(saved){ pieces=saved.pieces||[]; strokes=saved.strokes||[];
       if(saved.view)view=saved.view; uid=saved.uid||Math.max(1,...pieces.map(p=>p.id||0),0)+1; }
   }catch(e){}
+  try{ const sv=JSON.parse(localStorage.getItem('wardog-fob-stamps')||'null');
+    if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
+      stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
+  }catch(e){}
+  buildRecent();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   history=[JSON.stringify({pieces,strokes,uid})]; hidx=0;
