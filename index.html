@@ -95,6 +95,12 @@
     background:var(--panel-2); border:1px solid var(--line); border-radius:9px; overflow:hidden;
     transition:border-color .12s, background .12s;}
   .piece-tool:hover{border-color:var(--accent)}
+  .piece-tool.dragging{opacity:.4}
+  .piece-tool.drop-here{outline:2px dashed var(--accent); outline-offset:1px}
+  .piece-tool .grip{position:absolute; top:3px; left:4px; width:12px; height:12px; opacity:.35;
+    pointer-events:none; color:var(--muted);}
+  .piece-tool .grip svg{width:100%; height:100%; fill:currentColor;}
+  .piece-tool:hover .grip{opacity:.7; color:var(--accent);}
   .piece-tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
   .piece-tool img{width:30px; height:30px; flex:none; image-rendering:auto}
   .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:10px; transform:scale(.72);
@@ -348,7 +354,7 @@ const $ = id => document.getElementById(id);
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
-  quadra:   {name:'Quadra Wall',  w:4, h:1},
+  quadra:   {name:'Quad Wall',    w:4, h:1},
   bunker:   {name:'Bunker',       w:4, h:4},
   door:     {name:'Door',         w:1, h:1},
   barbed:   {name:'Barbed Wire',  w:2, h:1},
@@ -1380,6 +1386,7 @@ function buildRecent(){
 }
 
 // ---------------- build rail UI
+const GRIP_SVG='<svg viewBox="0 0 16 16"><circle cx="5.5" cy="4" r="1.3"/><circle cx="10.5" cy="4" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="10.5" cy="12" r="1.3"/></svg>';
 const TOOL_ICONS = {
   select:'<svg viewBox="0 0 24 24"><path d="M5 3l7 17 2.2-6.5L21 11z"/></svg>',
   draw:'<svg viewBox="0 0 24 24"><path d="M15 4l5 5L9 20l-5 1 1-5z"/><path d="M13 6l5 5"/></svg>',
@@ -1401,20 +1408,60 @@ function buildRail(){
   ib.className='tool'; ib.title='Upload an image overlay';
   ib.innerHTML=TOOL_ICONS.image+'<span class="cap">Image</span>';
   ib.onclick=uploadImage; tg.appendChild(ib);
-  fillPieceGrid('piece-grid', PIECE_ORDER);
-  fillPieceGrid('logi-grid', LOGI_ORDER);
+  fillPieceGrid('piece-grid', PIECE_ORDER, 'wardog-fob-order');
+  fillPieceGrid('logi-grid', LOGI_ORDER, 'wardog-fob-logi');
 }
-function fillPieceGrid(gridId, order){
+function fillPieceGrid(gridId, order, key){
   const pg=$(gridId); if(!pg) return; pg.innerHTML='';
   order.forEach(type=>{
     const b=document.createElement('button');
-    b.className='piece-tool'; b.dataset.tool=type; b.title=CATALOG[type].name+' - click, then place on grid';
-    const img=document.createElement('img'); img.src=makeIcon(type); img.alt=CATALOG[type].name;
+    b.className='piece-tool'; b.dataset.tool=type; b.title=CATALOG[type].name+' - click to place, or drag to reorder';
+    const img=document.createElement('img'); img.src=makeIcon(type); img.alt=CATALOG[type].name; img.draggable=false;
     const nm=document.createElement('span'); nm.className='nm'; nm.textContent=CATALOG[type].name;
-    b.appendChild(img); b.appendChild(nm);
+    const grip=document.createElement('span'); grip.className='grip'; grip.innerHTML=GRIP_SVG;
+    b.appendChild(grip); b.appendChild(img); b.appendChild(nm);
     b.onclick=()=>{ placeRot=0; placeFlip=false; setTool(type); };
     pg.appendChild(b);
   });
+  if(key) makeGridSortable(gridId, order, key);
+}
+// drag-and-drop reordering of the tiles in a grid (visual order only; the
+// share-code type indices in CODE_TYPES never change, so codes stay compatible)
+let dragCtx=null;
+function makeGridSortable(gridId, order, key){
+  const grid=$(gridId); if(!grid) return;
+  [...grid.children].forEach(btn=>{
+    btn.draggable=true;
+    btn.addEventListener('dragstart', e=>{ dragCtx={gridId, type:btn.dataset.tool}; btn.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', btn.dataset.tool); }catch(_){} });
+    btn.addEventListener('dragend', ()=>{ btn.classList.remove('dragging'); clearDropCues(grid); dragCtx=null; });
+    btn.addEventListener('dragover', e=>{ if(!dragCtx||dragCtx.gridId!==gridId) return; e.preventDefault(); e.dataTransfer.dropEffect='move';
+      clearDropCues(grid); if(btn.dataset.tool!==dragCtx.type) btn.classList.add('drop-here'); });
+    btn.addEventListener('dragleave', ()=>btn.classList.remove('drop-here'));
+    btn.addEventListener('drop', e=>{ if(!dragCtx||dragCtx.gridId!==gridId) return; e.preventDefault();
+      const src=dragCtx.type, tgt=btn.dataset.tool; clearDropCues(grid);
+      if(src===tgt) return;
+      const r=btn.getBoundingClientRect();
+      const after = ((e.clientY-r.top)/r.height + (e.clientX-r.left)/r.width) > 1;  // diagonal split (works for rows & columns)
+      const from=order.indexOf(src); if(from<0) return; order.splice(from,1);
+      let to=order.indexOf(tgt); if(to<0){ order.splice(from,0,src); return; }
+      order.splice(after?to+1:to, 0, src);
+      persistOrder(key, order);
+      fillPieceGrid(gridId, order, key);
+    });
+  });
+}
+function clearDropCues(grid){ grid.querySelectorAll('.drop-here').forEach(x=>x.classList.remove('drop-here')); }
+function persistOrder(key, order){ try{ localStorage.setItem(key, JSON.stringify(order)); }catch(e){} }
+// reorder an order array to match a saved list, keeping any newly-added types at the end
+function applySavedOrder(order, key){
+  try{ const saved=JSON.parse(localStorage.getItem(key)||'null');
+    if(Array.isArray(saved)){
+      const set=new Set(order), out=saved.filter(t=>set.has(t));
+      order.forEach(t=>{ if(!out.includes(t)) out.push(t); });
+      order.splice(0, order.length, ...out);
+    }
+  }catch(e){}
 }
 function refreshIcons(){
   document.querySelectorAll('#piece-grid .piece-tool img').forEach((img,i)=>{ img.src=makeIcon(PIECE_ORDER[i]); });
@@ -1670,6 +1717,7 @@ function initCollapsibles(){
 }
 function init(){
   try{ const rw=localStorage.getItem('wardog-fob-railw'); if(rw) document.documentElement.style.setProperty('--rail-w', parseInt(rw)+'px'); }catch(e){}
+  applySavedOrder(PIECE_ORDER, 'wardog-fob-order'); applySavedOrder(LOGI_ORDER, 'wardog-fob-logi');
   buildRail(); buildSwatches(); initCollapsibles();
   try{ const saved=JSON.parse(localStorage.getItem('wardog-fob')||'null');
     if(saved){ pieces=saved.pieces||[]; strokes=saved.strokes||[];
