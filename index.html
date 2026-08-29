@@ -494,14 +494,18 @@ function roundRect(g,x,y,w,h,r){
   g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
   g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
 }
-// mortar pit: pallet base, ring of sandbags, mortar tube + bipod in the middle
-function drawMortar(g,W,H){
-  const R=Math.min(W,H)/2;
-  const ps=R*0.9;                                  // pallet
+// a slatted 2x2 pallet base, drawn under emplaced weapons
+function drawPallet(g,W,H){
+  const ps=Math.min(W,H)/2*0.9;
   g.beginPath(); g.rect(-ps,-ps,2*ps,2*ps); g.stroke();
   g.beginPath();
   for(let k=1;k<4;k++){ const x=-ps+(2*ps)*k/4; g.moveTo(x,-ps); g.lineTo(x,ps); }
   g.stroke();
+}
+// mortar pit: pallet base, ring of sandbags, mortar tube + bipod in the middle
+function drawMortar(g,W,H){
+  const R=Math.min(W,H)/2;
+  drawPallet(g,W,H);
   const rr=R*0.72, sb=R*0.15, n=10;                // sandbag ring
   for(let k=0;k<n;k++){ const a=k/n*Math.PI*2; g.beginPath(); g.arc(Math.cos(a)*rr,Math.sin(a)*rr,sb,0,Math.PI*2); g.stroke(); }
   g.beginPath(); g.arc(0,0,R*0.14,0,Math.PI*2); g.stroke();        // baseplate
@@ -531,6 +535,7 @@ function drawDrill(g,W,H){
 }
 // CIWS (Phalanx-style) AA gun: circular mount, radome dome, gatling barrels up
 function drawAA(g,W,H){
+  drawPallet(g,W,H);
   const R=Math.min(W,H)/2*0.9;
   g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.stroke();
   g.beginPath(); g.arc(0,0,R*0.62,0,Math.PI*2); g.stroke();
@@ -542,6 +547,7 @@ function drawAA(g,W,H){
 // single-rail rocket launcher with a small operator console + seat
 function drawSAM(g,W,H){
   const R=Math.min(W,H)/2, cx=-R*0.15;
+  drawPallet(g,W,H);
   roundRect(g,-R*0.9,-R*0.6,R*1.8,R*1.5,R*0.14); g.stroke();          // chassis
   g.beginPath(); g.rect(cx-R*0.26,-R*0.5,R*0.52,R*0.95); g.stroke();  // launch rail
   const mw=R*0.22, bodyTop=-R*0.42, bodyBot=R*0.4, noseY=-R*0.88;     // single rocket
