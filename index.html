@@ -129,9 +129,9 @@
   .ebtn.on{border-color:var(--accent); background:var(--panel)}
   .ebtn.on svg{stroke:var(--accent)}
   .ebtn.on .cap{color:var(--accent)}
-  .ebtn.armed{border-color:var(--bad); background:var(--bad)}
-  .ebtn.armed svg{stroke:#fff}
-  .ebtn.armed .cap{color:#fff}
+  .ebtn.armed, .ebtn.armed:hover{border-color:var(--bad); background:var(--bad)}
+  .ebtn.armed svg, .ebtn.armed:hover svg{stroke:#fff}
+  .ebtn.armed .cap, .ebtn.armed:hover .cap{color:#fff}
 
   .modal{position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;}
   .modal[hidden]{display:none;}
