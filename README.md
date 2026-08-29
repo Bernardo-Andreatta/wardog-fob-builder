@@ -1,4 +1,4 @@
-# Wardog FOB Builder
+# Wardogs FOB Builder
 
 A top-down grid editor for laying out **Forward Operating Bases** (FOBs). Spawn tactical
 structures, snap them to a grid, rotate and box-select groups, duplicate, and free-draw

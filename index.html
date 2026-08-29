@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Wardog FOB Builder - a top-down grid editor for laying out Forward Operating Bases.">
+<meta name="description" content="Wardogs FOB Builder - a top-down grid editor for laying out Forward Operating Bases.">
 </head>
 <body>
-<title>Wardog FOB Builder</title>
+<title>Wardogs FOB Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -67,12 +67,12 @@
   .btn.armed{background:var(--bad); border-color:var(--bad); color:#fff}
   .btn.armed:hover{background:var(--bad); color:#fff}
 
-  .rail{grid-area:rail; width:118px; background:var(--panel); border-right:1px solid var(--line);
-    padding:12px 10px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;}
+  .rail{grid-area:rail; width:120px; background:var(--panel); border-right:1px solid var(--line);
+    padding:12px 10px; overflow-x:hidden; overflow-y:auto; display:flex; flex-direction:column; gap:14px;}
   .group-label{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.16em;
     font-size:10px; color:var(--muted); font-weight:600; padding-left:2px; margin-bottom:7px;}
   .tools{display:grid; grid-template-columns:1fr 1fr; gap:7px;}
-  .tool{position:relative; aspect-ratio:1; background:var(--panel-2); border:1px solid var(--line);
+  .tool{position:relative; aspect-ratio:1; min-width:0; background:var(--panel-2); border:1px solid var(--line);
     border-radius:9px; display:flex; align-items:center; justify-content:center; padding:8px;
     transition:border-color .12s, background .12s;}
   .tool:hover{border-color:var(--accent)}
@@ -82,13 +82,13 @@
     letter-spacing:.04em; color:var(--muted); text-transform:uppercase; font-family:var(--font-disp);
     font-weight:600; pointer-events:none;}
   .pieces{display:flex; flex-direction:column; gap:7px;}
-  .piece-tool{display:flex; align-items:center; gap:9px; padding:7px 9px; background:var(--panel-2);
-    border:1px solid var(--line); border-radius:9px; transition:border-color .12s, background .12s;}
+  .piece-tool{display:flex; align-items:center; gap:7px; padding:7px 8px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:9px; overflow:hidden; transition:border-color .12s, background .12s;}
   .piece-tool:hover{border-color:var(--accent)}
   .piece-tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
-  .piece-tool img{width:34px; height:34px; flex:none; image-rendering:auto}
-  .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:10.5px; letter-spacing:.03em;
-    text-transform:uppercase; line-height:1.1; text-align:left;}
+  .piece-tool img{width:30px; height:30px; flex:none; image-rendering:auto}
+  .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:9px; letter-spacing:.02em;
+    text-transform:uppercase; line-height:1.15; text-align:left; min-width:0; overflow-wrap:break-word;}
   .piece-tool .star{margin-left:auto; flex:none; background:none; border:none; cursor:pointer;
     font-size:15px; line-height:1; color:var(--muted); padding:2px 1px;}
   .piece-tool .star.on{color:var(--accent)}
@@ -104,13 +104,37 @@
 
   .zoombar{position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:6px;}
   .zoombar .btn{padding:0; width:34px; height:34px; justify-content:center; background:var(--panel); font-size:17px;}
-  .hintcard{position:absolute; left:14px; top:14px; background:var(--panel); border:1px solid var(--line);
-    border-radius:9px; padding:10px 30px 10px 12px; font-size:11px; color:var(--muted); max-width:250px;
-    line-height:1.55; font-family:var(--font-mono); box-shadow:0 4px 16px var(--shadow);}
-  .hintcard b{color:var(--ink); font-weight:600}
-  .hintcard kbd{font-family:var(--font-mono); background:var(--panel-2); border:1px solid var(--line);
-    border-radius:4px; padding:0 4px; color:var(--accent); font-size:10px;}
-  .hintcard .x{position:absolute; top:5px; right:7px; cursor:pointer; color:var(--muted); font-size:15px; background:none; border:none; line-height:1;}
+  .edit-grid{display:grid; grid-template-columns:1fr 1fr; gap:7px;}
+  .ebtn{position:relative; aspect-ratio:1; min-width:0; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    padding:6px; transition:border-color .12s, background .12s;}
+  .ebtn:hover{border-color:var(--accent)}
+  .ebtn svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .ebtn .cap{font-family:var(--font-disp); font-size:8px; letter-spacing:.04em; color:var(--muted);
+    text-transform:uppercase; font-weight:600; line-height:1;}
+  .ebtn.danger:hover{border-color:var(--bad)}
+  .ebtn.danger:hover svg{stroke:var(--bad)}
+  .ebtn.danger:hover .cap{color:var(--bad)}
+
+  .modal{position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;}
+  .modal[hidden]{display:none;}
+  .modal-bg{position:absolute; inset:0; background:rgba(0,0,0,.55);}
+  .modal-card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:22px 24px; width:min(520px,92vw); max-height:88vh; overflow-y:auto;
+    box-shadow:0 18px 60px var(--shadow);}
+  .modal-card h3{margin:0 0 16px; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
+    font-size:15px; color:var(--ink);}
+  .modal-card .x{position:absolute; top:12px; right:14px; cursor:pointer; color:var(--muted); font-size:22px;
+    background:none; border:none; line-height:1;}
+  .modal-card .x:hover{color:var(--ink);}
+  .modal-grid{display:grid; grid-template-columns:auto 1fr; align-items:stretch;
+    font-family:var(--font-mono); font-size:12px; border-top:1px solid var(--line);}
+  .modal-grid .k{color:var(--ink); white-space:nowrap; padding:8px 16px 8px 2px;
+    border-bottom:1px solid var(--line);}
+  .modal-grid .d{color:var(--muted); padding:8px 2px 8px 16px;
+    border-bottom:1px solid var(--line); border-left:1px solid var(--line);}
+  .modal-grid kbd{font-family:var(--font-mono); background:var(--panel-2); border:1px solid var(--line);
+    border-radius:4px; padding:1px 5px; color:var(--accent); font-size:11px;}
 
   .drawopts{position:absolute; left:14px; top:14px; background:var(--panel); border:1px solid var(--line);
     border-radius:9px; padding:11px 13px; display:none; gap:12px; align-items:center;
@@ -134,25 +158,23 @@
   .snaptog.on .box{background:var(--accent); border-color:var(--accent)}
   .snaptog.on .box svg{width:9px;height:9px;stroke:var(--bg);stroke-width:2.6;fill:none}
 
-  @media (max-width:720px){ .rail{width:100px} .brand .sub{display:none} .hintcard{display:none} }
+  @media (max-width:720px){ .rail{width:100px} .brand .sub{display:none} }
 </style>
 
 <div class="app">
   <div class="topbar">
     <div class="brand">
-      <span class="mark">WARDOG <b>FOB</b> BUILDER</span>
+      <span class="mark">WARDOGS <b>FOB</b> BUILDER</span>
       <span class="sub">forward operating base &middot; tactical layout</span>
     </div>
     <div class="spacer"></div>
     <div class="cmd">
       <button class="btn" id="btn-theme" title="Toggle light/dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg><span>Theme</span></button>
-      <button class="btn" id="btn-rotate" title="Rotate selection 90&deg; (R)"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span>Rotate</span></button>
-      <button class="btn" id="btn-duplicate" title="Duplicate selection (Ctrl+D)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span>Duplicate</span></button>
-      <button class="btn danger" id="btn-delete" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Delete</span></button>
       <button class="btn" id="btn-save"><svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h7M8 21v-7h8v7"/></svg><span>Export</span></button>
       <button class="btn" id="btn-load"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v5h16v-5"/></svg><span>Import</span></button>
       <button class="btn" id="btn-png"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>PNG</span></button>
       <button class="btn danger" id="btn-clear"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg><span>Clear</span></button>
+      <button class="btn" id="btn-commands" title="Controls &amp; shortcuts"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg><span>Commands</span></button>
     </div>
   </div>
 
@@ -160,6 +182,15 @@
     <div>
       <div class="group-label">Tools</div>
       <div class="tools" id="tool-grid"></div>
+    </div>
+    <div>
+      <div class="group-label">Edit</div>
+      <div class="edit-grid">
+        <button class="ebtn" id="btn-rotate" title="Rotate selection 90&deg; (R)"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
+        <button class="ebtn" id="btn-mirror" title="Mirror / flip (F)"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg><span class="cap">Mirror</span></button>
+        <button class="ebtn" id="btn-duplicate" title="Duplicate (Ctrl+D)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span class="cap">Duplicate</span></button>
+        <button class="ebtn danger" id="btn-delete" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="cap">Delete</span></button>
+      </div>
     </div>
     <div id="recent-wrap" style="display:none">
       <div class="group-label">Recent</div>
@@ -174,12 +205,6 @@
 
   <div class="stage" id="stage">
     <canvas id="board"></canvas>
-
-    <div class="hintcard" id="hint">
-      <button class="x" id="hint-x" title="dismiss">&times;</button>
-      <b>Build your FOB.</b> Pick a structure, click the grid to place it. Repeat to place more.<br>
-      <kbd>R</kbd> rotate &middot; <kbd>Del</kbd> remove &middot; drag empty ground = box-select &middot; <kbd>Shift</kbd>+click = add/remove &middot; right-click = deselect &middot; scroll = zoom &middot; <kbd>Space</kbd>-drag = pan
-    </div>
 
     <div class="drawopts" id="drawopts">
       <span class="lab">Ink</span>
@@ -204,6 +229,29 @@
     <div class="snaptog on" id="snaptog"><span class="box"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span> SNAP TO GRID</div>
     <div class="seg"><span>ZOOM</span> <span class="v" id="st-zoom">100%</span></div>
   </div>
+
+  <div class="modal" id="cmd-modal" hidden>
+    <div class="modal-bg" id="cmd-bg"></div>
+    <div class="modal-card" role="dialog" aria-label="Controls">
+      <button class="x" id="cmd-close" title="Close">&times;</button>
+      <h3>Controls &amp; Shortcuts</h3>
+      <div class="modal-grid">
+        <div class="k"><kbd>Click</kbd> a structure, then click the grid</div><div class="d">Place it &middot; repeat to place more</div>
+        <div class="k"><kbd>Click</kbd> / drag empty ground</div><div class="d">Select a piece &middot; box-select a group</div>
+        <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
+        <div class="k">Right-click</div><div class="d">Deselect &amp; back to Select tool</div>
+        <div class="k">Drag selection &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd></div><div class="d">Move &middot; nudge by grid</div>
+        <div class="k"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd></div><div class="d">Rotate 90&deg; &middot; reverse</div>
+        <div class="k"><kbd>F</kbd></div><div class="d">Mirror / flip selection</div>
+        <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>D</kbd></div><div class="d">Duplicate &rarr; reusable stamp</div>
+        <div class="k"><kbd>Del</kbd> / <kbd>Backspace</kbd></div><div class="d">Delete selection</div>
+        <div class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>Space</kbd>-drag</div><div class="d">Pan the camera</div>
+        <div class="k">Scroll</div><div class="d">Zoom</div>
+        <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
+        <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -223,7 +271,7 @@ const CATALOG = {
   door:     {name:'Door',         w:1, h:1},
   barbed:   {name:'Barbed Wire',  w:2, h:1},
   gate:     {name:'Gate',         w:4, h:1},
-  sandbags: {name:'Sandbags',     w:2, h:1},
+  sandbags: {name:'Sandbags',     w:2, h:0.5},
   tower:    {name:'Lookout Tower',w:4, h:4},
 };
 const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','tower'];
@@ -235,13 +283,12 @@ let strokes = [];   // {pts:[{x,y}], color, width}
 let tool = 'select';
 let selected = [];          // array of selected piece ids
 let marquee = null;         // {x0,y0,x1,y1} world coords, during rubber-band select
-let placeRot = 0, snapOn = true, uid = 1;
+let placeRot = 0, placeFlip = false, snapOn = true, uid = 1;
 let hover = {x:0,y:0};
 let drawColor = DRAW_COLORS[0], drawWidth = 3;
 let stamps = [];            // reusable stamps: {sid,name,parts:[{type,dx,dy,rot}],fav,ts}
 let activeStamp = null;     // stamp currently in ghost-placement mode (parts[0] = snap anchor)
 let stampUid = 1;
-let hintOff = false;        // Build-your-FOB hint permanently dismissed
 const STAMP_CAP = 14;       // max non-favorite recents kept
 
 // ---------------- selection helpers
@@ -305,7 +352,6 @@ function drawSingleWall(g,W,H){
   const i=Math.min(W,H)*0.16;
   g.beginPath(); g.rect(-W/2,-H/2,W,H); g.stroke();
   g.beginPath(); g.rect(-W/2+i,-H/2+i,W-2*i,H-2*i); g.stroke();
-  g.beginPath(); g.moveTo(0,-H/2); g.lineTo(0,H/2); g.moveTo(-W/2,0); g.lineTo(W/2,0); g.stroke();
 }
 function drawQuadra(g,W,H){
   const i=H*0.16;
@@ -313,29 +359,43 @@ function drawQuadra(g,W,H){
   g.beginPath(); g.rect(-W/2+i,-H/2+i,W-2*i,H-2*i); g.stroke();
   g.beginPath();
   for(let k=1;k<4;k++){ const x=-W/2+(W/4)*k; g.moveTo(x,-H/2); g.lineTo(x,H/2); }
-  g.moveTo(-W/2,0); g.lineTo(W/2,0);
   g.stroke();
 }
-function drawBunker(g,W,H){
-  const wall=W*0.14;
-  g.beginPath(); g.rect(-W/2,-H/2,W,H); g.stroke();
-  g.beginPath(); g.rect(-W/2+wall,-H/2+wall,W-2*wall,H-2*wall); g.stroke();
-  const cp=wall*1.1;
-  g.save(); g.fillStyle=g.strokeStyle; g.globalAlpha=g.globalAlpha*0.9;
-  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{
-    g.fillRect(sx<0?-W/2:W/2-cp, sy<0?-H/2:H/2-cp, cp, cp);
-  });
-  g.restore();
-  const seg=W*0.24, th=wall*0.7, gap=W*0.05, off=wall*0.55;
+// the "bottom" edge wall between two corner tiles: a thin double line spanning
+// x in [-span,span] with a centered opening. Interior is toward -y so the
+// door/stair are drawn inward, staying inside the footprint.
+function fortEdge(g,S,t,span,gh,type){
   g.beginPath();
-  const yT=-H/2+wall+off, yB=H/2-wall-off-th;
-  g.rect(-seg-gap,yT,seg,th); g.rect(gap,yT,seg,th);
-  g.rect(-seg-gap,yB,seg,th); g.rect(gap,yB,seg,th);
-  const xL=-W/2+wall+off, xR=W/2-wall-off-th;
-  g.rect(xL,-seg-gap,th,seg); g.rect(xL,gap,th,seg);
-  g.rect(xR,-seg-gap,th,seg); g.rect(xR,gap,th,seg);
+  g.moveTo(-span,S); g.lineTo(-gh,S); g.moveTo(gh,S); g.lineTo(span,S);           // outer, broken
+  g.moveTo(-span,S-t); g.lineTo(-gh,S-t); g.moveTo(gh,S-t); g.lineTo(span,S-t);   // inner, broken
+  g.moveTo(-gh,S); g.lineTo(-gh,S-t); g.moveTo(gh,S); g.lineTo(gh,S-t);           // jambs
   g.stroke();
+  if(type==='window'){
+    g.beginPath(); g.moveTo(-gh,S-t/2); g.lineTo(gh,S-t/2); g.stroke();   // glass pane
+  } else if(type==='door'){
+    const leaf=2*gh, hx=-gh, hy=S-t/2;
+    g.beginPath(); g.moveTo(hx,hy); g.lineTo(hx,hy-leaf); g.stroke();     // leaf, swung in
+    g.beginPath(); g.arc(hx,hy,leaf,-Math.PI/2,0,false); g.stroke();      // swing arc
+  } else if(type==='stair'){
+    const steps=5, depth=S*0.42, x0=-gh, x1=gh;
+    g.beginPath();
+    for(let k=0;k<=steps;k++){ const y=(S-t)-depth*k/steps; g.moveTo(x0,y); g.lineTo(x1,y); }
+    g.moveTo(x0,S-t); g.lineTo(x0,S-t-depth); g.moveTo(x1,S-t); g.lineTo(x1,S-t-depth);
+    g.stroke();
+  }
 }
+// hollow fort: four 1x1 wall tiles at the corners, thin walls between them, a
+// 2x2 open interior (4 spaces), windows on 3 sides, entrance on the 4th.
+function drawFort(g,W,H,entrance){
+  const S=W/2, cell=GRID, t=GRID*0.16, cc=S-cell/2, span=S-cell;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{            // corner tiles
+    g.save(); g.translate(sx*cc,sy*cc); drawSingleWall(g,cell,cell); g.restore();
+  });
+  const types=[entrance,'window','window','window'];
+  const gh=cell*0.5;
+  for(let s=0;s<4;s++){ g.save(); g.rotate(s*Math.PI/2); fortEdge(g,S,t,span,gh,types[s]); g.restore(); }
+}
+function drawBunker(g,W,H){ drawFort(g,W,H,'door'); }
 function drawDoor(g,W,H){
   const open=W*0.62, jamb=(W-open)/2, th=H*0.5;
   g.save(); g.fillStyle=g.strokeStyle;
@@ -346,20 +406,22 @@ function drawDoor(g,W,H){
   g.beginPath(); g.moveTo(hx,hy); g.lineTo(hx,hy+open); g.stroke();
   g.beginPath(); g.arc(hx,hy,open,Math.PI/2,0,true); g.stroke();
 }
-function star6(g,cx,cy,rO,rI){
-  g.beginPath();
-  for(let k=0;k<12;k++){
-    const r=k%2?rI:rO, a=-Math.PI/2+k*Math.PI/6;
-    const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
-    if(k===0) g.moveTo(x,y); else g.lineTo(x,y);
-  }
-  g.closePath(); g.stroke();
-}
+// concertina / spiral razor wire: a run of interlinked coils with short barbs
 function drawBarbed(g,W,H){
-  const n=Math.max(3, Math.round((W/GRID)*2)), rO=H*0.46, rI=rO*0.46, step=(W-rO*2)/(n-1);
-  g.beginPath(); g.moveTo(-W/2,-H*0.30); g.lineTo(W/2,-H*0.30);
-  g.moveTo(-W/2,H*0.30); g.lineTo(W/2,H*0.30); g.stroke();
-  for(let k=0;k<n;k++) star6(g,-W/2+rO+step*k,0,rO,rI);
+  const r=H*0.34, overlap=1.30;
+  const n=Math.max(4, Math.round((W-2*r)/(r*overlap))+1);
+  const step=(W-2*r)/(n-1);
+  for(let k=0;k<n;k++){
+    const cx=-W/2+r+step*k;
+    g.beginPath(); g.arc(cx,0,r,0,Math.PI*2); g.stroke();
+    const bs=r*0.55;
+    for(let a=0;a<4;a++){ const ang=Math.PI/4+a*Math.PI/2;
+      g.beginPath();
+      g.moveTo(cx+Math.cos(ang)*r*0.7, Math.sin(ang)*r*0.7);
+      g.lineTo(cx+Math.cos(ang)*(r+bs), Math.sin(ang)*(r+bs));
+      g.stroke();
+    }
+  }
 }
 function drawGate(g,W,H){
   // a double-swing vehicle gate set into a wall line
@@ -375,35 +437,22 @@ function drawGate(g,W,H){
   g.beginPath(); g.arc(lh,0,leaf,0,Math.PI*0.5); g.stroke();          // left door swing
   g.beginPath(); g.arc(rh,0,leaf,Math.PI*0.5,Math.PI); g.stroke();    // right door swing
 }
+// top-down sandbags: a single row of round bags, like a line of cannonballs
 function drawSandbags(g,W,H){
-  const rows=2, ry=H*0.26, per=Math.max(3, Math.round((W/GRID)*2.5));
-  for(let r=0;r<rows;r++){
-    const y=-H/2+ry+r*(ry*2*0.90);
-    const off=(r%2)?0:0.5, rx=W/(per*2)*1.14;
-    for(let k=-1;k<=per;k++){
-      const cx=-W/2+(k+off)*(W/per);
-      if(cx<-W/2-rx*0.6 || cx>W/2+rx*0.6) continue;
-      g.beginPath(); g.ellipse(cx,y,rx,ry,0,0,Math.PI*2); g.stroke();
-    }
+  const r=H*0.46;
+  for(let x=-W/2+r; x<=W/2-r+0.1; x+=2*r){
+    g.beginPath(); g.arc(x,0,r,0,Math.PI*2); g.stroke();
   }
 }
 function drawTower(g,W,H){
-  const i=W*0.10;
-  g.beginPath(); g.rect(-W/2,-H/2,W,H); g.stroke();
-  g.beginPath(); g.rect(-W/2+i,-H/2+i,W-2*i,H-2*i); g.stroke();
-  const lp=W*0.16;
-  g.save(); g.fillStyle=g.strokeStyle;
-  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{
-    g.fillRect(sx<0?-W/2:W/2-lp, sy<0?-H/2:H/2-lp, lp, lp);
-  });
-  g.restore();
-  g.beginPath(); g.arc(0,0,W*0.10,0,Math.PI*2); g.stroke();
-  const lw=W*0.26, ly0=H*0.10, ly1=H/2-i*0.4, rungs=3;
+  drawFort(g,W,H,'stair');
+  // "feel high": raised inner platform + diagonals from the corner tiles inward,
+  // so it reads as looking down a tall tower
+  const S=W/2, ci=S-GRID, P=S-GRID*1.35;   // ci = inner corner of the corner tiles
   g.beginPath();
-  g.moveTo(-lw/2,ly0); g.lineTo(-lw/2,ly1);
-  g.moveTo(lw/2,ly0); g.lineTo(lw/2,ly1);
-  for(let k=0;k<=rungs;k++){ const y=ly0+(ly1-ly0)*k/rungs; g.moveTo(-lw/2,y); g.lineTo(lw/2,y); }
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{ g.moveTo(sx*ci,sy*ci); g.lineTo(sx*P,sy*P); });
   g.stroke();
+  g.beginPath(); g.rect(-P,-P,2*P,2*P); g.stroke();
 }
 const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door:drawDoor,
   barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower};
@@ -411,7 +460,7 @@ const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door
 function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
   g.save();
-  g.translate(p.x,p.y); g.rotate(p.rot*Math.PI/180);
+  g.translate(p.x,p.y); if(p.flip) g.scale(-1,1); g.rotate(p.rot*Math.PI/180);
   g.globalAlpha = alpha==null?1:alpha;
   g.strokeStyle = color; g.lineWidth = lw||2.4; g.lineJoin='round'; g.lineCap='round';
   DRAWERS[p.type](g, c.w*GRID, c.h*GRID);
@@ -444,9 +493,9 @@ function render(){
   selPs.forEach(p=>drawSelection(p, colAcc, selPs.length===1));
   if(marquee) drawMarquee(colAcc);
   if(tool==='stamp' && activeStamp){
-    stampInstance(activeStamp, hover.x, hover.y, placeRot).forEach(ip=>drawPiece(ctx,ip,colAcc,0.5));
+    stampInstance(activeStamp, hover.x, hover.y, placeRot, placeFlip).forEach(ip=>drawPiece(ctx,ip,colAcc,0.5));
   } else if(CATALOG[tool]){ const c=snapCenter(tool,placeRot,hover.x,hover.y);
-    drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot},colAcc,0.5); }
+    drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip},colAcc,0.5); }
 }
 function drawMarquee(col){
   const x=Math.min(marquee.x0,marquee.x1), y=Math.min(marquee.y0,marquee.y1);
@@ -534,13 +583,13 @@ cv.addEventListener('pointerdown', e=>{
   }
   if(tool==='erase'){ drag={mode:'erase',erased:false}; eraseAt(w); return; }
   if(tool==='stamp' && activeStamp){
-    const inst=stampInstance(activeStamp, w.x, w.y, placeRot);
-    const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot}));
+    const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
+    const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip}));
     pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
   }
   if(CATALOG[tool]){
     const c=snapCenter(tool,placeRot,w.x,w.y);
-    const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot};
+    const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip};
     pieces.push(np); clearSelection(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
   }
   // --- select tool ---
@@ -653,7 +702,11 @@ window.addEventListener('keydown', e=>{
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeRot=(((placeRot+step)%360)+360)%360; render(); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ clearSelection(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp') setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp') setTool('select'); render(); updateStatus(); }
+  if(e.key==='f'||e.key==='F'){
+    if(selPs.length) mirrorGroup();
+    else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
+  }
   if(e.key==='v'||e.key==='V') setTool('select');
   if(e.key==='b'||e.key==='B') setTool('draw');
   if(e.key==='e'||e.key==='E') setTool('erase');
@@ -717,6 +770,17 @@ function rotateGroup(step){
   }
   snapshot(); render(); updateStatus();
 }
+// mirror the whole selection across its bounding-box vertical axis. scale(-1,1)
+// in drawPiece handles per-piece reflection; rotation is preserved because the
+// flip is applied before the rotate, so M*R(theta) is the true mirror.
+function mirrorGroup(){
+  const items=selectedPieces(); if(!items.length) return;
+  let minx=Infinity,maxx=-Infinity;
+  items.forEach(p=>{ const b=pieceAABB(p); minx=Math.min(minx,b.minx); maxx=Math.max(maxx,b.maxx); });
+  const cx=(minx+maxx)/2;
+  items.forEach(p=>{ p.x=2*cx-p.x; p.flip=!p.flip; });
+  snapshot(); render(); updateStatus();
+}
 function deleteSel(){ if(!selected.length)return; pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); snapshot(); render(); updateStatus(); }
 // Duplicate = capture the selection as a reusable "stamp", drop it into Recent,
 // and enter ghost-placement so it can be stamped down as many times as you like.
@@ -732,7 +796,7 @@ function makeStampFromSel(items){
   const a=items.reduce((best,p)=> (p.y<best.y || (p.y===best.y && p.x<best.x)) ? p : best, items[0]);
   const rest=items.filter(p=>p!==a);
   const ordered=[a,...rest];
-  const parts=ordered.map(p=>({type:p.type, dx:p.x-a.x, dy:p.y-a.y, rot:((Math.round(p.rot)%360)+360)%360}));
+  const parts=ordered.map(p=>({type:p.type, dx:p.x-a.x, dy:p.y-a.y, rot:((Math.round(p.rot)%360)+360)%360, flip:!!p.flip}));
   return {sid:0, name:stampName(items), parts, fav:false, ts:Date.now()};
 }
 function stampName(items){
@@ -749,12 +813,12 @@ function rot90(dx,dy,r){
 }
 // resolve a stamp to concrete piece placements at (cx,cy) with extra rotation R.
 // Snap only the anchor, keep every offset rigid -> whole stamp lands on grid.
-function stampInstance(st, cx, cy, R){
+function stampInstance(st, cx, cy, R, flip){
   R=((Math.round(R||0)%360)+360)%360;
   const a=st.parts[0], aRot=((a.rot+R)%360+360)%360;
   const snap=snapCenter(a.type, aRot, cx, cy);
-  return st.parts.map(pt=>{ const o=rot90(pt.dx,pt.dy,R);
-    return {type:pt.type, x:snap.x+o[0], y:snap.y+o[1], rot:((pt.rot+R)%360+360)%360}; });
+  return st.parts.map(pt=>{ const o=rot90(pt.dx,pt.dy,R); const ox=flip?-o[0]:o[0];
+    return {type:pt.type, x:snap.x+ox, y:snap.y+o[1], rot:((pt.rot+R)%360+360)%360, flip:(!!pt.flip)!==!!flip}; });
 }
 function addStamp(st){
   const key=stampKey(st);
@@ -770,7 +834,7 @@ function addStamp(st){
   return st;
 }
 function sortStamps(){ stamps.sort((a,b)=> (b.fav-a.fav) || (b.ts-a.ts)); }
-function startPlacing(st){ activeStamp=st; placeRot=0; clearSelection(); setTool('stamp'); render(); updateStatus(); }
+function startPlacing(st){ activeStamp=st; placeRot=0; placeFlip=false; clearSelection(); setTool('stamp'); render(); updateStatus(); }
 function persistStamps(){ try{ localStorage.setItem('wardog-fob-stamps', JSON.stringify(stamps)); }catch(e){} }
 
 // ---------------- tool selection
@@ -780,7 +844,6 @@ function setTool(t){
   document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active', el.dataset.tool===t));
   highlightRecent();
   $('drawopts').classList.toggle('show', t==='draw');
-  $('hint').style.display = (t==='draw'||hintOff)?'none':'';
   stage.classList.remove('c-cross','c-pan');
   if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp') stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
@@ -865,7 +928,7 @@ function buildRail(){
     const img=document.createElement('img'); img.src=makeIcon(type); img.alt=CATALOG[type].name;
     const nm=document.createElement('span'); nm.className='nm'; nm.textContent=CATALOG[type].name;
     b.appendChild(img); b.appendChild(nm);
-    b.onclick=()=>{ placeRot=0; setTool(type); };
+    b.onclick=()=>{ placeRot=0; placeFlip=false; setTool(type); };
     pg.appendChild(b);
   });
 }
@@ -912,6 +975,10 @@ $('btn-theme').onclick=()=>{
 };
 $('btn-delete').onclick=deleteSel;
 $('btn-rotate').onclick=()=>rotateGroup(90);
+$('btn-mirror').onclick=()=>{
+  if(selectedPieces().length) mirrorGroup();
+  else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
+};
 $('btn-duplicate').onclick=duplicateSel;
 // Clear: two-click confirm (browser confirm() is blocked in the artifact sandbox)
 let clearArm=false, clearTimer=null;
@@ -985,7 +1052,12 @@ $('zoom-fit').onclick=()=>{ view={ox:stage.clientWidth/2, oy:stage.clientHeight/
 
 // snap toggle
 $('snaptog').onclick=()=>{ snapOn=!snapOn; $('snaptog').classList.toggle('on',snapOn); };
-$('hint-x').onclick=()=>{ hintOff=true; $('hint').style.display='none'; try{ localStorage.setItem('wardog-fob-hint','off'); }catch(e){} };
+// commands / controls modal
+function openCmd(){ $('cmd-modal').hidden=false; }
+function closeCmd(){ $('cmd-modal').hidden=true; }
+$('btn-commands').onclick=openCmd;
+$('cmd-close').onclick=closeCmd;
+$('cmd-bg').onclick=closeCmd;
 $('draw-width').oninput=e=>{ drawWidth=+e.target.value; };
 
 // ---------------- init
@@ -1000,13 +1072,12 @@ function init(){
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
   buildRecent();
-  try{ if(localStorage.getItem('wardog-fob-hint')==='off') hintOff=true; }catch(e){}
-  if(hintOff) $('hint').style.display='none';
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   history=[JSON.stringify({pieces,strokes,uid})]; hidx=0;
   resize(); updateStatus();
 }
+window.addEventListener('beforeunload', ()=>{ try{ persist(); persistStamps(); }catch(e){} });
 window.addEventListener('resize', resize);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ refreshIcons(); render(); });
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
