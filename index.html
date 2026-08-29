@@ -241,6 +241,7 @@ let drawColor = DRAW_COLORS[0], drawWidth = 3;
 let stamps = [];            // reusable stamps: {sid,name,parts:[{type,dx,dy,rot}],fav,ts}
 let activeStamp = null;     // stamp currently in ghost-placement mode (parts[0] = snap anchor)
 let stampUid = 1;
+let hintOff = false;        // Build-your-FOB hint permanently dismissed
 const STAMP_CAP = 14;       // max non-favorite recents kept
 
 // ---------------- selection helpers
@@ -606,7 +607,7 @@ cv.addEventListener('pointermove', e=>{
       if(Math.hypot(w.x-last.x,w.y-last.y)>1.5){ drag.s.pts.push({x:w.x,y:w.y}); render(); }
     }
     else if(drag.mode==='erase'){ eraseAt(w); }
-  } else if(CATALOG[tool]) render();
+  } else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)) render();  // ghost follows cursor
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
@@ -641,6 +642,10 @@ window.addEventListener('keydown', e=>{
   if(meta && e.key.toLowerCase()==='d'){ e.preventDefault(); duplicateSel(); return; }
   if(meta && e.key.toLowerCase()==='a'){ e.preventDefault(); selected=pieces.map(p=>p.id); render(); updateStatus(); return; }
   if(e.target.tagName==='INPUT') return;
+  // WASD = free camera pan. Works in every tool/mode and never touches the
+  // selection or an active ghost, so the camera and the item move independently.
+  if(!meta){ const k=e.key.toLowerCase();
+    if(k==='w'||k==='a'||k==='s'||k==='d'){ e.preventDefault(); panKeys.add(k); startPanLoop(); return; } }
   const selPs=selectedPieces();
   if(e.key==='r'||e.key==='R'){
     const step=e.shiftKey?-90:90;
@@ -661,7 +666,28 @@ window.addEventListener('keydown', e=>{
     snapshot(); render(); updateStatus();
   }
 });
-window.addEventListener('keyup', e=>{ if(e.code==='Space'){ spaceDown=false; stage.classList.remove('c-pan'); } });
+window.addEventListener('keyup', e=>{
+  if(e.code==='Space'){ spaceDown=false; stage.classList.remove('c-pan'); }
+  const k=e.key.toLowerCase(); if(k==='w'||k==='a'||k==='s'||k==='d') panKeys.delete(k);
+});
+window.addEventListener('blur', ()=>{ panKeys.clear(); });
+
+// ---------------- WASD camera pan (continuous while held; independent of selection)
+const panKeys = new Set();
+let panRAF = 0, panLast = 0;
+const PAN_SPEED = 900; // screen px per second
+function startPanLoop(){ if(panRAF) return; panLast = performance.now(); panRAF = requestAnimationFrame(panStep); }
+function panStep(now){
+  const dt = Math.min(0.05, (now - panLast)/1000); panLast = now;
+  if(!panKeys.size){ panRAF = 0; persist(); return; }
+  const step = PAN_SPEED * dt;
+  if(panKeys.has('a')) view.ox += step;
+  if(panKeys.has('d')) view.ox -= step;
+  if(panKeys.has('w')) view.oy += step;
+  if(panKeys.has('s')) view.oy -= step;
+  render(); updateStatus();
+  panRAF = requestAnimationFrame(panStep);
+}
 
 // ---------------- actions
 // rigid rotation of the whole selection by +/-90 around its bounding-box center,
@@ -754,7 +780,7 @@ function setTool(t){
   document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active', el.dataset.tool===t));
   highlightRecent();
   $('drawopts').classList.toggle('show', t==='draw');
-  $('hint').style.display = (t==='draw')?'none':'';
+  $('hint').style.display = (t==='draw'||hintOff)?'none':'';
   stage.classList.remove('c-cross','c-pan');
   if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp') stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
@@ -959,7 +985,7 @@ $('zoom-fit').onclick=()=>{ view={ox:stage.clientWidth/2, oy:stage.clientHeight/
 
 // snap toggle
 $('snaptog').onclick=()=>{ snapOn=!snapOn; $('snaptog').classList.toggle('on',snapOn); };
-$('hint-x').onclick=()=>$('hint').style.display='none';
+$('hint-x').onclick=()=>{ hintOff=true; $('hint').style.display='none'; try{ localStorage.setItem('wardog-fob-hint','off'); }catch(e){} };
 $('draw-width').oninput=e=>{ drawWidth=+e.target.value; };
 
 // ---------------- init
@@ -974,6 +1000,8 @@ function init(){
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
   buildRecent();
+  try{ if(localStorage.getItem('wardog-fob-hint')==='off') hintOff=true; }catch(e){}
+  if(hintOff) $('hint').style.display='none';
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   history=[JSON.stringify({pieces,strokes,uid})]; hidx=0;
