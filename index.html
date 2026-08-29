@@ -304,8 +304,9 @@ const CATALOG = {
   aa:       {name:'AA Gun',       w:2, h:2},
   sam:      {name:'SAM',          w:2, h:2},
   spawn:    {name:'Spawn Vehicle',w:2, h:1},
+  hedgehog: {name:'Hedgehog',     w:1, h:1},
 };
-const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','tower','mortar','drill','aa','sam','spawn'];
+const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn'];
 const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
 
 let view = {ox:0, oy:0, scale:1};
@@ -564,9 +565,23 @@ function drawSpawnVeh(g,W,H){
   g.beginPath(); g.arc(0,hy,H*0.14,0,Math.PI*2); g.stroke();                         // head
   g.beginPath(); g.arc(0,hy+H*0.32,H*0.24,Math.PI,2*Math.PI,false); g.stroke();      // shoulders
 }
+// Czech hedgehog anti-tank obstacle: three crossed I-beams, a 6-point star
+function drawHedgehog(g,W,H){
+  const R=Math.min(W,H)/2*0.86, cl=R*0.18;
+  for(let k=0;k<3;k++){
+    const a=k*Math.PI/3, dx=Math.cos(a)*R, dy=Math.sin(a)*R;
+    const px=Math.cos(a+Math.PI/2), py=Math.sin(a+Math.PI/2);
+    g.beginPath(); g.moveTo(-dx,-dy); g.lineTo(dx,dy); g.stroke();          // beam
+    g.beginPath();                                                          // angle-iron end caps
+    g.moveTo(dx-px*cl,dy-py*cl); g.lineTo(dx+px*cl,dy+py*cl);
+    g.moveTo(-dx-px*cl,-dy-py*cl); g.lineTo(-dx+px*cl,-dy+py*cl); g.stroke();
+  }
+  g.beginPath(); g.arc(0,0,R*0.14,0,Math.PI*2); g.stroke();                 // center gusset
+}
 const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door:drawDoor,
   barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower,
-  mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh};
+  mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh,
+  hedgehog:drawHedgehog};
 
 function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
