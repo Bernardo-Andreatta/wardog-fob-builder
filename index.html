@@ -469,10 +469,12 @@ function drawGate(g,W,H){
   g.beginPath(); g.arc(lh,0,leaf,0,Math.PI*0.5); g.stroke();          // left door swing
   g.beginPath(); g.arc(rh,0,leaf,Math.PI*0.5,Math.PI); g.stroke();    // right door swing
 }
-// top-down sandbags: a single row of round bags, like a line of cannonballs
+// top-down sandbags: a single row of round bags spanning the full length
 function drawSandbags(g,W,H){
-  const r=H*0.46;
-  for(let x=-W/2+r; x<=W/2-r+0.1; x+=2*r){
+  const n=Math.max(2,Math.round(W/H));   // ~one bag per row-height of length
+  const r=W/(2*n);                       // sized to fill edge-to-edge (bags touch)
+  for(let k=0;k<n;k++){
+    const x=-W/2+r+2*r*k;
     g.beginPath(); g.arc(x,0,r,0,Math.PI*2); g.stroke();
   }
 }
