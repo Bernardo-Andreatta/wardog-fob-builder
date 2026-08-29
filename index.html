@@ -494,13 +494,10 @@ function roundRect(g,x,y,w,h,r){
   g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
   g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
 }
-// a slatted 2x2 pallet base, drawn under emplaced weapons
+// a plain 2x2 pallet base (border only), drawn under emplaced weapons
 function drawPallet(g,W,H){
   const ps=Math.min(W,H)/2*0.9;
   g.beginPath(); g.rect(-ps,-ps,2*ps,2*ps); g.stroke();
-  g.beginPath();
-  for(let k=1;k<4;k++){ const x=-ps+(2*ps)*k/4; g.moveTo(x,-ps); g.lineTo(x,ps); }
-  g.stroke();
 }
 // mortar pit: pallet base, ring of sandbags, mortar tube + bipod in the middle
 function drawMortar(g,W,H){
