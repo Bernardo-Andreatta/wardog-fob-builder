@@ -294,10 +294,10 @@
     <div class="modal-card" role="dialog" aria-label="Share code">
       <button class="x" id="code-close" title="Close">&times;</button>
       <h3>Share Code</h3>
-      <p class="code-lead">Copy this code to share your build. Paste someone else's below to load it.</p>
+      <p class="code-lead">Share your build: copy the <b>code</b> to post in a thread, or a one-click <b>link</b> that opens the build for anyone. Paste someone else's code below to load it.</p>
       <label class="code-lab">Your build</label>
       <textarea id="code-out" class="code-area" readonly spellcheck="false"></textarea>
-      <div class="code-row"><button class="btn" id="code-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span>Copy</span></button><span class="code-msg" id="code-copymsg"></span></div>
+      <div class="code-row"><button class="btn" id="code-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span>Copy code</span></button><button class="btn" id="code-copylink"><svg viewBox="0 0 24 24"><path d="M9 15l6-6M8 8l-2 2a3.5 3.5 0 0 0 5 5l1-1M16 16l2-2a3.5 3.5 0 0 0-5-5l-1 1"/></svg><span>Copy link</span></button><span class="code-msg" id="code-copymsg"></span></div>
       <label class="code-lab">Load a code</label>
       <textarea id="code-in" class="code-area" spellcheck="false" placeholder="Paste a build code here&hellip;"></textarea>
       <div class="code-row"><button class="btn" id="code-load"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v5h16v-5"/></svg><span>Load build</span></button><span class="code-msg" id="code-loadmsg"></span></div>
@@ -1196,8 +1196,9 @@ $('file-png').onclick=()=>{ closeFile(); exportPNG(); };
 // Fixed type list for share codes: APPEND-ONLY (indices must never change, or
 // old codes break). Decoupled from PIECE_ORDER so the rail can be reordered.
 const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn'];
-function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
-function b64dec(str){ return decodeURIComponent(escape(atob(str))); }
+// URL/Reddit-safe base64: no + / = (those wrap or get mangled in links & comments)
+function b64enc(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function b64dec(str){ let s=str.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return decodeURIComponent(escape(atob(s))); }
 // v2: compact arrays, type as an index, no ids, default rot/flip trimmed
 function encodeBuild(){
   const P=pieces.map(p=>{
@@ -1243,12 +1244,16 @@ function closeCode(){ $('code-modal').hidden=true; }
 $('btn-code').onclick=openCode;
 $('code-close').onclick=closeCode;
 $('code-bg').onclick=closeCode;
-$('code-copy').onclick=async()=>{
-  const ta=$('code-out'), msg=$('code-copymsg'); msg.className='code-msg';
-  try{ await navigator.clipboard.writeText(ta.value); }
-  catch(e){ ta.select(); try{ document.execCommand('copy'); }catch(_){}; }
-  msg.textContent='Copied!'; setTimeout(()=>{ if(msg.textContent==='Copied!') msg.textContent=''; }, 1800);
-};
+function buildLink(code){ return location.origin + location.pathname + '#' + code; }
+async function copyText(text, label){
+  const msg=$('code-copymsg'); msg.className='code-msg';
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){ const ta=$('code-out'); const keep=ta.value; ta.value=text; ta.select();
+    try{ document.execCommand('copy'); }catch(_){}; ta.value=keep; }
+  msg.textContent=label; setTimeout(()=>{ if(msg.textContent===label) msg.textContent=''; }, 1800);
+}
+$('code-copy').onclick=()=>copyText($('code-out').value, 'Code copied!');
+$('code-copylink').onclick=()=>copyText(buildLink($('code-out').value), 'Link copied!');
 $('code-load').onclick=()=>{
   const msg=$('code-loadmsg'); msg.className='code-msg';
   try{ const o=decodeBuild($('code-in').value); loadBuild(o); msg.textContent='Build loaded.';
@@ -1339,11 +1344,33 @@ function init(){
     if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
+  // a shared build in the URL hash (#FOB...) overrides the local autosave
+  let sharedLoaded=false;
+  try{ const h=(location.hash||'').slice(1);
+    if(/^FOB[12]\./.test(h)){ const o=decodeBuild(h);
+      uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip}));
+      strokes=o.strokes||[]; sharedLoaded=true; }
+  }catch(e){}
   buildRecent();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   history=[JSON.stringify({pieces,strokes,uid})]; hidx=0;
-  resize(); updateStatus();
+  resize();
+  if(sharedLoaded){ centerOnContent(); render(); }
+  updateStatus();
+}
+// fit the view around all placed content (used when opening a shared link)
+function centerOnContent(){
+  if(!pieces.length && !strokes.length) return;
+  let a=Infinity,b=Infinity,c=-Infinity,d=-Infinity;
+  pieces.forEach(p=>{ const cc=CATALOG[p.type]; const rad=Math.abs(p.rot%180)===90;
+    const hw=(rad?cc.h:cc.w)*GRID/2, hh=(rad?cc.w:cc.h)*GRID/2;
+    a=Math.min(a,p.x-hw);c=Math.max(c,p.x+hw); b=Math.min(b,p.y-hh);d=Math.max(d,p.y+hh); });
+  strokes.forEach(s=>s.pts.forEach(pt=>{ a=Math.min(a,pt.x);c=Math.max(c,pt.x);b=Math.min(b,pt.y);d=Math.max(d,pt.y); }));
+  if(a===Infinity) return;
+  const cx=(a+c)/2, cy=(b+d)/2, W=c-a+GRID*2, H=d-b+GRID*2;
+  const sc=Math.min(2, Math.max(0.2, Math.min(stage.clientWidth/W, stage.clientHeight/H)));
+  view.scale=sc; view.ox=stage.clientWidth/2 - cx*sc; view.oy=stage.clientHeight/2 - cy*sc;
 }
 window.addEventListener('beforeunload', ()=>{ try{ persist(); persistStamps(); }catch(e){} });
 window.addEventListener('resize', resize);
