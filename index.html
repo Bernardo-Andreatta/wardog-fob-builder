@@ -1173,7 +1173,8 @@ function render(){
   // the floor/mask logic inside stays exactly as-is)
   const bg=cssVar('--canvas-bg');
   ensureLayers();
-  const gMaxL=Math.min(curLayer, maxLayer());   // global tallest floor, for depth dimming
+  const gMaxL=curLayer;   // depth dimming is relative to the current build floor,
+                          // so lower floors darken as you climb even before placing
   for(const L of zOrder()){                       // bottom -> top, grouped by floor order
     if(!L.visible) continue;
     const useOff = L.opacity < 0.999 && oc;
