@@ -494,7 +494,7 @@ const $ = id => document.getElementById(id);
 const COARSE_MQ = matchMedia('(pointer:coarse)');
 const isCoarse = ()=>COARSE_MQ.matches;
 COARSE_MQ.addEventListener('change', ()=>{ const ex=$('tool-exit');
-  if(ex) ex.classList.toggle('show', isCoarse() && tool!=='select'); });
+  if(ex) ex.classList.toggle('show', isCoarse() && tool!=='select' && tool!=='pan'); });
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
@@ -1804,7 +1804,8 @@ function setTool(t){
   if(isCoarse() && (CATALOG[t] || (t==='stamp'&&activeStamp)))
     hover=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
   // mobile: no Esc / right-click, so surface a "Done" chip to leave the tool
-  const ex=$('tool-exit'); if(ex) ex.classList.toggle('show', isCoarse() && t!=='select');
+  // pan is a nav mode like select (toggled from the rail), not a tool to "finish"
+  const ex=$('tool-exit'); if(ex) ex.classList.toggle('show', isCoarse() && t!=='select' && t!=='pan');
   updateStatus(); render();
 }
 
