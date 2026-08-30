@@ -2006,7 +2006,7 @@ function updateStatus(){
 }
 
 // ---------------- top bar buttons
-$('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool('select'); };
+$('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool(lastNavTool); };
 const inGhost=()=>CATALOG[tool] || (tool==='stamp'&&activeStamp);
 function fabRot(d){
   if(hasRotSel()) rotateGroup(d);
