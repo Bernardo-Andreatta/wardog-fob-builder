@@ -302,8 +302,14 @@
     .sec.collapsed{width:auto;}
     .sec.collapsed .group-label{writing-mode:vertical-rl; height:100%; padding:2px 1px;
       gap:6px; justify-content:flex-start;}
-    /* selection edit ops live in the floating bar instead of the rail */
-    #btn-rotate, #btn-mirror, #btn-duplicate, #btn-delete{display:none;}
+    /* selection edit ops live in the floating bar, so the Edit section is empty */
+    #btn-rotate, #btn-mirror, #btn-duplicate, #btn-delete, .sec-edit{display:none;}
+    /* Tools (select/pan/snap/clear) stay pinned while the rest of the bar scrolls */
+    .sec-tools{position:sticky; left:0; z-index:2; background:var(--panel);
+      padding-right:10px; margin-right:2px; box-shadow:6px 0 8px -6px var(--shadow);}
+    .sec-tools::after{content:''; position:absolute; right:0; top:6px; bottom:6px;
+      width:1px; background:var(--line);}
+    .sec-tools.collapsed{padding-right:2px;}
     .drawopts{max-width:min(290px, calc(100vw - 28px));}
     .status{padding-bottom:calc(6px + env(safe-area-inset-bottom));}
     /* rail toggle sits at the bottom edge of the stage, above the bottom bar */
@@ -335,11 +341,11 @@
   </div>
 
   <div class="rail">
-    <div class="sec">
+    <div class="sec sec-tools">
       <button class="group-label" data-sec="tools">Tools<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="tools" id="tool-grid"></div></div>
     </div>
-    <div class="sec">
+    <div class="sec sec-edit">
       <button class="group-label" data-sec="edit">Edit<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="edit-grid">
         <button class="ebtn" id="btn-rotate" title="Rotate (R) &middot; 45&deg; snapped, 5&deg; free"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span class="cap">Rotate</span></button>
@@ -355,7 +361,7 @@
       <div class="sec-body"><div class="colors" id="color-grid"></div></div>
     </div>
     <div class="sec">
-      <button class="group-label" data-sec="symbols">Symbols<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button class="group-label" data-sec="symbols">Annotate<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="tools" id="sym-grid"></div></div>
     </div>
     <div class="sec" id="recent-wrap" style="display:none">
@@ -1881,12 +1887,15 @@ const TOOL_ICONS = {
 };
 function buildRail(){
   const tg=$('tool-grid'); tg.innerHTML='';
-  [['select','Select'],['pan','Pan'],['draw','Draw'],['erase','Erase'],['text','Text']].forEach(([t,label])=>{
+  [['select','Select'],['pan','Pan']].forEach(([t,label])=>{
     const b=document.createElement('button');
     b.className='tool'; b.dataset.tool=t; b.title=label;
     b.innerHTML=TOOL_ICONS[t]+'<span class="cap">'+label+'</span>';
     b.onclick=()=>setTool(t); tg.appendChild(b);
   });
+  // Snap and Clear live with the nav tools: always reachable, never a "mode"
+  tg.appendChild($('btn-snap'));
+  tg.appendChild($('btn-clear'));
   // symbol tools (placed as resizable drawings)
   const SYM_ICONS={
     'sym-rect':'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/></svg>',
@@ -1894,18 +1903,19 @@ function buildRail(){
     'sym-circle':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg>',
   };
   const sg=$('sym-grid'); if(sg){ sg.innerHTML='';
-    [['sym-rect','Square'],['sym-tri','Triangle'],['sym-circle','Circle']].forEach(([t,label])=>{
+    [['draw','Draw'],['erase','Erase'],['text','Text'],
+     ['sym-rect','Square'],['sym-tri','Triangle'],['sym-circle','Circle']].forEach(([t,label])=>{
       const b=document.createElement('button');
-      b.className='tool'; b.dataset.tool=t; b.title=label+' - click, then click the grid';
-      b.innerHTML=SYM_ICONS[t]+'<span class="cap">'+label+'</span>';
+      b.className='tool'; b.dataset.tool=t; b.title=label;
+      b.innerHTML=(SYM_ICONS[t]||TOOL_ICONS[t])+'<span class="cap">'+label+'</span>';
       b.onclick=()=>setTool(t); sg.appendChild(b);
     });
+    // Image = an action (opens the file picker), not a persistent tool
+    const ib=document.createElement('button');
+    ib.className='tool'; ib.title='Upload an image overlay';
+    ib.innerHTML=TOOL_ICONS.image+'<span class="cap">Image</span>';
+    ib.onclick=uploadImage; sg.appendChild(ib);
   }
-  // Image = an action (opens the file picker), not a persistent tool
-  const ib=document.createElement('button');
-  ib.className='tool'; ib.title='Upload an image overlay';
-  ib.innerHTML=TOOL_ICONS.image+'<span class="cap">Image</span>';
-  ib.onclick=uploadImage; tg.appendChild(ib);
   fillPieceGrid('piece-grid', PIECE_ORDER, 'wardog-fob-order');
   fillPieceGrid('logi-grid', LOGI_ORDER, 'wardog-fob-logi');
 }
