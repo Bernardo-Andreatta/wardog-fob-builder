@@ -251,8 +251,10 @@
     button{-webkit-tap-highlight-color:transparent; touch-action:manipulation;}
     #board{-webkit-touch-callout:none;}
     .zoombar .btn{width:44px; height:44px; font-size:20px;}
-    .layerbar .lbtn{width:34px; height:34px; font-size:18px;}
-    .layerbar .lval{font-size:15px;}
+    .layerbar{top:10px; right:10px; padding:4px 8px; gap:5px;}
+    .layerbar .lab{font-size:9px;}
+    .layerbar .lbtn{width:28px; height:28px; font-size:15px;}
+    .layerbar .lval{font-size:12px; min-width:13px;}
     .piece-tool .grip{display:none;}   /* HTML5 drag reorder doesn't exist on touch */
     .drawopts{top:60px;}               /* clear the Done chip */
     .tool-exit.show{display:inline-flex; position:absolute; left:50%; top:14px;
@@ -263,6 +265,7 @@
     .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
+    .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete{display:none;}
   }
   /* portrait phones / small tablets: rail becomes a horizontal bottom bar */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
@@ -301,6 +304,10 @@
     #rail-toggle{left:50%; top:auto; bottom:0; transform:translateX(-50%);
       border:1px solid var(--line); border-bottom:none; border-radius:8px 8px 0 0;
       padding:3px 20px;}
+    /* edit buttons take priority over the collapse tab: fab owns the bottom
+       edge, the toggle steps aside while the fab is up */
+    .rot-fab.show{bottom:14px;}
+    .stage:has(.rot-fab.show) #rail-toggle{display:none;}
     #rail-toggle svg{transform:rotate(-90deg);}
     .app.rail-off #rail-toggle svg{transform:rotate(90deg);}
   }
@@ -1036,15 +1043,20 @@ const LAYER_OFF = GRID*0.34;                     // upward screen shift per floo
 function layerOff(l){ return {x:0, y:-l*LAYER_OFF}; }
 function pieceLayer(p){ return p.l||0; }
 function maxLayer(){ return pieces.reduce((m,p)=>Math.max(m,pieceLayer(p)),0); }
-// grid cells a footprint covers, as "col,row" keys
+// grid cells a footprint covers, as "col,row" keys. Cell centers are rotated
+// through the piece's true angle, so 90/270 match the old axis swap exactly and
+// odd angles (45deg walls etc.) map to the diagonal cells they actually cover.
 function cellsOf(type, x, y, rot){
-  const f=cellFoot(type,rot);
-  const w=Math.max(1,Math.round(f.w)), h=Math.max(1,Math.round(f.h)), cells=[];
+  const c=CATALOG[type];
+  const w=Math.max(1,Math.round(c.w)), h=Math.max(1,Math.round(c.h));
+  const rad=(rot||0)*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
+  const cells=new Set();
   for(let i=0;i<w;i++) for(let j=0;j<h;j++){
-    const cx=x+(i-(w-1)/2)*GRID, cy=y+(j-(h-1)/2)*GRID;
-    cells.push(Math.round(cx/GRID-0.5)+','+Math.round(cy/GRID-0.5));
+    const lx=(i-(w-1)/2)*GRID, ly=(j-(h-1)/2)*GRID;
+    const cx=x+lx*cs-ly*sn, cy=y+lx*sn+ly*cs;
+    cells.add(Math.round(cx/GRID-0.5)+','+Math.round(cy/GRID-0.5));
   }
-  return cells;
+  return [...cells];
 }
 function supportedCells(layer){
   const set=new Set();
@@ -1331,6 +1343,7 @@ cv.addEventListener('pointerup', ()=>{
       else if(drag.kind==='piece' && CATALOG[tool]) placePieceAt(drag.w);
       else if(drag.kind==='text'){ clearSelection(); addText(drag.w); }
     }
+    if(drag.mode==='gmove' && drag.moved) drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });
     if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
       || (drag.mode==='imgresize'&&drag.moved)) snapshot();
   }
@@ -1453,7 +1466,7 @@ window.addEventListener('keydown', e=>{
     let dx=0,dy=0;
     if(e.key==='ArrowLeft')dx=-d; if(e.key==='ArrowRight')dx=d;
     if(e.key==='ArrowUp')dy=-d; if(e.key==='ArrowDown')dy=d;
-    selPs.forEach(p=>{ p.x+=dx; p.y+=dy; });
+    selPs.forEach(p=>{ p.x+=dx; p.y+=dy; delete p._ix; delete p._iy; });
     images.filter(i=>selImages.includes(i.id)).forEach(im=>{ im.x+=dx; im.y+=dy; });
     texts.filter(t=>selTexts.includes(t.id)).forEach(t=>{ t.x+=dx; t.y+=dy; });
     strokes.filter(s=>selStrokes.indexOf(s)!==-1).forEach(s=>s.pts.forEach(pt=>{ pt.x+=dx; pt.y+=dy; }));
@@ -1504,16 +1517,21 @@ function rotateGroup(step){
     const want=snapRotTarget(r0,dir)-r0;
     step = items[0].flip ? -want : want;   // flipped pieces store the opposite sense
   }
+  // rotate exact "ideal" centers, kept across consecutive rotations: the visible
+  // position re-derives from them every turn, so the half-cell re-snap below can
+  // never accumulate into drift (any move/mirror clears the ideals)
+  items.forEach(p=>{ if(p._ix==null){ p._ix=p.x; p._iy=p.y; } });
   let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
-  items.forEach(p=>{ const b=pieceAABB(p);
+  items.forEach(p=>{ const b=pieceAABB({type:p.type,x:p._ix,y:p._iy,rot:p.rot});
     minx=Math.min(minx,b.minx); miny=Math.min(miny,b.miny);
     maxx=Math.max(maxx,b.maxx); maxy=Math.max(maxy,b.maxy); });
   const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
   const rad=step*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
   items.forEach(p=>{
-    const dx=p.x-cx, dy=p.y-cy;
-    p.x=cx + dx*cs - dy*sn;               // clockwise rotation (canvas y-down)
-    p.y=cy + dx*sn + dy*cs;
+    const dx=p._ix-cx, dy=p._iy-cy;
+    p._ix=cx + dx*cs - dy*sn;             // clockwise rotation (canvas y-down)
+    p._iy=cy + dx*sn + dy*cs;
+    p.x=p._ix; p.y=p._iy;
     // drawPiece applies flip BEFORE rotate, so a mirrored piece rotates the
     // opposite way on screen: R(step)*S = S*R(-step). Subtract for flipped ones.
     const st=p.flip?-step:step;
@@ -1538,7 +1556,7 @@ function mirrorGroup(){
   let minx=Infinity,maxx=-Infinity;
   items.forEach(p=>{ const b=pieceAABB(p); minx=Math.min(minx,b.minx); maxx=Math.max(maxx,b.maxx); });
   const cx=(minx+maxx)/2;
-  items.forEach(p=>{ p.x=2*cx-p.x; p.flip=!p.flip; });
+  items.forEach(p=>{ p.x=2*cx-p.x; p.flip=!p.flip; delete p._ix; delete p._iy; });
   snapshot(); render(); updateStatus();
 }
 function deleteSel(){
@@ -1799,14 +1817,26 @@ function updateStatus(){
   $('st-zoom').textContent = Math.round(view.scale*100)+'%';
   // mobile: floating 45deg rotate buttons while pieces are selected (the drag
   // handle on top stays the free-rotation control)
-  const rf=$('rot-fab'); if(rf) rf.classList.toggle('show', isCoarse() && !!anySelected());
+  const ghost = CATALOG[tool] || (tool==='stamp'&&activeStamp);
+  const rf=$('rot-fab'); if(rf){
+    rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
+    rf.classList.toggle('ghost', !!ghost && !anySelected());
+  }
 }
 
 // ---------------- top bar buttons
 $('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool('select'); };
-$('rot-cw').onclick=()=>rotateGroup(45);
-$('rot-ccw').onclick=()=>rotateGroup(-45);
-$('fab-mirror').onclick=()=>mirrorGroup();
+const inGhost=()=>CATALOG[tool] || (tool==='stamp'&&activeStamp);
+function fabRot(d){
+  if(selectedPieces().length) rotateGroup(d);
+  else if(inGhost()){ placeRot=((placeRot+d)%360+360)%360; render(); }
+}
+$('rot-cw').onclick=()=>fabRot(45);
+$('rot-ccw').onclick=()=>fabRot(-45);
+$('fab-mirror').onclick=()=>{
+  if(selectedPieces().length) mirrorGroup();
+  else if(inGhost()){ placeFlip=!placeFlip; render(); }
+};
 $('fab-copy').onclick=()=>duplicateSel();
 $('fab-delete').onclick=()=>deleteSel();
 $('btn-theme').onclick=()=>{
