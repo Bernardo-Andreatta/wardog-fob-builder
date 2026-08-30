@@ -1241,6 +1241,19 @@ function eraseAt(w){
   if(changed){ if(drag) drag.erased=true; render(); }
 }
 
+// world distance from the ghost's center to its lowest edge, for the current
+// rotation - so the touch-drag offset always lifts the whole piece above the
+// finger, even for long pieces rotated vertical
+function ghostDrop(){
+  const half=(type,rot)=>{ const c=CATALOG[type], r=(rot||0)*Math.PI/180;
+    return (Math.abs(Math.sin(r))*c.w*GRID + Math.abs(Math.cos(r))*c.h*GRID)/2; };
+  if(CATALOG[tool]) return half(tool,placeRot);
+  if(tool==='stamp' && activeStamp){ let m=GRID/2;
+    stampInstance(activeStamp,0,0,placeRot,placeFlip).forEach(ip=>{ m=Math.max(m, ip.y + half(ip.type,ip.rot)); });
+    return m; }
+  return GRID/2;
+}
+
 function placeSymbolAt(w){
   const cx=snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
   const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth};
@@ -1418,9 +1431,10 @@ cv.addEventListener('pointermove', e=>{
     else if(drag.mode==='tapplace'){
       drag.w=w;
       if(!drag.moved && Math.hypot(sc.x-drag.ss.x, sc.y-drag.ss.y)>10) drag.moved=true;
-      // dragging: ghost rides above the finger so it isn't hidden under it;
-      // it stays at that offset spot on lift, and a tap on it confirms there
-      if(drag.moved){ hover={x:w.x, y:w.y-70/view.scale}; render(); }
+      // dragging: ghost rides above the finger so it isn't hidden under it -
+      // its lowest edge clears the finger whatever the rotation; it stays at
+      // that offset spot on lift, and a tap anywhere confirms it there
+      if(drag.moved){ hover={x:w.x, y:w.y-ghostDrop()-40/view.scale}; render(); }
       else if(drag.prev) hover=drag.prev;            // mere tap wiggle: ghost stays put
     }
   } else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)) render();  // ghost follows cursor
