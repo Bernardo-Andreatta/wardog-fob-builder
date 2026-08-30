@@ -428,7 +428,7 @@
       <button class="x" id="cmd-close" title="Close">&times;</button>
       <h3>Controls &amp; Shortcuts</h3>
       <div class="modal-grid">
-        <div class="k touch-only">Tap a structure, then tap the grid</div><div class="d touch-only">Drag only aims the ghost &middot; tap places it</div>
+        <div class="k touch-only">Tap a structure, then tap the grid</div><div class="d touch-only">Drag aims the ghost &middot; tap anywhere confirms it</div>
         <div class="k touch-only">Pinch / two-finger drag</div><div class="d touch-only">Zoom &middot; pan the camera</div>
         <div class="k touch-only">&times; Done chip</div><div class="d touch-only">Leave the current tool</div>
         <div class="k"><kbd>Click</kbd> a structure, then click the grid</div><div class="d">Place it &middot; repeat to place more</div>
@@ -1227,29 +1227,6 @@ function eraseAt(w){
   if(changed){ if(drag) drag.erased=true; render(); }
 }
 
-// world-space AABB of the current placement ghost (piece or stamp), or null
-function ghostBBox(){
-  if(CATALOG[tool]){
-    const c=snapCenter(tool,placeRot,hover.x,hover.y);
-    return pieceAABB({type:tool,x:c.x,y:c.y,rot:placeRot});
-  }
-  if(tool==='stamp' && activeStamp){
-    let b=null;
-    stampInstance(activeStamp,hover.x,hover.y,placeRot,placeFlip).forEach(ip=>{
-      const a=pieceAABB(ip);
-      b = b ? {minx:Math.min(b.minx,a.minx),miny:Math.min(b.miny,a.miny),
-               maxx:Math.max(b.maxx,a.maxx),maxy:Math.max(b.maxy,a.maxy)} : a;
-    });
-    return b;
-  }
-  return null;
-}
-function tapOnGhost(w){
-  const b=ghostBBox(); if(!b) return false;
-  const pad=GRID*0.4;
-  return w.x>=b.minx-pad && w.x<=b.maxx+pad && w.y>=b.miny-pad && w.y<=b.maxy+pad;
-}
-
 function placeSymbolAt(w){
   const cx=snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
   const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth};
@@ -1442,8 +1419,9 @@ cv.addEventListener('pointerup', ()=>{
       if(drag.kind==='text'){ clearSelection(); addText(w); }
       else if(drag.kind==='sym'){ if(SYMBOLS[tool]) placeSymbolAt(w); }
       else{
-        const at = tapOnGhost(w) ? {x:hover.x, y:hover.y} : w;  // hover = ghost aim
-        if(at===w) hover=w;                                     // ghost follows a direct tap
+        // any tap confirms the ghost where it sits (aiming by tap is too
+        // imprecise on touch - drag aims, tap commits)
+        const at={x:hover.x, y:hover.y};
         if(drag.kind==='stamp' && activeStamp) placeStampAt(at);
         else if(drag.kind==='piece' && CATALOG[tool]) placePieceAt(at);
       }
@@ -1772,6 +1750,10 @@ function setTool(t){
   stage.classList.remove('c-cross','c-pan');
   if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text'||SYMBOLS[t]) stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
+  // touch: start the ghost centered on screen so there is always a visible
+  // ghost to drag-aim and tap-confirm
+  if(isCoarse() && (CATALOG[t] || (t==='stamp'&&activeStamp)))
+    hover=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
   // mobile: no Esc / right-click, so surface a "Done" chip to leave the tool
   const ex=$('tool-exit'); if(ex) ex.classList.toggle('show', isCoarse() && t!=='select');
   updateStatus(); render();
