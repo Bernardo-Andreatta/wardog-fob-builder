@@ -307,6 +307,10 @@
     /* Tools (select/pan/snap/clear) stay pinned while the rest of the bar scrolls */
     .sec-tools{position:sticky; left:0; z-index:2; background:var(--panel);
       padding-right:10px; margin-right:2px; box-shadow:6px 0 8px -6px var(--shadow);}
+    /* the rail's left padding sits outside the sticky content box, so paint over
+       it too - otherwise tiles are visible sliding through that strip */
+    .sec-tools::before{content:''; position:absolute; right:100%; top:-10px; bottom:-10px;
+      width:14px; background:var(--panel);}
     .sec-tools::after{content:''; position:absolute; right:0; top:6px; bottom:6px;
       width:1px; background:var(--line);}
     .sec-tools.collapsed{padding-right:2px;}
@@ -499,8 +503,7 @@ const $ = id => document.getElementById(id);
 // convertibles / docking a mouse can flip it after load)
 const COARSE_MQ = matchMedia('(pointer:coarse)');
 const isCoarse = ()=>COARSE_MQ.matches;
-COARSE_MQ.addEventListener('change', ()=>{ const ex=$('tool-exit');
-  if(ex) ex.classList.toggle('show', isCoarse() && tool!=='select' && tool!=='pan'); });
+COARSE_MQ.addEventListener('change', ()=>updateToolChip());
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
@@ -1486,10 +1489,24 @@ cv.addEventListener('contextmenu', e=>{
   if(tool!=='select') setTool('select');
   render(); updateStatus();
 });
+// Trackpads send a pinch as ctrl+wheel, and a two-finger swipe as a plain wheel
+// with a horizontal component or fractional steps. A mouse wheel sends neither,
+// so it keeps its zoom behaviour until a trackpad actually shows up.
+let trackpad=false;
+function noteTrackpad(e){
+  if(e.ctrlKey || e.deltaX!==0) trackpad=true;
+  else if(e.deltaMode===0 && e.deltaY!==0 && Math.abs(e.deltaY)<50 && !Number.isInteger(e.deltaY)) trackpad=true;
+}
 cv.addEventListener('wheel', e=>{
   e.preventDefault();
+  noteTrackpad(e);
+  if(trackpad && !e.ctrlKey){                 // two-finger swipe: pan the camera
+    view.ox-=e.deltaX; view.oy-=e.deltaY;
+    render(); updateStatus(); persist(); return;
+  }
   const sc=evtS(e), before=screenToWorld(sc.x,sc.y);
-  const f=e.deltaY<0?1.12:1/1.12;
+  // pinch reports a continuous delta, a wheel notch a fixed step
+  const f = e.ctrlKey ? Math.exp(-e.deltaY*0.01) : (e.deltaY<0?1.12:1/1.12);
   view.scale=Math.min(6,Math.max(0.15,view.scale*f));
   const after=screenToWorld(sc.x,sc.y);
   view.ox+=(after.x-before.x)*view.scale; view.oy+=(after.y-before.y)*view.scale;
@@ -1798,6 +1815,9 @@ let lastNavTool='select';   // select or pan: what placement flows return to
 function setTool(t){
   if(t!=='stamp') activeStamp=null;   // leaving placement drops the ghost
   if(t==='select'||t==='pan') lastNavTool=t;
+  // picking a tool drops the old selection, so rotate/mirror act on the new
+  // ghost rather than on whatever was still selected behind it
+  else { clearSelection(); clearOverlaySel(); }
   tool=t;
   document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active', el.dataset.tool===t));
   highlightRecent();
@@ -1810,9 +1830,15 @@ function setTool(t){
   if(isCoarse() && (CATALOG[t] || (t==='stamp'&&activeStamp)))
     hover=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
   // mobile: no Esc / right-click, so surface a "Done" chip to leave the tool
-  // pan is a nav mode like select (toggled from the rail), not a tool to "finish"
-  const ex=$('tool-exit'); if(ex) ex.classList.toggle('show', isCoarse() && t!=='select' && t!=='pan');
+  updateToolChip();
   updateStatus(); render();
+}
+// mobile Done chip: leaves a tool, or clears a selection made with Select/Pan.
+// Pan is a nav mode like Select, so on its own it needs no "finish" action.
+function inNavTool(){ return tool==='select'||tool==='pan'; }
+function updateToolChip(){
+  const ex=$('tool-exit'); if(!ex) return;
+  ex.classList.toggle('show', isCoarse() && (!inNavTool() || !!anySelected()));
 }
 
 // ---------------- icons (render each drawer to an offscreen canvas)
@@ -2007,7 +2033,7 @@ function updateStatus(){
   $('st-zoom').textContent = Math.round(view.scale*100)+'%';
   // mobile: floating 45deg rotate buttons while pieces are selected (the drag
   // handle on top stays the free-rotation control)
-  updateUndoFab();
+  updateUndoFab(); updateToolChip();
   const ghost = CATALOG[tool] || (tool==='stamp'&&activeStamp);
   const rf=$('rot-fab'); if(rf){
     rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
@@ -2016,7 +2042,11 @@ function updateStatus(){
 }
 
 // ---------------- top bar buttons
-$('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool(lastNavTool); };
+$('tool-exit').onclick=()=>{
+  // with a selection in a nav tool the chip just deselects; otherwise it exits the tool
+  if(inNavTool() && anySelected()){ clearSelection(); clearOverlaySel(); render(); updateStatus(); return; }
+  clearSelection(); clearOverlaySel(); setTool(lastNavTool);
+};
 const inGhost=()=>CATALOG[tool] || (tool==='stamp'&&activeStamp);
 function fabRot(d){
   if(hasRotSel()) rotateGroup(d);
@@ -2106,8 +2136,57 @@ const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','he
 // URL/Reddit-safe base64: no + / = (those wrap or get mangled in links & comments)
 function b64enc(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function b64dec(str){ let s=str.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return decodeURIComponent(escape(atob(s))); }
+// ---- v3: delta-encoded payload, deflated. Neighbouring pieces sit a cell or
+// two apart, so storing offsets instead of absolute coordinates leaves a very
+// repetitive string that deflate crushes (~25x smaller links than v2).
+const CAN_ZIP = typeof CompressionStream!=='undefined' && typeof DecompressionStream!=='undefined';
+function b64bytes(bytes){ let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function bytesFromB64(str){ let s=str.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='=';
+  const bin=atob(s), out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out; }
+async function zip(str){
+  const cs=new CompressionStream('deflate-raw');
+  const w=cs.writable.getWriter(); w.write(new TextEncoder().encode(str)); w.close();
+  return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+}
+async function unzip(bytes){
+  const ds=new DecompressionStream('deflate-raw');
+  const w=ds.writable.getWriter(); w.write(bytes); w.close();
+  return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+}
+function payloadV3(){
+  let px=0, py=0;
+  const P=pieces.map(p=>{
+    const x=Math.round(p.x), y=Math.round(p.y);
+    const a=[CODE_TYPES.indexOf(p.type), x-px, y-py, Math.round(p.rot)||0, p.flip?1:0, p.l||0];
+    px=x; py=y;
+    while(a.length>3 && a[a.length-1]===0) a.pop();
+    return a;
+  });
+  const obj={d:P};
+  const S=(strokes||[]).filter(s=>s.pts&&s.pts.length).map(s=>{
+    let qx=0, qy=0; const f=[];
+    s.pts.forEach(pt=>{ const x=Math.round(pt.x), y=Math.round(pt.y);
+      f.push(x-qx, y-qy); qx=x; qy=y; });
+    return [s.color, Math.round(s.width), f];
+  });
+  if(S.length) obj.s=S;
+  const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color, Math.round(t.rot||0)]);
+  if(T.length) obj.t=T;
+  if(inkColor) obj.c=inkColor;
+  return obj;
+}
+async function encodeBuild(){
+  if(CAN_ZIP){
+    try{ return 'FOB3.'+b64bytes(await zip(JSON.stringify(payloadV3()))); }
+    catch(e){}   // no compression support: fall back to the plain v2 code
+  }
+  return encodeBuildV2();
+}
 // v2: compact arrays, type as an index, no ids, default rot/flip trimmed
-function encodeBuild(){
+function encodeBuildV2(){
   const P=pieces.map(p=>{
     const a=[CODE_TYPES.indexOf(p.type), Math.round(p.x), Math.round(p.y), Math.round(p.rot)||0, p.flip?1:0, p.l||0];
     while(a.length>3 && a[a.length-1]===0) a.pop();   // trim trailing floor / flip / rot zeros
@@ -2123,8 +2202,21 @@ function encodeBuild(){
   if(inkColor) obj.c=inkColor;   // global structure/text colour
   return 'FOB2.'+b64enc(JSON.stringify(obj));
 }
-function decodeBuild(code){
+async function decodeBuild(code){
   let s=(code||'').trim().replace(/\s+/g,'');
+  if(s.startsWith('FOB3.')){
+    const o=JSON.parse(await unzip(bytesFromB64(s.slice(5))));
+    if(!o||!Array.isArray(o.d)) throw new Error('bad');
+    let px=0, py=0;
+    const pieces=o.d.map(a=>{ const t=CODE_TYPES[a[0]]; if(!t) throw new Error('bad');
+      px+=a[1]||0; py+=a[2]||0;
+      return {type:t, x:px, y:py, rot:a[3]||0, flip:!!a[4], l:a[5]||0}; });
+    const strokes=(o.s||[]).map(a=>{ const f=a[2]||[], pts=[]; let qx=0, qy=0;
+      for(let i=0;i+1<f.length;i+=2){ qx+=f[i]; qy+=f[i+1]; pts.push({x:qx,y:qy}); }
+      return {color:a[0], width:a[1], pts}; });
+    const texts=(o.t||[]).map(a=>({text:a[0], x:a[1], y:a[2], size:a[3]||GRID*0.6, color:a[4], rot:a[5]||0}));
+    return {pieces, strokes, texts, ink:o.c||null};
+  }
   if(s.startsWith('FOB2.')){
     const o=JSON.parse(b64dec(s.slice(5)));
     if(!o||!Array.isArray(o.p)) throw new Error('bad');
@@ -2150,10 +2242,11 @@ function loadBuild(o){
   inkColor = o.ink||null; buildColors();
   clearSelection(); snapshot(); render(); updateStatus();
 }
-function openCode(){
-  $('code-out').value=encodeBuild();
+async function openCode(){
   $('code-in').value=''; $('code-copymsg').textContent=''; $('code-loadmsg').textContent='';
+  $('code-out').value='Building code…';
   $('code-modal').hidden=false;
+  $('code-out').value=await encodeBuild();
 }
 function closeCode(){ $('code-modal').hidden=true; }
 $('btn-code').onclick=openCode;
@@ -2169,9 +2262,9 @@ async function copyText(text, label){
 }
 $('code-copy').onclick=()=>copyText($('code-out').value, 'Code copied!');
 $('code-copylink').onclick=()=>copyText(buildLink($('code-out').value), 'Link copied!');
-$('code-load').onclick=()=>{
+$('code-load').onclick=async ()=>{
   const msg=$('code-loadmsg'); msg.className='code-msg';
-  try{ const o=decodeBuild($('code-in').value); loadBuild(o); msg.textContent='Build loaded.';
+  try{ const o=await decodeBuild($('code-in').value); loadBuild(o); msg.textContent='Build loaded.';
     setTimeout(closeCode, 700); }
   catch(e){ msg.className='code-msg bad'; msg.textContent='Not a valid build code.'; }
 };
@@ -2297,22 +2390,28 @@ function init(){
     if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
-  // a shared build in the URL hash (#FOB...) overrides the local autosave
-  let sharedLoaded=false;
-  try{ const h=(location.hash||'').slice(1);
-    if(/^FOB[12]\./.test(h)){ const o=decodeBuild(h);
-      uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
-      strokes=o.strokes||[];
-      texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece'),rot:t.rot||0}));
-      images=[]; inkColor=o.ink||null; sharedLoaded=true; }
-  }catch(e){}
   buildRecent(); buildColors();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts})]; hidx=0;
   resize();
-  if(sharedLoaded){ centerOnContent(); render(); }
   updateStatus();
+  loadSharedHash();   // a shared build in the URL hash (#FOB...) overrides the autosave
+}
+// decoding a v3 code is async, so the shared build lands just after first paint
+async function loadSharedHash(){
+  const h=(location.hash||'').slice(1);
+  if(!/^FOB[123]\./.test(h)) return;
+  try{
+    const o=await decodeBuild(h);
+    uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
+    strokes=o.strokes||[];
+    texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece'),rot:t.rot||0}));
+    images=[]; inkColor=o.ink||null;
+    clearSelection(); clearOverlaySel(); buildColors();
+    history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts})]; hidx=0;
+    centerOnContent(); render(); updateStatus(); persist();
+  }catch(e){ flashToast('That shared link could not be read'); }
 }
 // fit the view around all placed content (used when opening a shared link)
 function centerOnContent(){
