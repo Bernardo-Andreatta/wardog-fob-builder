@@ -511,6 +511,10 @@ let userPickedTool=false;
 function applyTouchDefault(){
   if(isCoarse() && !userPickedTool && tool==='select' && !anySelected()) setTool('pan');
 }
+// images and symbols drop in already selected so they can be positioned; that
+// only works from Select, so switch there while remembering the nav tool the
+// user was in, which Done and the next placement still return to.
+function editNewOverlay(){ const nav=lastNavTool; setTool('select'); lastNavTool=nav; }
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
@@ -1208,7 +1212,7 @@ function uploadImage(){
       img.onload=()=>{ const ctr=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
         const scl=(GRID*8)/Math.max(img.naturalWidth, img.naturalHeight);
         const im={id:uid++, x:ctr.x, y:ctr.y, w:img.naturalWidth*scl, h:img.naturalHeight*scl, src, _img:img};
-        images.push(im); clearSelection(); clearOverlaySel(); selImages=[im.id]; setTool(lastNavTool);
+        images.push(im); clearSelection(); clearOverlaySel(); selImages=[im.id]; editNewOverlay();
         snapshot(); render(); };
       img.src=src; };
     rd.readAsDataURL(f); };
@@ -1228,7 +1232,10 @@ function openTextEditor(t, isNew){
   const finish=(keep)=>{ if(done) return; done=true;
     if(keep) t.text=ed.value.trim(); ed.remove();
     if(!t.text){ texts=texts.filter(x=>x.id!==t.id); selTexts=selTexts.filter(id=>id!==t.id); }
-    snapshot(); render(); };
+    // a fresh label stays selected and lands in Select, so it can be dragged
+    // straight away instead of the next tap making another one
+    else if(isNew) editNewOverlay();
+    snapshot(); render(); updateStatus(); };
   ed.addEventListener('keydown', ev=>{ ev.stopPropagation();
     if(ev.key==='Enter'){ ev.preventDefault(); finish(true); }
     else if(ev.key==='Escape'){ ev.preventDefault(); finish(!isNew); } });
@@ -1277,8 +1284,8 @@ function placeSymbolAt(w){
   const cx=snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
   const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth};
   strokes.push(s);
-  clearSelection(); clearOverlaySel(); selStrokes=[s];   // selected, ready to
-  setTool(lastNavTool);                                  // resize/rotate; keeps Pan if that was active
+  clearSelection(); clearOverlaySel(); selStrokes=[s];   // selected, ready to move/resize
+  editNewOverlay();
   snapshot(); render(); updateStatus();
 }
 
