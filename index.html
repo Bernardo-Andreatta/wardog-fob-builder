@@ -979,7 +979,7 @@ function render(){
     const st=lowStyle(p, layerColor(colInk,bg,dl,maxL), bg, lc, swSet, lowDrawn);
     if(st.skip) continue;
     ctx.save(); ctx.translate(off.x,off.y);
-    if(l>0) maskPiece(ctx,p,bg);   // upper floors are solid: occlude whatever is below
+    if(masksBelow(p)) maskPiece(ctx,p,bg);   // upper floors are solid: occlude whatever is below
     // tall pieces: faint shadow marks the footprint, bright body raised above
     // (fake 3d); the body is solid so the shadow can't bleed through it
     if(dl>l){ drawPiece(ctx,p, mixCol(st.col,bg,0.55), 1); ctx.translate(0,-LAYER_OFF); maskPiece(ctx,p,bg); }
@@ -1066,6 +1066,9 @@ function swKey(p){ return Math.round(p.x)+','+Math.round(p.y)+','+pieceLayer(p);
 // short walls always sit beneath other structures on their floor
 function swRank(p){ return p.type==='shortwall' ? 0 : 1; }
 const LOW_TYPES = ['shortwall','sandbags','barbed','hedgehog'];
+// see-through pieces: on upper floors they don't blank out what's underneath
+const OPEN_TYPES = ['barbed','hedgehog'];
+function masksBelow(p){ return pieceLayer(p)>0 && OPEN_TYPES.indexOf(p.type)===-1; }
 function shortwallCells(){ const set=new Set();
   pieces.forEach(p=>{ if(p.type==='shortwall') cellsOf(p.type,p.x,p.y,p.rot).forEach(c=>set.add(pieceLayer(p)+':'+c)); });
   return set; }
@@ -1189,7 +1192,7 @@ function uploadImage(){
       img.onload=()=>{ const ctr=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
         const scl=(GRID*8)/Math.max(img.naturalWidth, img.naturalHeight);
         const im={id:uid++, x:ctr.x, y:ctr.y, w:img.naturalWidth*scl, h:img.naturalHeight*scl, src, _img:img};
-        images.push(im); clearSelection(); clearOverlaySel(); selImages=[im.id]; setTool('select');
+        images.push(im); clearSelection(); clearOverlaySel(); selImages=[im.id]; setTool(lastNavTool);
         snapshot(); render(); };
       img.src=src; };
     rd.readAsDataURL(f); };
@@ -1258,8 +1261,8 @@ function placeSymbolAt(w){
   const cx=snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
   const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth};
   strokes.push(s);
-  clearSelection(); clearOverlaySel(); selStrokes=[s];   // selected + Select tool,
-  setTool('select');                                     // ready to resize/rotate
+  clearSelection(); clearOverlaySel(); selStrokes=[s];   // selected, ready to
+  setTool(lastNavTool);                                  // resize/rotate; keeps Pan if that was active
   snapshot(); render(); updateStatus();
 }
 
@@ -1785,8 +1788,10 @@ function removeStamp(sid){
 }
 
 // ---------------- tool selection
+let lastNavTool='select';   // select or pan: what placement flows return to
 function setTool(t){
   if(t!=='stamp') activeStamp=null;   // leaving placement drops the ghost
+  if(t==='select'||t==='pan') lastNavTool=t;
   tool=t;
   document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active', el.dataset.tool===t));
   highlightRecent();
@@ -2057,7 +2062,13 @@ async function saveFile(filename, data){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function exportFile(){ saveFile('fob-layout.json', JSON.stringify({pieces,strokes,view,images:imagesData(),texts,ink:inkColor},null,2)); }
+function exportFile(){
+  // strip runtime-only fields (_ix/_iy/_ipts rotation ideals) from the file
+  const P=pieces.map(p=>({id:p.id,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
+  const S=strokes.map(s=>({pts:s.pts,color:s.color,width:s.width}));
+  const T=texts.map(t=>({id:t.id,text:t.text,x:t.x,y:t.y,size:t.size,color:t.color,rot:t.rot||0}));
+  saveFile('fob-layout.json', JSON.stringify({pieces:P,strokes:S,view,images:imagesData(),texts:T,ink:inkColor},null,2));
+}
 function importFile(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const rd=new FileReader();
@@ -2184,7 +2195,7 @@ function exportPNG(){
     .map(o=>o.p).forEach(p=>{ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
     const st=lowStyle(p, layerColor(ink,pbg,dl,mxl), pbg, lc, swSet, lowDrawn);
     if(st.skip) return;
-    g.save(); g.translate(off.x,off.y); if(l>0) maskPiece(g,p,pbg);
+    g.save(); g.translate(off.x,off.y); if(masksBelow(p)) maskPiece(g,p,pbg);
     if(dl>l){ drawPiece(g,p, mixCol(st.col,pbg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,pbg); }
     drawPiece(g,p, st.col, 1); g.restore(); });
   texts.forEach(t=>drawText(g,t,ink));
