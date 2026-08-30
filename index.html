@@ -50,14 +50,14 @@
     background:var(--panel); border-bottom:1px solid var(--line);}
   .brand{display:flex; align-items:baseline; gap:10px; margin-right:6px;}
   .brand .mark{font-family:var(--font-disp); font-weight:700; letter-spacing:.14em;
-    text-transform:uppercase; font-size:19px;}
+    text-transform:uppercase; font-size:21px;}
   .brand .mark b{color:var(--accent)}
-  .brand .sub{font-family:var(--font-mono); font-size:11px; color:var(--muted); letter-spacing:.04em;}
+  .brand .sub{font-family:var(--font-mono); font-size:12px; color:var(--muted); letter-spacing:.04em;}
   .spacer{flex:1}
   .cmd{display:flex; gap:6px; flex-wrap:wrap}
   button{font-family:var(--font-ui); cursor:pointer; color:var(--ink);}
   .btn{background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
-    padding:7px 11px; font-size:12.5px; font-weight:500; display:inline-flex; align-items:center; gap:7px;
+    padding:7px 11px; font-size:13.5px; font-weight:500; display:inline-flex; align-items:center; gap:7px;
     transition:border-color .12s, background .12s, transform .04s;}
   .btn:hover{border-color:var(--accent); background:var(--accent-soft)}
   .btn:active{transform:translateY(1px)}
@@ -72,7 +72,7 @@
     display:flex; flex-direction:column; gap:14px;}
   .sec-body{margin-top:7px;}
   .group-label{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.16em;
-    font-size:10px; color:var(--muted); font-weight:600; padding:2px 0 2px 2px; margin:0;
+    font-size:11.5px; color:var(--muted); font-weight:600; padding:2px 0 2px 2px; margin:0;
     width:100%; background:none; border:none; display:flex; align-items:center; justify-content:space-between;
     cursor:pointer; text-align:left;}
   .group-label:hover{color:var(--ink);}
@@ -87,7 +87,7 @@
   .tool:hover{border-color:var(--accent)}
   .tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
   .tool svg{width:22px; height:22px; stroke:var(--ink); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
-  .tool .cap{width:100%; text-align:center; font-size:10px; transform:scale(.72); transform-origin:center;
+  .tool .cap{width:100%; text-align:center; font-size:12px; transform:scale(.72); transform-origin:center;
     letter-spacing:.02em; line-height:1; color:var(--muted); text-transform:uppercase;
     font-family:var(--font-disp); font-weight:600; pointer-events:none; overflow-wrap:break-word;}
   .pieces{display:grid; grid-template-columns:repeat(auto-fill, minmax(62px, 1fr)); gap:7px; align-content:start;}
@@ -103,7 +103,7 @@
   .piece-tool:hover .grip{opacity:.7; color:var(--accent);}
   .piece-tool.active{border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent)}
   .piece-tool img{width:30px; height:30px; flex:none; image-rendering:auto}
-  .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:10px; transform:scale(.72);
+  .piece-tool .nm{font-family:var(--font-disp); font-weight:600; font-size:12px; transform:scale(.72);
     transform-origin:center; letter-spacing:.02em; color:var(--muted); text-transform:uppercase;
     line-height:1; text-align:center; width:100%; overflow-wrap:break-word;}
   .piece-tool .star{position:absolute; top:3px; right:4px; flex:none; background:none; border:none;
@@ -129,7 +129,7 @@
     padding:9px 3px; transition:border-color .12s, background .12s;}
   .ebtn:hover{border-color:var(--accent)}
   .ebtn svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-  .ebtn .cap{width:100%; text-align:center; font-family:var(--font-disp); font-size:10px;
+  .ebtn .cap{width:100%; text-align:center; font-family:var(--font-disp); font-size:12px;
     transform:scale(.72); transform-origin:center; letter-spacing:.02em; color:var(--muted);
     text-transform:uppercase; font-weight:600; line-height:1; overflow-wrap:break-word;}
   .ebtn.danger:hover{border-color:var(--bad)}
@@ -149,18 +149,18 @@
     padding:22px 24px; width:min(520px,92vw); max-height:88vh; overflow-y:auto;
     box-shadow:0 18px 60px var(--shadow);}
   .modal-card h3{margin:0 0 16px; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
-    font-size:15px; color:var(--ink);}
+    font-size:16.5px; color:var(--ink);}
   .modal-card .x{position:absolute; top:12px; right:14px; cursor:pointer; color:var(--muted); font-size:22px;
     background:none; border:none; line-height:1;}
   .modal-card .x:hover{color:var(--ink);}
   .modal-grid{display:grid; grid-template-columns:auto 1fr; align-items:stretch;
-    font-family:var(--font-mono); font-size:12px; border-top:1px solid var(--line);}
+    font-family:var(--font-mono); font-size:13px; border-top:1px solid var(--line);}
   .modal-grid .k{color:var(--ink); white-space:nowrap; padding:8px 16px 8px 2px;
     border-bottom:1px solid var(--line);}
   .modal-grid .d{color:var(--muted); padding:8px 2px 8px 16px;
     border-bottom:1px solid var(--line); border-left:1px solid var(--line);}
   .modal-grid kbd{font-family:var(--font-mono); background:var(--panel-2); border:1px solid var(--line);
-    border-radius:4px; padding:1px 5px; color:var(--accent); font-size:11px;}
+    border-radius:4px; padding:1px 5px; color:var(--accent); font-size:12px;}
   .code-lead{margin:0 0 16px; font-size:12.5px; color:var(--muted); line-height:1.5;}
   .code-lab{display:block; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
     font-size:10px; color:var(--muted); font-weight:600; margin:0 0 6px;}
@@ -178,7 +178,7 @@
     border-radius:9px; padding:11px 13px; display:none; gap:12px; align-items:center;
     box-shadow:0 4px 16px var(--shadow); flex-wrap:wrap; max-width:290px;}
   .drawopts.show{display:flex}
-  .drawopts .lab{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:10px; color:var(--muted); font-weight:600;}
+  .drawopts .lab{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:11px; color:var(--muted); font-weight:600;}
   .swatches{display:flex; gap:5px}
   .sw{width:20px;height:20px;border-radius:50%; border:2px solid transparent; cursor:pointer; box-shadow:0 0 0 1px var(--line)}
   .sw.active{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink)}
@@ -196,6 +196,74 @@
     font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0;}
   .layerbar .lbtn:hover{border-color:var(--accent)}
   .layerbar .lval{font-family:var(--font-mono); font-size:13px; color:var(--ink); min-width:16px; text-align:center; font-weight:500;}
+  /* Floors & Layers side panel */
+  #panel-toggle{position:absolute; right:14px; top:14px; z-index:11; width:38px; height:38px; border-radius:9px;
+    border:1px solid var(--line); background:var(--panel); color:var(--ink); cursor:pointer; display:none;
+    align-items:center; justify-content:center; box-shadow:0 4px 16px var(--shadow);}
+  #panel-toggle svg{width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linejoin:round;}
+  #panel-toggle:hover{border-color:var(--accent)}
+  .app.panel-off #panel-toggle{display:flex}
+  .side-panel{position:absolute; right:14px; top:14px; width:256px; max-height:calc(100% - 28px); background:var(--panel);
+    border:1px solid var(--line); border-radius:9px; box-shadow:0 4px 16px var(--shadow); z-index:12;
+    display:flex; flex-direction:column; overflow:hidden;}
+  .app.panel-off .side-panel{display:none}
+  .sp-sec{display:flex; flex-direction:column; padding:9px 10px; border-bottom:1px solid var(--line);}
+  .sp-sec.sp-grow{flex:1; min-height:0; overflow:hidden; border-bottom:none; padding-bottom:0;}
+  .sp-title{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em; font-size:11.5px; color:var(--accent); font-weight:600; margin-bottom:7px;}
+  .sp-title em{color:var(--muted); font-style:normal; font-weight:500; letter-spacing:.04em; text-transform:none; font-size:10.5px; margin-left:6px;}
+  .floorrow{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .floorrow .lbtn{width:26px; height:26px; border-radius:6px; border:1px solid var(--line); background:var(--panel-2);
+    font-size:16px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; color:var(--ink); cursor:pointer;}
+  .floorrow .lbtn:hover{border-color:var(--accent)}
+  .floorrow .lval{font-family:var(--font-mono); font-size:15.5px; color:var(--ink); min-width:22px; text-align:center; font-weight:500;}
+  .floorhint{flex-basis:100%; font-size:11px; color:var(--muted); font-family:var(--font-mono); line-height:1.4;}
+  .lp-head{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid var(--line);}
+  .lp-head span{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em; font-size:12.5px; color:var(--muted); font-weight:600;}
+  .lp-head .lp-x{background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1; width:26px; height:26px;}
+  .lp-head .lp-x:hover{color:var(--ink)}
+  .lp-list{flex:1; min-height:40px; overflow-y:auto; display:flex; flex-direction:column;
+    border:1px solid var(--line); border-radius:7px; margin-bottom:8px;}
+  .lp-row{display:flex; align-items:center; gap:7px; padding:6px 9px; cursor:pointer; border-bottom:1px solid var(--line);}
+  .lp-row:hover{background:var(--panel-2)}
+  .lp-row.active{background:var(--accent-soft);}
+  .lp-row.primary{box-shadow:inset 3px 0 0 var(--accent);}
+  .lp-row.primary .lp-name{color:var(--accent); font-weight:600;}
+  .lp-row.dragging{opacity:.5;}
+  .lp-row.drop-above{box-shadow:inset 0 3px 0 var(--accent);}
+  .lp-row.drop-below{box-shadow:inset 0 -3px 0 var(--accent);}
+  .lp-chk{width:15px; height:15px; flex:none; accent-color:var(--accent); cursor:pointer; margin:0;}
+  .lp-floorhdr{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:10.5px;
+    font-weight:600; color:var(--ink); background:var(--panel-2); padding:5px 9px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:1;}
+  .sp-title{display:flex; align-items:center; gap:6px;}
+  .sp-dir{margin-left:auto; width:22px; height:20px; border:1px solid var(--line); background:var(--panel-2); border-radius:5px;
+    color:var(--muted); cursor:pointer; font-size:12px; line-height:1; padding:0; display:flex; align-items:center; justify-content:center;}
+  .sp-dir:hover{border-color:var(--accent); color:var(--ink)}
+  .lp-rename{flex:1; min-width:0; font-size:13px; font-family:var(--font-ui); background:var(--panel-2);
+    color:var(--ink); border:1px solid var(--accent); border-radius:5px; padding:2px 6px; outline:none;}
+  .lp-eye{width:22px; height:22px; flex:none; border:none; background:none; cursor:pointer; color:var(--ink);
+    display:flex; align-items:center; justify-content:center; padding:0;}
+  .lp-eye svg{width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.7;}
+  .lp-row.hidden .lp-name{opacity:.45; text-decoration:line-through;}
+  .lp-row.hidden .lp-eye{color:var(--muted)}
+  .lp-name{flex:1; font-size:13.5px; color:var(--ink); font-family:var(--font-ui); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .lp-lock{width:20px; height:20px; flex:none; border:none; background:none; cursor:pointer; color:var(--muted);
+    display:flex; align-items:center; justify-content:center; padding:0;}
+  .lp-lock svg{width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:1.7;}
+  .lp-lock.on{color:var(--accent)}
+  .lp-foot{display:flex; flex-direction:column; gap:7px; padding:0 0 9px;}
+  .lp-ops{display:flex; align-items:center; gap:6px;}
+  .lp-ops button{width:26px; height:26px; border:1px solid var(--line); background:var(--panel-2); border-radius:6px;
+    color:var(--ink); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; padding:0;}
+  .lp-ops button:hover{border-color:var(--accent)}
+  .lp-ops button.danger:hover{border-color:var(--bad); color:var(--bad)}
+  .lp-ops .grow{flex:1}
+  .lp-opac{display:flex; align-items:center; gap:8px;}
+  .lp-opac label{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.06em; font-size:10.5px; color:var(--muted); font-weight:600; white-space:nowrap;}
+  .lp-opac input{flex:1; min-width:0; accent-color:var(--accent);}
+  .lp-opac .pct{font-family:var(--font-mono); font-size:12.5px; color:var(--ink); min-width:46px; text-align:right; white-space:nowrap;}
+  .lp-row:last-child{border-bottom:none}
+  @media (max-width:720px){ .side-panel{width:200px; max-height:calc(100% - 24px);} }
   .toast{position:absolute; left:50%; bottom:22px; transform:translateX(-50%); background:var(--panel);
     border:1px solid var(--bad); color:var(--ink); border-radius:8px; padding:8px 14px; font-size:12.5px;
     font-family:var(--font-mono); box-shadow:0 4px 16px var(--shadow); z-index:15;}
@@ -207,7 +275,7 @@
 
   .status{grid-area:status; display:flex; align-items:center; gap:18px; padding:6px 16px;
     background:var(--panel); border-top:1px solid var(--line); font-family:var(--font-mono);
-    font-size:11.5px; color:var(--muted); overflow-x:auto; white-space:nowrap;}
+    font-size:12.5px; color:var(--muted); overflow-x:auto; white-space:nowrap;}
   .status .v{color:var(--ink); font-weight:500}
   .status .seg{display:flex; gap:6px; align-items:center}
   .status .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
@@ -234,10 +302,10 @@
     .tools, .edit-grid{gap:5px}
     .piece-tool{flex-direction:column; gap:3px; padding:6px 3px; text-align:center}
     .piece-tool img{width:26px; height:26px}
-    .piece-tool .nm{font-size:10px; transform:scale(.66); text-align:center; letter-spacing:.01em}
-    .piece-tool .star{position:absolute; top:2px; right:3px; margin:0; font-size:12px}
-    .ebtn .cap, .tool .cap{font-size:10px; transform:scale(.66)}
-    .group-label{font-size:9px; letter-spacing:.08em}
+    .piece-tool .nm{font-size:12px; transform:scale(.66); text-align:center; letter-spacing:.01em}
+    .piece-tool .star{position:absolute; top:2px; right:3px; margin:0; font-size:13px}
+    .ebtn .cap, .tool .cap{font-size:12px; transform:scale(.66)}
+    .group-label{font-size:10.5px; letter-spacing:.08em}
   }
 
   /* ---- mobile / touch only: desktop (fine pointer) is untouched ---- */
@@ -280,7 +348,7 @@
       grid-template-areas:"top" "stage" "rail" "status";}
     .topbar{padding:8px 10px; gap:10px; overflow-x:auto;}
     .brand .sub{display:none;}
-    .brand .mark{font-size:15px; white-space:nowrap;}
+    .brand .mark{font-size:17px; white-space:nowrap;}
     .cmd{flex-wrap:nowrap;}
     .cmd .btn span{display:none;}      /* icon-only commands */
     .cmd .btn{padding:9px 10px;}
@@ -341,6 +409,7 @@
       <button class="btn" id="btn-code" title="Share / load a build code"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.3M8.3 13.3l7.4 4.3"/></svg><span>Share Code</span></button>
       <button class="btn" id="btn-theme" title="Toggle light/dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg><span>Theme</span></button>
       <button class="btn" id="btn-file" title="Export / import a layout"><svg viewBox="0 0 24 24"><path d="M12 3v10M8 9l4 4 4-4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>Export / Import</span></button>
+      <button class="btn" id="btn-layers" title="Layers - z-order, visibility, opacity"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>Layers</span></button>
       <button class="btn" id="btn-commands" title="Controls &amp; shortcuts"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg><span>Commands</span></button>
     </div>
   </div>
@@ -358,6 +427,8 @@
         <button class="ebtn" id="btn-duplicate" title="Duplicate (Ctrl+C)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg><span class="cap">Copy</span></button>
         <button class="ebtn danger" id="btn-delete" title="Delete (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span class="cap">Delete</span></button>
         <button class="ebtn on" id="btn-snap" title="Snap to grid (G) &middot; on: 45&deg; rotate, off: free"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="cap">Snap</span></button>
+        <button class="ebtn" id="btn-group" title="Group selection (Ctrl+G)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg><span class="cap">Group</span></button>
+        <button class="ebtn" id="btn-ungroup" title="Ungroup (Ctrl+Shift+G)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg><span class="cap">Ungroup</span></button>
         <button class="ebtn danger" id="btn-clear" title="Clear the whole board"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg><span class="cap">Clear</span></button>
       </div></div>
     </div>
@@ -391,11 +462,33 @@
 
     <button id="rail-toggle" title="Hide / show the menu (fullscreen)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
 
-    <div class="layerbar" id="layerbar" title="Build floor - higher floors need a wall/bunker base below ( [ / ] )">
-      <span class="lab">Floor</span>
-      <button class="lbtn" id="layer-down">&minus;</button>
-      <span class="lval" id="layer-val">G</span>
-      <button class="lbtn" id="layer-up">+</button>
+    <button id="panel-toggle" title="Floors &amp; Layers"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
+    <div class="side-panel" id="layers-panel">
+      <div class="lp-head"><span>Floors &amp; Layers</span><button class="lp-x" id="lp-close" title="Close">&times;</button></div>
+      <div class="sp-sec">
+        <div class="sp-title">Floor <em>build height</em></div>
+        <div class="floorrow">
+          <button class="lbtn" id="layer-down" title="Floor down ( [ )">&minus;</button>
+          <span class="lval" id="layer-val">G</span>
+          <button class="lbtn" id="layer-up" title="Floor up ( ] )">+</button>
+          <span class="floorhint">upper floors need a wall/bunker base below</span>
+        </div>
+      </div>
+      <div class="sp-sec sp-grow">
+        <div class="sp-title">Layers <em>grouped by floor</em><button class="sp-dir" id="lp-floordir" title="Flip floor stacking (higher floor on top / bottom)">&#8645;</button></div>
+        <div class="lp-list" id="lp-list"></div>
+        <div class="lp-foot">
+          <div class="lp-opac"><label>Opacity</label><input type="range" id="lp-opacity" min="0" max="100" value="100"><span class="pct" id="lp-opacity-val">100%</span></div>
+          <div class="lp-ops">
+            <button id="lp-add" title="New layer">+</button>
+            <button id="lp-dup" title="Duplicate layer"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg></button>
+            <button class="danger" id="lp-del" title="Delete layer"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+            <span class="grow"></span>
+            <button id="lp-up" title="Move layer up">&#9650;</button>
+            <button id="lp-down" title="Move layer down">&#9660;</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="toast" id="toast" hidden></div>
 
@@ -454,6 +547,11 @@
         <div class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>Space</kbd>-drag / middle-drag</div><div class="d">Pan the camera</div>
         <div class="k">Scroll</div><div class="d">Zoom</div>
         <div class="k"><kbd>[</kbd> / <kbd>]</kbd></div><div class="d">Build floor down / up (experimental)</div>
+        <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>G</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>G</kbd></div><div class="d">Group &middot; ungroup the selection</div>
+        <div class="k">Layers button (top bar)</div><div class="d">Z-order, visibility &amp; opacity sheets &middot; Select only touches active layers</div>
+        <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
+        <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
+        <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
         <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
         <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid (Edit &rarr; Snap)</div>
@@ -578,6 +676,91 @@ const INK_COLORS = [
 ];
 function curInk(){ return inkColor || cssVar('--piece'); }
 
+// ---------------- layers (Photoshop-style: z-order, visibility, opacity) --------
+// Distinct from the "Floor" system (curLayer / p.l), which fakes vertical build
+// height. A layer is an organizational sheet every item (piece / image / text /
+// drawing) belongs to via `ly`; layers array order is the z-stack (0 = bottom).
+let layers = [];            // {id,name,visible,opacity,locked}
+let curLayerId = 0;         // primary active layer new items land on
+let selLayers = [];         // active layer set (panel multi-select); canvas Select only touches these
+let layerUid = 1;
+let groupUid = 1;           // shared id binding items into a movable Group
+function floorName(f){ return f<=0?'Ground Floor':'Floor '+f; }
+let higherFloorOnTop = true;   // draw/stack order across floors (switchable)
+function floorsForDraw(){ const fs=[...new Set(layers.map(l=>l.floor||0))];
+  fs.sort((a,b)=> higherFloorOnTop ? a-b : b-a); return fs; }   // bottom -> top
+// full stack bottom -> top: floors in order, layers within a floor by array order
+function zOrder(){ const out=[]; floorsForDraw().forEach(f=> layers.forEach(l=>{ if((l.floor||0)===f) out.push(l); })); return out; }
+function ensureLayers(){
+  if(!layers.length){ layers=[{id:layerUid++, name:'Ground', visible:true, opacity:1, locked:false, floor:0}]; }
+  layers.forEach(l=>{ if(l.floor==null) l.floor=0; });
+  if(!layerById(curLayerId)) curLayerId = layers[layers.length-1].id;
+  selLayers = selLayers.filter(id=>layerById(id));
+  if(!selLayers.length) selLayers=[curLayerId];
+  if(selLayers.indexOf(curLayerId)===-1) curLayerId=selLayers[selLayers.length-1];
+}
+function layerById(id){ return layers.find(l=>l.id===id); }
+function itemLayerId(it){ return (it && it.ly!=null && layerById(it.ly)) ? it.ly : (layers[0]?layers[0].id:0); }
+function layerOf(it){ return layerById(itemLayerId(it)); }
+function layerVisible(it){ const l=layerOf(it); return !l || l.visible; }
+function layerLocked(it){ const l=layerOf(it); return !!(l && l.locked); }
+function layerActiveId(id){ return selLayers.indexOf(id)!==-1; }
+// canvas Select only reaches items on an ACTIVE (panel-selected), visible, unlocked layer
+function layerEditable(it){ return layerVisible(it) && !layerLocked(it) && layerActiveId(itemLayerId(it)); }
+// prune the canvas selection to whatever is still on an active layer
+function pruneSelToActive(){
+  selected=selected.filter(id=>{ const p=pieces.find(x=>x.id===id); return p && layerEditable(p); });
+  selImages=selImages.filter(id=>{ const im=images.find(x=>x.id===id); return im && layerEditable(im); });
+  selTexts=selTexts.filter(id=>{ const t=texts.find(x=>x.id===id); return t && layerEditable(t); });
+  selStrokes=selStrokes.filter(s=>layerEditable(s));
+}
+function layerZ(it){ const id=itemLayerId(it), o=zOrder(); const i=o.findIndex(l=>l.id===id); return i<0?0:i; }
+// assign any item still missing a valid layer to the bottom layer
+function migrateLayers(){
+  ensureLayers();
+  const base=layers[0].id;
+  const fix=it=>{ if(it.ly==null || !layerById(it.ly)) it.ly=base; };
+  pieces.forEach(fix); images.forEach(fix); texts.forEach(fix); strokes.forEach(fix);
+  layerUid=Math.max(layerUid,...layers.map(l=>(l.id||0)+1));
+  groupUid=Math.max(groupUid, ...allItems().map(it=>(it.g||0)+1));
+}
+function allItems(){ return [...pieces,...images,...texts,...strokes]; }
+
+// ---------------- groups (persistent binding of placed items) -----------------
+// every item may carry `g` (a shared group id). Selecting any member selects the
+// whole group, so it moves / rotates / duplicates / deletes as one unit.
+function selItemObjs(){
+  return { ps:selectedPieces(),
+           ims:images.filter(i=>selImages.includes(i.id)),
+           ts:texts.filter(t=>selTexts.includes(t.id)),
+           ss:strokes.filter(s=>selStrokes.indexOf(s)!==-1) };
+}
+function groupSel(){
+  const {ps,ims,ts,ss}=selItemObjs();
+  const all=[...ps,...ims,...ts,...ss];
+  if(all.length<2){ flashToast('Select 2+ items to group'); return; }
+  const gid=groupUid++;
+  all.forEach(it=>it.g=gid);
+  snapshot(); render(); updateStatus(); flashToast('Grouped '+all.length+' items');
+}
+function ungroupSel(){
+  const {ps,ims,ts,ss}=selItemObjs(); let any=false;
+  [...ps,...ims,...ts,...ss].forEach(it=>{ if(it.g!=null){ delete it.g; any=true; } });
+  if(any){ snapshot(); render(); updateStatus(); flashToast('Ungrouped'); }
+}
+function hasGroupInSel(){ return selItemObjs && [...selItemObjs().ps,...selItemObjs().ims,...selItemObjs().ts,...selItemObjs().ss].some(it=>it.g!=null); }
+// pull every sibling of an already-selected grouped item into the selection
+function expandGroups(){
+  const gids=new Set();
+  const {ps,ims,ts,ss}=selItemObjs();
+  [...ps,...ims,...ts,...ss].forEach(it=>{ if(it.g!=null) gids.add(it.g); });
+  if(!gids.size) return;
+  pieces.forEach(p=>{ if(p.g!=null&&gids.has(p.g)&&!isSel(p.id)&&layerEditable(p)&&pieceLayer(p)<=curLayer) selected.push(p.id); });
+  images.forEach(i=>{ if(i.g!=null&&gids.has(i.g)&&!selImages.includes(i.id)&&layerEditable(i)) selImages.push(i.id); });
+  texts.forEach(t=>{ if(t.g!=null&&gids.has(t.g)&&!selTexts.includes(t.id)&&layerEditable(t)) selTexts.push(t.id); });
+  strokes.forEach(s=>{ if(s.g!=null&&gids.has(s.g)&&selStrokes.indexOf(s)===-1&&layerEditable(s)) selStrokes.push(s); });
+}
+
 // ---------------- selection helpers
 function isSel(id){ return selected.indexOf(id)!==-1; }
 function selectedPieces(){ return pieces.filter(p=>isSel(p.id)); }
@@ -595,7 +778,7 @@ function hydrateImages(){ images.forEach(im=>{ if(!im._img && im.src){ const i=n
 let history = [], hidx = -1;
 function snapshot(){
   pendingMove=false;   // whatever is being recorded already includes the move
-  const s = JSON.stringify({pieces, strokes, uid, images:imagesData(), texts});
+  const s = JSON.stringify({pieces, strokes, uid, images:imagesData(), texts, layers, curLayerId});
   if(history[hidx] === s) return;
   history = history.slice(0, hidx+1);
   history.push(s);
@@ -612,12 +795,14 @@ function updateUndoFab(){
 }
 function restore(s){ const o=JSON.parse(s); pieces=o.pieces; strokes=o.strokes; uid=o.uid||uid;
   images=o.images||[]; texts=o.texts||[]; hydrateImages();
+  if(o.layers){ layers=o.layers; if(o.curLayerId!=null) curLayerId=o.curLayerId; }
+  migrateLayers(); renderLayerPanel();
   selected = selected.filter(id=>pieces.some(p=>p.id===id));
   selImages = selImages.filter(id=>images.some(i=>i.id===id));
   selTexts = selTexts.filter(id=>texts.some(t=>t.id===id));
   selStrokes = selStrokes.filter(s=>strokes.indexOf(s)!==-1);
   render(); updateStatus(); persist(); }
-function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,ink:inkColor})); }catch(e){} }
+function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,ink:inkColor,layers,curLayerId,curLayer,layerUid,groupUid,higherFloorOnTop})); }catch(e){} }
 
 // ---------------- geometry
 function snapVal(v){ return snapOn ? Math.round(v/SNAP)*SNAP : v; }
@@ -642,9 +827,10 @@ function worldToScreen(wx,wy){ return {x:wx*view.scale+view.ox, y:wy*view.scale+
 function hitPiece(wx,wy){
   // test top floors first (and other structures before short walls), undoing each
   // piece's layer offset before hit-testing
-  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (drawLayer(b.p)-drawLayer(a.p)) || (swRank(b.p)-swRank(a.p)) || (b.i-a.i));
+  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (layerZ(b.p)-layerZ(a.p)) || (drawLayer(b.p)-drawLayer(a.p)) || (swRank(b.p)-swRank(a.p)) || (b.i-a.i));
   for(const {p} of order){
     if(pieceLayer(p)>curLayer) continue;   // floors above the view are untouchable
+    if(!layerEditable(p)) continue;        // hidden/locked layers aren't selectable
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
@@ -968,9 +1154,12 @@ function drawPiece(g,p,color,alpha,lw){
 
 // ================= render =================
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+let oc=null, octx=null;   // offscreen buffer for compositing semi-transparent layers
 function resize(){
   const dpr=window.devicePixelRatio||1, w=stage.clientWidth, h=stage.clientHeight;
   cv.width=w*dpr; cv.height=h*dpr; cv.style.width=w+'px'; cv.style.height=h+'px'; cv._dpr=dpr;
+  if(!oc){ oc=document.createElement('canvas'); octx=oc.getContext('2d'); }
+  oc.width=cv.width; oc.height=cv.height;
   render();
 }
 function render(){
@@ -979,33 +1168,29 @@ function render(){
   ctx.setTransform(dpr*view.scale,0,0,dpr*view.scale, dpr*view.ox, dpr*view.oy);
   const colInk=curInk(), colAcc=cssVar('--accent');
   drawGrid(cssVar('--grid'), cssVar('--grid-major'));
-  for(const im of images){ if(im._img && im._img.complete){
-    ctx.globalAlpha=1; ctx.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); } }
-  for(const s of strokes){
-    if(!s.pts.length) continue;
-    ctx.beginPath(); ctx.moveTo(s.pts[0].x,s.pts[0].y);
-    for(let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i].x,s.pts[i].y);
-    if(s.pts.length===1) ctx.lineTo(s.pts[0].x+0.1,s.pts[0].y);
-    ctx.strokeStyle=s.color; ctx.lineWidth=s.width; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=1;
-    ctx.stroke();
+  // draw each Photoshop layer bottom -> top; a layer under 100% opacity renders
+  // to an offscreen buffer and composites at its opacity (true layer alpha, so
+  // the floor/mask logic inside stays exactly as-is)
+  const bg=cssVar('--canvas-bg');
+  ensureLayers();
+  const gMaxL=Math.min(curLayer, maxLayer());   // global tallest floor, for depth dimming
+  for(const L of zOrder()){                       // bottom -> top, grouped by floor order
+    if(!L.visible) continue;
+    const useOff = L.opacity < 0.999 && oc;
+    const g = useOff ? octx : ctx;
+    if(useOff){
+      octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,oc.width,oc.height);
+      octx.setTransform(dpr*view.scale,0,0,dpr*view.scale, dpr*view.ox, dpr*view.oy);
+    }
+    drawLayerContent(g, L, colInk, bg, gMaxL);
+    if(useOff){
+      ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+      ctx.globalAlpha = Math.max(0,Math.min(1,L.opacity));
+      ctx.drawImage(oc, 0, 0); ctx.restore();
+      ctx.setTransform(dpr*view.scale,0,0,dpr*view.scale, dpr*view.ox, dpr*view.oy);
+    }
   }
-  // floor view: show the current build floor and everything below, never above
-  const maxL=Math.min(curLayer, maxLayer()), bg=cssVar('--canvas-bg');
-  const lc=lowCounts(), swSet=shortwallCells(), lowDrawn=new Set();
-  const sorted=pieces.map((p,i)=>({p,i}))    // bottom floors first, short walls under others
-    .filter(o=>pieceLayer(o.p)<=curLayer)
-    .sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
-    .map(o=>o.p);
-  for(const p of sorted){ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
-    const st=lowStyle(p, layerColor(colInk,bg,dl,maxL), bg, lc, swSet, lowDrawn);
-    if(st.skip) continue;
-    ctx.save(); ctx.translate(off.x,off.y);
-    if(masksBelow(p)) maskPiece(ctx,p,bg);   // upper floors are solid: occlude whatever is below
-    // tall pieces: faint shadow marks the footprint, bright body raised above
-    // (fake 3d); the body is solid so the shadow can't bleed through it
-    if(dl>l){ drawPiece(ctx,p, mixCol(st.col,bg,0.55), 1); ctx.translate(0,-LAYER_OFF); maskPiece(ctx,p,bg); }
-    drawPiece(ctx,p, st.col, 1); ctx.restore(); }
-  for(const t of texts) drawText(ctx,t,colInk);
+  ctx.globalAlpha=1;
   const selPs=selectedPieces();
   const soloPiece = selPs.length===1 && !selImages.length && !selTexts.length && !selStrokes.length;
   selPs.forEach(p=>{ const off=layerOff(pieceLayer(p));
@@ -1027,6 +1212,31 @@ function render(){
     drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip}, ok?colAcc:cssVar('--bad'), 0.5);
     ctx.restore();
   }
+}
+// draw one layer's items (images, drawings, floor-sorted pieces, labels) to g
+function drawLayerContent(g, L, colInk, bg, maxL){
+  const lid=L.id;
+  for(const im of images){ if(itemLayerId(im)!==lid) continue;
+    if(im._img && im._img.complete){ g.globalAlpha=1; g.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); } }
+  for(const s of strokes){ if(itemLayerId(s)!==lid || !s.pts.length) continue;
+    g.beginPath(); g.moveTo(s.pts[0].x,s.pts[0].y);
+    for(let i=1;i<s.pts.length;i++) g.lineTo(s.pts[i].x,s.pts[i].y);
+    if(s.pts.length===1) g.lineTo(s.pts[0].x+0.1,s.pts[0].y);
+    g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round'; g.lineCap='round'; g.globalAlpha=1; g.stroke(); }
+  const lp=pieces.filter(p=>itemLayerId(p)===lid);
+  const lc=lowCounts(lp), swSet=shortwallCells(lp), lowDrawn=new Set();
+  const sorted=lp.map((p,i)=>({p,i}))
+    .filter(o=>pieceLayer(o.p)<=curLayer)
+    .sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .map(o=>o.p);
+  for(const p of sorted){ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
+    const st=lowStyle(p, layerColor(colInk,bg,dl,maxL), bg, lc, swSet, lowDrawn);
+    if(st.skip) continue;
+    g.save(); g.translate(off.x,off.y);
+    if(masksBelow(p)) maskPiece(g,p,bg);
+    if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,bg); }
+    drawPiece(g,p, st.col, 1); g.restore(); }
+  for(const t of texts){ if(itemLayerId(t)!==lid) continue; drawText(g,t,colInk); }
 }
 function drawMarquee(col){
   const x=Math.min(marquee.x0,marquee.x1), y=Math.min(marquee.y0,marquee.y1);
@@ -1090,10 +1300,10 @@ const LOW_TYPES = ['shortwall','sandbags','barbed','hedgehog'];
 // see-through pieces: on upper floors they don't blank out what's underneath
 const OPEN_TYPES = ['barbed','hedgehog'];
 function masksBelow(p){ return pieceLayer(p)>0 && OPEN_TYPES.indexOf(p.type)===-1; }
-function shortwallCells(){ const set=new Set();
-  pieces.forEach(p=>{ if(p.type==='shortwall') cellsOf(p.type,p.x,p.y,p.rot).forEach(c=>set.add(pieceLayer(p)+':'+c)); });
+function shortwallCells(list){ const arr=list||pieces, set=new Set();
+  arr.forEach(p=>{ if(p.type==='shortwall') cellsOf(p.type,p.x,p.y,p.rot).forEach(c=>set.add(pieceLayer(p)+':'+c)); });
   return set; }
-function lowCounts(){ const c={}; pieces.forEach(p=>{ if(LOW_TYPES.indexOf(p.type)!==-1){ const k=p.type+'|'+swKey(p); c[k]=(c[k]||0)+1; } }); return c; }
+function lowCounts(list){ const arr=list||pieces, c={}; arr.forEach(p=>{ if(LOW_TYPES.indexOf(p.type)!==-1){ const k=p.type+'|'+swKey(p); c[k]=(c[k]||0)+1; } }); return c; }
 // decide how a low piece draws: {skip} to merge duplicates, and its colour
 function lowStyle(p, baseCol, bg, counts, swSet, drawn){
   if(LOW_TYPES.indexOf(p.type)===-1) return {skip:false, col:baseCol};
@@ -1170,7 +1380,7 @@ function textBox(t){
   ctx.restore(); return {w,h};
 }
 function hitText(pt){ const pad=4/view.scale;
-  for(let i=texts.length-1;i>=0;i--){ const t=texts[i], b=textBox(t);
+  for(let i=texts.length-1;i>=0;i--){ const t=texts[i]; if(!layerEditable(t)) continue; const b=textBox(t);
     const rad=-(t.rot||0)*Math.PI/180, dx=pt.x-t.x, dy=pt.y-t.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     if(Math.abs(lx)<=b.w/2+pad && Math.abs(ly)<=b.h/2+pad) return t; }
@@ -1181,10 +1391,10 @@ function drawTextSel(t,col){ const b=textBox(t), pad=6/view.scale;
   ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
   ctx.strokeRect(-b.w/2-pad, -b.h/2-pad, b.w+2*pad, b.h+2*pad); ctx.setLineDash([]); ctx.restore();
 }
-function hitImage(pt){ for(let i=images.length-1;i>=0;i--){ const im=images[i];
+function hitImage(pt){ for(let i=images.length-1;i>=0;i--){ const im=images[i]; if(!layerEditable(im)) continue;
   if(Math.abs(pt.x-im.x)<=im.w/2 && Math.abs(pt.y-im.y)<=im.h/2) return im; } return null; }
 function hitStroke(pt){
-  for(let i=strokes.length-1;i>=0;i--){ const s=strokes[i], th=s.width/2 + 9/view.scale;
+  for(let i=strokes.length-1;i>=0;i--){ const s=strokes[i]; if(!layerEditable(s)) continue; const th=s.width/2 + 9/view.scale;
     if(s.pts.length<2){ if(Math.hypot(pt.x-s.pts[0].x, pt.y-s.pts[0].y)<th) return s; }
     else { for(let k=1;k<s.pts.length;k++){
       if(segDist(pt.x,pt.y, s.pts[k-1].x,s.pts[k-1].y, s.pts[k].x,s.pts[k].y)<th) return s; } }
@@ -1212,7 +1422,7 @@ function uploadImage(){
     rd.onload=()=>{ const src=rd.result, img=new Image();
       img.onload=()=>{ const ctr=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
         const scl=(GRID*8)/Math.max(img.naturalWidth, img.naturalHeight);
-        const im={id:uid++, x:ctr.x, y:ctr.y, w:img.naturalWidth*scl, h:img.naturalHeight*scl, src, _img:img};
+        const im={id:uid++, x:ctr.x, y:ctr.y, w:img.naturalWidth*scl, h:img.naturalHeight*scl, src, _img:img, ly:curLayerId};
         images.push(im); clearSelection(); clearOverlaySel(); selImages=[im.id]; editNewOverlay();
         snapshot(); render(); };
       img.src=src; };
@@ -1220,7 +1430,7 @@ function uploadImage(){
   inp.click();
 }
 function addText(pt){
-  const t={id:uid++, x:pt.x, y:pt.y, text:'', size:GRID*0.6, color:cssVar('--piece')};
+  const t={id:uid++, x:pt.x, y:pt.y, text:'', size:GRID*0.6, color:cssVar('--piece'), ly:curLayerId};
   texts.push(t); clearSelection(); clearOverlaySel(); selTexts=[t.id];
   openTextEditor(t, true); render();
 }
@@ -1283,7 +1493,7 @@ function ghostDrop(){
 
 function placeSymbolAt(w){
   const cx=snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
-  const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth};
+  const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth, ly:curLayerId};
   strokes.push(s);
   clearSelection(); clearOverlaySel(); selStrokes=[s];   // selected, ready to move/resize
   editNewOverlay();
@@ -1291,14 +1501,17 @@ function placeSymbolAt(w){
 }
 
 function placeStampAt(w){
+  ensureFloorLayer();
   const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
-  const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer}));
+  const gid = inst.length>1 ? groupUid++ : undefined;   // a multi-piece stamp lands as one Group
+  const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer, ly:curLayerId, g:gid}));
   pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
 function placePieceAt(w){
   const c=snapCenter(tool,placeRot,w.x,w.y);
   if(!canPlace(tool,c.x,c.y,placeRot,curLayer)){ flashLayerMsg(); return; }  // needs a base below
-  const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer};
+  ensureFloorLayer();
+  const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer,ly:curLayerId};
   pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
 }
 
@@ -1312,7 +1525,7 @@ cv.addEventListener('pointerdown', e=>{
     drag={mode:'pan',sx:sc.x,sy:sc.y,ox:view.ox,oy:view.oy}; stage.classList.add('c-panning'); return;
   }
   if(tool==='draw'){
-    const s={pts:[{x:w.x,y:w.y}],color:drawColor,width:drawWidth};
+    const s={pts:[{x:w.x,y:w.y}],color:drawColor,width:drawWidth,ly:curLayerId};
     strokes.push(s); drag={mode:'draw',s}; render(); return;
   }
   if(tool==='erase'){ drag={mode:'erase',erased:false}; eraseAt(w); return; }
@@ -1372,6 +1585,7 @@ cv.addEventListener('pointerdown', e=>{
       clearSelection(); clearOverlaySel();
       if(pHit) selected=[pHit.id]; else if(tHit) selTexts=[tHit.id]; else if(iHit) selImages=[iHit.id]; else if(sHit) selStrokes=[sHit];
     }
+    expandGroups();   // clicking any grouped item selects its whole group
     const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&selTexts.includes(tHit.id)) || (iHit&&selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
     if(nowSel){ startGroupMove(w, pHit||null); drag.touch=(e.pointerType==='touch'); }
     render(); updateStatus(); return;
@@ -1449,15 +1663,17 @@ cv.addEventListener('pointermove', e=>{
       const bx1=Math.max(marquee.x0,marquee.x1), by1=Math.max(marquee.y0,marquee.y1);
       const B=marquee.base;
       selected=B.pieces.slice();
-      pieces.forEach(p=>{ if(pieceLayer(p)>curLayer) return; const b=pieceAABB(p);
+      pieces.forEach(p=>{ if(pieceLayer(p)>curLayer || !layerEditable(p)) return; const b=pieceAABB(p);
         if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) selected.push(p.id); });
       selTexts=B.texts.slice();
-      texts.forEach(t=>{ if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !selTexts.includes(t.id)) selTexts.push(t.id); });
+      texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !selTexts.includes(t.id)) selTexts.push(t.id); });
       selImages=B.imgs.slice();
-      images.forEach(im=>{ if(im.x-im.w/2<=bx1&&im.x+im.w/2>=bx0&&im.y-im.h/2<=by1&&im.y+im.h/2>=by0 && !selImages.includes(im.id)) selImages.push(im.id); });
+      images.forEach(im=>{ if(!layerEditable(im)) return; if(im.x-im.w/2<=bx1&&im.x+im.w/2>=bx0&&im.y-im.h/2<=by1&&im.y+im.h/2>=by0 && !selImages.includes(im.id)) selImages.push(im.id); });
       selStrokes=B.strokes.slice();
-      strokes.forEach(s=>{ const bb=strokeBBox(s);
+      strokes.forEach(s=>{ if(!layerEditable(s)) return; const bb=strokeBBox(s);
         if(bb && bb.minx<=bx1&&bb.maxx>=bx0&&bb.miny<=by1&&bb.maxy>=by0 && selStrokes.indexOf(s)===-1) selStrokes.push(s); });
+      // grouped items pull their whole group in - but only from visible layers
+      expandGroups();
       render(); updateStatus();
     }
     else if(drag.mode==='imgresize'){
@@ -1618,8 +1834,10 @@ window.addEventListener('keydown', e=>{
   if(meta && e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
   if(meta && e.key.toLowerCase()==='c'){ e.preventDefault(); duplicateSel(); return; }
   if(meta && e.key.toLowerCase()==='a'){ e.preventDefault();
-    selected=pieces.filter(p=>pieceLayer(p)<=curLayer).map(p=>p.id); selImages=images.map(i=>i.id); selTexts=texts.map(t=>t.id); selStrokes=strokes.slice();
-    render(); updateStatus(); return; }
+    selected=pieces.filter(p=>pieceLayer(p)<=curLayer&&layerEditable(p)).map(p=>p.id);
+    selImages=images.filter(layerEditable).map(i=>i.id); selTexts=texts.filter(layerEditable).map(t=>t.id);
+    selStrokes=strokes.filter(layerEditable); render(); updateStatus(); return; }
+  if(meta && e.key.toLowerCase()==='g'){ e.preventDefault(); e.shiftKey?ungroupSel():groupSel(); return; }
   // WASD = free camera pan. Works in every tool/mode and never touches the
   // selection or an active ghost, so the camera and the item move independently.
   if(!meta){ const k=e.key.toLowerCase();
@@ -2372,6 +2590,184 @@ function setLayer(n){ curLayer=Math.max(0,n); $('layer-val').textContent = curLa
 $('layer-up').onclick=()=>setLayer(curLayer+1);
 $('layer-down').onclick=()=>setLayer(curLayer-1);
 
+// ---------------- Layers panel (Photoshop-style: z-order / visibility / opacity)
+const EYE_ON='<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF='<svg viewBox="0 0 24 24"><path d="M9.9 4.2A11 11 0 0 1 12 4c7 0 11 8 11 8a19 19 0 0 1-2.2 3.2M6.1 6.1A19 19 0 0 0 1 12s4 7 11 7a11 11 0 0 0 3-.4M1 1l22 22"/></svg>';
+const LOCK_ON='<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const LOCK_OFF='<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7-1"/></svg>';
+function activeLayer(){ return layerById(curLayerId) || layers[layers.length-1]; }
+function selectedLayerObjs(){ return layers.filter(l=>selLayers.indexOf(l.id)!==-1); }
+// panel row click: plain = make this the only active layer; Shift/Ctrl = toggle in/out
+function selectLayer(id, additive){
+  if(!layerById(id)) return;
+  if(additive){ const i=selLayers.indexOf(id);
+    if(i!==-1){ if(selLayers.length>1) selLayers.splice(i,1); } else selLayers.push(id); }
+  else selLayers=[id];
+  curLayerId = selLayers.indexOf(id)!==-1 ? id : selLayers[selLayers.length-1];
+  // selecting a layer also switches the build floor to that layer's floor
+  const L=layerById(curLayerId);
+  if(L){ curLayer=Math.max(0,L.floor||0); $('layer-val').textContent = curLayer===0?'G':curLayer;
+    selected=selected.filter(pid=>{ const p=pieces.find(x=>x.id===pid); return p && pieceLayer(p)<=curLayer; }); }
+  pruneSelToActive(); updateLayerRowStates(); render(); updateStatus(); persist();
+}
+// light in-place refresh of row highlight/checkbox + opacity readout (no rebuild,
+// so a double-click to rename isn't destroyed by the first click's re-render)
+function updateLayerRowStates(){
+  document.querySelectorAll('#lp-list .lp-row').forEach(row=>{
+    const id=+row.dataset.id;
+    row.classList.toggle('active', layerActiveId(id));
+    row.classList.toggle('primary', id===curLayerId);
+    const chk=row.querySelector('.lp-chk'); if(chk) chk.checked=layerActiveId(id);
+  });
+  const sel=selectedLayerObjs(), op=$('lp-opacity'), opv=$('lp-opacity-val');
+  if(sel.length && op){ const vals=[...new Set(sel.map(l=>Math.round(l.opacity*100)))];
+    const primary=Math.round((activeLayer()?activeLayer().opacity:1)*100);
+    op.value=vals.length===1?vals[0]:primary; opv.textContent=vals.length===1?vals[0]+'%':'mixed'; }
+}
+function deselectOnLayer(id){
+  selected=selected.filter(i=>{ const p=pieces.find(x=>x.id===i); return p && itemLayerId(p)!==id; });
+  selImages=selImages.filter(i=>{ const im=images.find(x=>x.id===i); return im && itemLayerId(im)!==id; });
+  selTexts=selTexts.filter(i=>{ const t=texts.find(x=>x.id===i); return t && itemLayerId(t)!==id; });
+  selStrokes=selStrokes.filter(s=>itemLayerId(s)!==id);
+}
+// inline rename (no browser prompt): swap the name label for a text input
+function startRename(L, nameEl){
+  const inp=document.createElement('input'); inp.type='text'; inp.className='lp-rename'; inp.value=L.name;
+  inp.onclick=e=>e.stopPropagation();
+  let done=false;
+  const finish=keep=>{ if(done)return; done=true; if(keep){ const v=inp.value.trim(); if(v) L.name=v; } snapshot(); renderLayerPanel(); };
+  inp.onkeydown=e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); finish(true);} else if(e.key==='Escape'){ e.preventDefault(); finish(false);} };
+  inp.onblur=()=>finish(true);
+  nameEl.replaceWith(inp); inp.focus(); inp.select();
+}
+// drag-and-drop reorder. Display is top-first (reversed vs. the array).
+let dragLayerId=null;
+function reorderLayer(srcId, tgtId, above){
+  if(srcId===tgtId) return;
+  const src=layerById(srcId), tgt=layerById(tgtId); if(!src||!tgt) return;
+  if((src.floor||0)!==(tgt.floor||0)){ flashToast('Layers reorder within their floor'); return; }
+  const arr=layers.filter(l=>l.id!==srcId);
+  let ti=arr.findIndex(l=>l.id===tgtId); if(ti<0) return;
+  if(above) ti+=1;                 // above in display = higher z = later in array
+  arr.splice(ti,0,src); layers=arr;
+  snapshot(); render(); renderLayerPanel();
+}
+function buildLayerRow(L){
+  const row=document.createElement('div');
+  row.className='lp-row'+(layerActiveId(L.id)?' active':'')+(L.id===curLayerId?' primary':'')+(L.visible?'':' hidden'); row.dataset.id=L.id;
+  row.draggable=true; row.title='Drag to reorder within its floor';
+  const chk=document.createElement('input'); chk.type='checkbox'; chk.className='lp-chk'; chk.checked=layerActiveId(L.id);
+  chk.title='Active layer (editable). Toggle to multi-select';
+  chk.onclick=ev=>{ ev.stopPropagation(); selectLayer(L.id, true); };
+  const eye=document.createElement('button'); eye.className='lp-eye'; eye.title=L.visible?'Hide':'Show'; eye.innerHTML=L.visible?EYE_ON:EYE_OFF;
+  eye.onclick=ev=>{ ev.stopPropagation(); L.visible=!L.visible; if(!L.visible) deselectOnLayer(L.id); snapshot(); render(); renderLayerPanel(); updateStatus(); };
+  const name=document.createElement('div'); name.className='lp-name'; name.textContent=L.name; name.title='Double-click to rename · Shift/Ctrl-click to multi-select';
+  name.ondblclick=ev=>{ ev.stopPropagation(); startRename(L, name); };
+  const lock=document.createElement('button'); lock.className='lp-lock'+(L.locked?' on':''); lock.title=L.locked?'Unlock':'Lock'; lock.innerHTML=L.locked?LOCK_ON:LOCK_OFF;
+  lock.onclick=ev=>{ ev.stopPropagation(); L.locked=!L.locked; if(L.locked) deselectOnLayer(L.id); snapshot(); render(); renderLayerPanel(); updateStatus(); };
+  row.onclick=ev=>selectLayer(L.id, ev.shiftKey||ev.ctrlKey||ev.metaKey);
+  row.ondragstart=ev=>{ dragLayerId=L.id; ev.dataTransfer.effectAllowed='move'; try{ev.dataTransfer.setData('text/plain',String(L.id));}catch(_){} row.classList.add('dragging'); };
+  row.ondragend=()=>{ dragLayerId=null; document.querySelectorAll('.lp-row').forEach(r=>r.classList.remove('drop-above','drop-below','dragging')); };
+  row.ondragover=ev=>{ if(dragLayerId==null||dragLayerId===L.id) return; ev.preventDefault();
+    const rc=row.getBoundingClientRect(), above=(ev.clientY-rc.top)<rc.height/2;
+    row.classList.toggle('drop-above',above); row.classList.toggle('drop-below',!above); };
+  row.ondragleave=()=>row.classList.remove('drop-above','drop-below');
+  row.ondrop=ev=>{ ev.preventDefault(); if(dragLayerId==null||dragLayerId===L.id) return;
+    const rc=row.getBoundingClientRect(), above=(ev.clientY-rc.top)<rc.height/2;
+    reorderLayer(dragLayerId, L.id, above); dragLayerId=null; };
+  row.appendChild(chk); row.appendChild(eye); row.appendChild(name); row.appendChild(lock);
+  return row;
+}
+function renderLayerPanel(){
+  const list=$('lp-list'); if(!list) return;
+  ensureLayers(); list.innerHTML='';
+  // one section per floor; floors ordered top-of-stack first for display
+  const floors=floorsForDraw().slice().reverse();
+  floors.forEach(f=>{
+    const hdr=document.createElement('div'); hdr.className='lp-floorhdr'; hdr.textContent=floorName(f);
+    list.appendChild(hdr);
+    const fl=layers.filter(l=>(l.floor||0)===f);
+    for(let i=fl.length-1;i>=0;i--) list.appendChild(buildLayerRow(fl[i]));   // top z first
+  });
+  updateLayerRowStates();
+}
+function addLayer(){
+  const L={id:layerUid++, name:'Layer '+(layers.length+1), visible:true, opacity:1, locked:false, floor:curLayer};
+  const idx=layers.findIndex(l=>l.id===curLayerId);
+  layers.splice((idx<0?layers.length-1:idx)+1, 0, L);
+  selLayers=[L.id]; curLayerId=L.id; pruneSelToActive();
+  snapshot(); render(); renderLayerPanel(); updateStatus();
+}
+// placing on a floor with no active layer for it auto-creates one (or switches to
+// an existing floor layer) - so each build floor gets its own layer by default
+function ensureFloorLayer(){
+  const A=activeLayer();
+  if(A && A.floor===curLayer) return;
+  const existing=layers.find(l=>l.floor===curLayer);
+  if(existing){ selLayers=[existing.id]; curLayerId=existing.id; }
+  else {
+    const L={id:layerUid++, name:floorName(curLayer), visible:true, opacity:1, locked:false, floor:curLayer};
+    const idx=layers.findIndex(l=>l.id===curLayerId);
+    layers.splice((idx<0?layers.length-1:idx)+1,0,L);
+    selLayers=[L.id]; curLayerId=L.id;
+  }
+  pruneSelToActive(); renderLayerPanel();
+}
+function dupLayer(){
+  const src=selectedLayerObjs(); if(!src.length) return;
+  const newIds=[];
+  src.forEach(s=>{
+    const L={id:layerUid++, name:s.name+' copy', visible:s.visible, opacity:s.opacity, locked:false, floor:s.floor||0};
+    const idx=layers.findIndex(l=>l.id===s.id); layers.splice(idx+1,0,L); newIds.push(L.id);
+    const gmap={}, ng=g=>{ if(g==null) return undefined; if(gmap[g]==null) gmap[g]=groupUid++; return gmap[g]; };
+    pieces.filter(p=>itemLayerId(p)===s.id).forEach(p=>pieces.push({...p,id:uid++,ly:L.id,g:ng(p.g)}));
+    texts.filter(t=>itemLayerId(t)===s.id).forEach(t=>texts.push({...t,id:uid++,ly:L.id,g:ng(t.g)}));
+    images.filter(im=>itemLayerId(im)===s.id).forEach(im=>images.push({...im,id:uid++,ly:L.id,g:ng(im.g),_img:im._img}));
+    strokes.filter(st=>itemLayerId(st)===s.id).forEach(st=>strokes.push({...st,pts:st.pts.map(pt=>({x:pt.x,y:pt.y})),ly:L.id,g:ng(st.g)}));
+  });
+  selLayers=newIds; curLayerId=newIds[newIds.length-1]; pruneSelToActive();
+  snapshot(); render(); renderLayerPanel(); updateStatus();
+}
+function delLayer(){
+  const del=new Set(selLayers);
+  if(del.size>=layers.length){ flashToast('Cannot delete every layer'); return; }
+  const firstIdx=layers.findIndex(l=>del.has(l.id));
+  pieces=pieces.filter(p=>!del.has(itemLayerId(p))); texts=texts.filter(t=>!del.has(itemLayerId(t)));
+  images=images.filter(im=>!del.has(itemLayerId(im))); strokes=strokes.filter(s=>!del.has(itemLayerId(s)));
+  layers=layers.filter(l=>!del.has(l.id));
+  curLayerId=layers[Math.max(0, Math.min(firstIdx-1, layers.length-1))].id; selLayers=[curLayerId];
+  clearSelection(); clearOverlaySel();
+  snapshot(); render(); renderLayerPanel(); updateStatus();
+}
+function moveLayer(dir){
+  const L=layerById(curLayerId); if(!L) return;
+  const fl=layers.filter(x=>(x.floor||0)===(L.floor||0));   // reorder within its floor only
+  const pos=fl.indexOf(L), np=pos+dir; if(np<0||np>=fl.length) return;
+  const other=fl[np], ia=layers.indexOf(L), ib=layers.indexOf(other);
+  layers[ia]=other; layers[ib]=L;
+  snapshot(); render(); renderLayerPanel();
+}
+$('lp-add').onclick=addLayer;
+$('lp-dup').onclick=dupLayer;
+$('lp-del').onclick=delLayer;
+$('lp-up').onclick=()=>moveLayer(1);      // up in the list = higher z = later in array
+$('lp-down').onclick=()=>moveLayer(-1);
+$('lp-floordir').onclick=()=>{ higherFloorOnTop=!higherFloorOnTop; render(); renderLayerPanel(); persist(); };
+$('lp-opacity').oninput=e=>{ const v=(+e.target.value)/100; selectedLayerObjs().forEach(l=>l.opacity=v);
+  $('lp-opacity-val').textContent=(+e.target.value)+'%'; render(); };
+$('lp-opacity').onchange=()=>{ snapshot(); };
+function showPanel(on){
+  document.querySelector('.app').classList.toggle('panel-off', !on);
+  if(on) renderLayerPanel();
+  try{ localStorage.setItem('wardog-fob-panel', on?'':'off'); }catch(e){}
+}
+$('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));
+$('panel-toggle').onclick=()=>showPanel(true);
+$('lp-close').onclick=()=>showPanel(false);
+// group / ungroup buttons
+$('btn-group').onclick=groupSel;
+$('btn-ungroup').onclick=ungroupSel;
+
 // draggable rail width (persisted)
 (function(){
   const h=$('rail-resize'), root=document.documentElement, MIN=80, MAX=300;
@@ -2425,19 +2821,32 @@ function init(){
       images=saved.images||[]; texts=saved.texts||[]; hydrateImages();
       if('ink' in saved) inkColor=saved.ink;
       if(saved.view)view=saved.view;
+      if(saved.layers) layers=saved.layers;
+      if(saved.curLayerId!=null) curLayerId=saved.curLayerId;
+      if(saved.layerUid) layerUid=saved.layerUid;
+      if(saved.groupUid) groupUid=saved.groupUid;
+      if('higherFloorOnTop' in saved) higherFloorOnTop=saved.higherFloorOnTop;
+      if(saved.curLayer!=null) curLayer=Math.max(0,saved.curLayer);
       uid=saved.uid||Math.max(1,...pieces.map(p=>p.id||0),...images.map(i=>i.id||0),...texts.map(t=>t.id||0),0)+1; }
   }catch(e){}
+  migrateLayers();
   try{ const sv=JSON.parse(localStorage.getItem('wardog-fob-stamps')||'null');
     if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
-  buildRecent(); buildColors();
+  buildRecent(); buildColors(); renderLayerPanel();
+  { const AL=layerById(curLayerId); if(AL) curLayer=Math.max(0,AL.floor||0); }  // floor follows active layer
+  $('layer-val').textContent = curLayer===0?'G':curLayer;   // restore floor readout
+  // Floors & Layers panel: shown on desktop, hidden on mobile; last choice remembered
+  (function(){ let pref=null; try{ pref=localStorage.getItem('wardog-fob-panel'); }catch(e){}
+    const hide = pref==='off' || (pref==null && isCoarse());
+    document.querySelector('.app').classList.toggle('panel-off', hide); })();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   applyTouchDefault();
   // some browsers settle the pointer type just after scripts run, so re-check
   requestAnimationFrame(applyTouchDefault);
-  history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts})]; hidx=0;
+  history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId})]; hidx=0;
   resize();
   updateStatus();
   loadSharedHash();   // a shared build in the URL hash (#FOB...) overrides the autosave
@@ -2452,8 +2861,9 @@ async function loadSharedHash(){
     strokes=o.strokes||[];
     texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece'),rot:t.rot||0}));
     images=[]; inkColor=o.ink||null;
+    layers=[]; curLayerId=0; ensureLayers(); migrateLayers(); renderLayerPanel();
     clearSelection(); clearOverlaySel(); buildColors();
-    history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts})]; hidx=0;
+    history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId})]; hidx=0;
     centerOnContent(); render(); updateStatus(); persist();
   }catch(e){ flashToast('That shared link could not be read'); }
 }
