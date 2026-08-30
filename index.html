@@ -504,7 +504,13 @@ const $ = id => document.getElementById(id);
 // convertibles / docking a mouse can flip it after load)
 const COARSE_MQ = matchMedia('(pointer:coarse)');
 const isCoarse = ()=>COARSE_MQ.matches;
-COARSE_MQ.addEventListener('change', ()=>updateToolChip());
+COARSE_MQ.addEventListener('change', ()=>{ updateToolChip(); applyTouchDefault(); });
+// Touch devices open in Pan rather than Select. Only ever replaces the untouched
+// startup default, so a tool the user picked is never swapped out from under them.
+let userPickedTool=false;
+function applyTouchDefault(){
+  if(isCoarse() && !userPickedTool && tool==='select' && !anySelected()) setTool('pan');
+}
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
@@ -1914,11 +1920,11 @@ const TOOL_ICONS = {
 };
 function buildRail(){
   const tg=$('tool-grid'); tg.innerHTML='';
-  [['select','Select'],['pan','Pan']].forEach(([t,label])=>{
+  [['pan','Pan'],['select','Select']].forEach(([t,label])=>{
     const b=document.createElement('button');
     b.className='tool'; b.dataset.tool=t; b.title=label;
     b.innerHTML=TOOL_ICONS[t]+'<span class="cap">'+label+'</span>';
-    b.onclick=()=>setTool(t); tg.appendChild(b);
+    b.onclick=()=>{ userPickedTool=true; setTool(t); }; tg.appendChild(b);
   });
   // Snap and Clear live with the nav tools: always reachable, never a "mode"
   tg.appendChild($('btn-snap'));
@@ -1935,7 +1941,7 @@ function buildRail(){
       const b=document.createElement('button');
       b.className='tool'; b.dataset.tool=t; b.title=label;
       b.innerHTML=(SYM_ICONS[t]||TOOL_ICONS[t])+'<span class="cap">'+label+'</span>';
-      b.onclick=()=>setTool(t); sg.appendChild(b);
+      b.onclick=()=>{ userPickedTool=true; setTool(t); }; sg.appendChild(b);
     });
     // Image = an action (opens the file picker), not a persistent tool
     const ib=document.createElement('button');
@@ -2394,6 +2400,9 @@ function init(){
   buildRecent(); buildColors();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
+  applyTouchDefault();
+  // some browsers settle the pointer type just after scripts run, so re-check
+  requestAnimationFrame(applyTouchDefault);
   history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts})]; hidx=0;
   resize();
   updateStatus();
