@@ -594,6 +594,7 @@ function hydrateImages(){ images.forEach(im=>{ if(!im._img && im.src){ const i=n
 // ---------------- history / persistence
 let history = [], hidx = -1;
 function snapshot(){
+  pendingMove=false;   // whatever is being recorded already includes the move
   const s = JSON.stringify({pieces, strokes, uid, images:imagesData(), texts});
   if(history[hidx] === s) return;
   history = history.slice(0, hidx+1);
@@ -1305,6 +1306,8 @@ cv.addEventListener('pointerdown', e=>{
   if(e.button===2) return;                 // right-click handled by contextmenu
   try{ cv.setPointerCapture(e.pointerId); }catch(_){}
   const w=evtW(e), sc=evtS(e);
+  // a floating touch move is waiting: this tap just drops it where it sits
+  if(pendingMove){ commitPendingMove(); drag={mode:'placed'}; render(); updateStatus(); return; }
   if(e.button===1 || spaceDown || tool==='pan'){
     drag={mode:'pan',sx:sc.x,sy:sc.y,ox:view.ox,oy:view.oy}; stage.classList.add('c-panning'); return;
   }
@@ -1370,7 +1373,7 @@ cv.addEventListener('pointerdown', e=>{
       if(pHit) selected=[pHit.id]; else if(tHit) selTexts=[tHit.id]; else if(iHit) selImages=[iHit.id]; else if(sHit) selStrokes=[sHit];
     }
     const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&selTexts.includes(tHit.id)) || (iHit&&selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
-    if(nowSel) startGroupMove(w, pHit||null);
+    if(nowSel){ startGroupMove(w, pHit||null); drag.touch=(e.pointerType==='touch'); }
     render(); updateStatus(); return;
   }
   // empty ground => rubber-band multi-select (pieces + overlays + drawings)
@@ -1380,6 +1383,19 @@ cv.addEventListener('pointerdown', e=>{
   drag={mode:'marquee'};
   render(); updateStatus();
 });
+// lowest world edge of everything in a move, from the positions it started at
+function selBottomAtStart(d){
+  let bot=-Infinity;
+  d.ps.forEach(it=>{ const b=pieceAABB({type:it.p.type, x:it.ox, y:it.oy, rot:it.p.rot}); bot=Math.max(bot,b.maxy); });
+  d.ims.forEach(it=>{ bot=Math.max(bot, it.oy+it.im.h/2); });
+  d.ts.forEach(it=>{ const b=textBox(it.t); bot=Math.max(bot, it.oy+b.h/2); });
+  d.ss.forEach(it=>{ it.pts.forEach(pt=>{ bot=Math.max(bot, pt.y); }); });
+  return bot===-Infinity ? d.startW.y : bot;
+}
+// A touch move finishes like a placement: the finger lift leaves the selection
+// floating where it was dragged, and the next tap anywhere commits it.
+let pendingMove=false;
+function commitPendingMove(){ if(pendingMove){ pendingMove=false; snapshot(); } }
 function startGroupMove(w, primary){
   drag={ mode:'gmove', primary: primary||null,
     pox: primary?primary.x:0, poy: primary?primary.y:0, anchor:null,
@@ -1401,7 +1417,16 @@ cv.addEventListener('pointermove', e=>{
     if(drag.mode==='pan'){ view.ox=drag.ox+(sc.x-drag.sx); view.oy=drag.oy+(sc.y-drag.sy); render(); }
     else if(drag.mode==='gmove'){
       // move the whole selection (pieces + images + texts + drawings) as one
-      const rawdx=w.x-drag.startW.x, rawdy=w.y-drag.startW.y;
+      let rawdx=w.x-drag.startW.x, rawdy=w.y-drag.startW.y;
+      // on touch, once the drag really starts, lift the selection clear of the
+      // finger so it stays visible - measured once so it doesn't drift
+      if(drag.touch){
+        if(!drag.lifted && Math.hypot(rawdx,rawdy)*view.scale>8){
+          drag.lifted=true;
+          drag.lift=(selBottomAtStart(drag)-drag.startW.y)+40/view.scale;
+        }
+        if(drag.lifted) rawdy-=drag.lift;
+      }
       let ddx=rawdx, ddy=rawdy;
       if(drag.primary){ const s=snapCenter(drag.primary.type, drag.primary.rot, drag.pox+rawdx, drag.poy+rawdy);
         ddx=s.x-drag.pox; ddy=s.y-drag.poy; }
@@ -1485,7 +1510,8 @@ cv.addEventListener('pointerup', ()=>{
       drag.ts.forEach(it=>{ delete it.t._ix; delete it.t._iy; });
       drag.ss.forEach(it=>{ delete it.s._ipts; });
     }
-    if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
+    if(drag.mode==='gmove' && drag.moved && drag.touch) pendingMove=true;   // confirmed by the next tap
+    else if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
       || (drag.mode==='imgresize'&&drag.moved) || (drag.mode==='strokeresize'&&drag.moved)) snapshot();
   }
   drag=null; marquee=null; stage.classList.remove('c-panning','c-move'); render();
@@ -1827,6 +1853,7 @@ function removeStamp(sid){
 // ---------------- tool selection
 let lastNavTool='select';   // select or pan: what placement flows return to
 function setTool(t){
+  commitPendingMove();                // don't strand a floating move on a tool change
   if(t!=='stamp') activeStamp=null;   // leaving placement drops the ghost
   if(t==='select'||t==='pan') lastNavTool=t;
   // picking a tool drops the old selection, so rotate/mirror act on the new
@@ -2443,7 +2470,7 @@ function centerOnContent(){
   const sc=Math.min(2, Math.max(0.2, Math.min(stage.clientWidth/W, stage.clientHeight/H)));
   view.scale=sc; view.ox=stage.clientWidth/2 - cx*sc; view.oy=stage.clientHeight/2 - cy*sc;
 }
-window.addEventListener('beforeunload', ()=>{ try{ persist(); persistStamps(); }catch(e){} });
+window.addEventListener('beforeunload', ()=>{ try{ commitPendingMove(); persist(); persistStamps(); }catch(e){} });
 window.addEventListener('resize', resize);
 // track any stage-box change (rotation, mobile browser chrome, rail collapse)
 if(window.ResizeObserver){ let first=true;
