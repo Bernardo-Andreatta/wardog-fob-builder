@@ -43,7 +43,7 @@
   html,body{height:100%;margin:0; -webkit-text-size-adjust:100%; text-size-adjust:100%;}
   body{background:var(--bg); color:var(--ink); font-family:var(--font-ui);
     overflow:hidden; -webkit-font-smoothing:antialiased;}
-  .app{display:grid; grid-template-rows:auto 1fr auto; grid-template-columns:var(--rail-w,120px) 1fr;
+  .app{display:grid; grid-template-rows:auto 1fr auto; grid-template-columns:var(--rail-w,164px) 1fr;
     grid-template-areas:"top top" "rail stage" "rail status"; height:100vh; width:100vw;}
 
   .topbar{grid-area:top; display:flex; align-items:center; gap:14px; padding:10px 16px;
@@ -110,6 +110,9 @@
     cursor:pointer; font-size:14px; line-height:1; color:var(--muted); padding:2px;}
   .piece-tool .star.on{color:var(--accent)}
   .piece-tool .star:hover{color:var(--ink)}
+  .piece-tool .rm{position:absolute; top:3px; left:4px; flex:none; background:none; border:none;
+    cursor:pointer; font-size:16px; line-height:1; color:var(--muted); padding:2px;}
+  .piece-tool .rm:hover{color:var(--bad)}
 
   .stage{grid-area:stage; position:relative; background:var(--canvas-bg); overflow:hidden;}
   #board{position:absolute; inset:0; display:block; touch-action:none;}
@@ -479,8 +482,9 @@ function snapCenter(type,rot,x,y){
 function screenToWorld(sx,sy){ return {x:(sx-view.ox)/view.scale, y:(sy-view.oy)/view.scale}; }
 function worldToScreen(wx,wy){ return {x:wx*view.scale+view.ox, y:wy*view.scale+view.oy}; }
 function hitPiece(wx,wy){
-  // test top floors first, and undo each piece's layer offset before hit-testing
-  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (pieceLayer(b.p)-pieceLayer(a.p)) || (b.i-a.i));
+  // test top floors first (and other structures before short walls), undoing each
+  // piece's layer offset before hit-testing
+  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (pieceLayer(b.p)-pieceLayer(a.p)) || (swRank(b.p)-swRank(a.p)) || (b.i-a.i));
   for(const {p} of order){
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
@@ -826,18 +830,16 @@ function render(){
     ctx.stroke();
   }
   const maxL=maxLayer(), bg=cssVar('--canvas-bg');
-  const swCount={}; pieces.forEach(p=>{ if(p.type==='shortwall'){ const k=swKey(p); swCount[k]=(swCount[k]||0)+1; } });
-  const swDrawn=new Set();
-  const sorted=[...pieces].sort((a,b)=>pieceLayer(a)-pieceLayer(b));   // bottom floors first
+  const lc=lowCounts(), swSet=shortwallCells(), lowDrawn=new Set();
+  const sorted=pieces.map((p,i)=>({p,i}))    // bottom floors first, short walls under others
+    .sort((a,b)=> (pieceLayer(a.p)-pieceLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .map(o=>o.p);
   for(const p of sorted){ const l=pieceLayer(p), off=layerOff(l);
-    let col=layerColor(colInk,bg,l,maxL);
-    if(p.type==='shortwall'){ const k=swKey(p), pair=swCount[k]>=2;
-      if(pair){ if(swDrawn.has(k)) continue; swDrawn.add(k); }   // a merged pair draws once, as a full wall
-      else col=mixCol(col,bg,0.5);                               // a lone short wall is dimmer
-    }
+    const st=lowStyle(p, layerColor(colInk,bg,l,maxL), bg, lc, swSet, lowDrawn);
+    if(st.skip) continue;
     ctx.save(); ctx.translate(off.x,off.y);
     if(l>0) maskPiece(ctx,p,bg);   // upper floors are solid: occlude whatever is below
-    drawPiece(ctx,p, col, 1); ctx.restore(); }
+    drawPiece(ctx,p, st.col, 1); ctx.restore(); }
   for(const t of texts) drawText(ctx,t,colInk);
   const selPs=selectedPieces();
   const soloPiece = selPs.length===1 && !selImages.length && !selTexts.length && !selStrokes.length;
@@ -912,9 +914,25 @@ function pieceAABB(p){
 // pieces may carry `l` (floor, default 0). Higher floors render offset up and
 // dimmed to fake depth, and may only sit on a wall/bunker base one floor below.
 const BASE_TYPES = ['wall','shortwall','quadra','bunker'];   // what a higher floor can rest on
-// a short wall reads darker/half-height; two stacked on the same cell+floor merge
-// into one full wall. Key groups short walls sharing a cell on the same floor.
+// short wall / sandbags / barbed read darker ("low"). They snap to the standard
+// floor colour when merged: two of the same type on a cell, or a low piece
+// resting over a short wall. Key groups low pieces sharing a cell on a floor.
 function swKey(p){ return Math.round(p.x)+','+Math.round(p.y)+','+pieceLayer(p); }
+// short walls always sit beneath other structures on their floor
+function swRank(p){ return p.type==='shortwall' ? 0 : 1; }
+const LOW_TYPES = ['shortwall','sandbags','barbed','hedgehog'];
+function shortwallCells(){ const set=new Set();
+  pieces.forEach(p=>{ if(p.type==='shortwall') cellsOf(p.type,p.x,p.y,p.rot).forEach(c=>set.add(pieceLayer(p)+':'+c)); });
+  return set; }
+function lowCounts(){ const c={}; pieces.forEach(p=>{ if(LOW_TYPES.indexOf(p.type)!==-1){ const k=p.type+'|'+swKey(p); c[k]=(c[k]||0)+1; } }); return c; }
+// decide how a low piece draws: {skip} to merge duplicates, and its colour
+function lowStyle(p, baseCol, bg, counts, swSet, drawn){
+  if(LOW_TYPES.indexOf(p.type)===-1) return {skip:false, col:baseCol};
+  const key=p.type+'|'+swKey(p), pair=counts[key]>=2;
+  if(pair){ if(drawn.has(key)) return {skip:true}; drawn.add(key); }   // merged pair draws once
+  const overShort = p.type!=='shortwall' && cellsOf(p.type,p.x,p.y,p.rot).some(c=>swSet.has(pieceLayer(p)+':'+c));
+  return {skip:false, col:(pair||overShort) ? baseCol : mixCol(baseCol,bg,0.5)};
+}
 const LAYER_OFF = GRID*0.34;                     // upward screen shift per floor
 function layerOff(l){ return {x:0, y:-l*LAYER_OFF}; }
 function pieceLayer(p){ return p.l||0; }
@@ -1411,6 +1429,11 @@ function addStamp(st){
 function sortStamps(){ stamps.sort((a,b)=> (b.fav-a.fav) || (b.ts-a.ts)); }
 function startPlacing(st){ activeStamp=st; placeRot=0; placeFlip=false; clearSelection(); setTool('stamp'); render(); updateStatus(); }
 function persistStamps(){ try{ localStorage.setItem('wardog-fob-stamps', JSON.stringify(stamps)); }catch(e){} }
+function removeStamp(sid){
+  stamps=stamps.filter(s=>s.sid!==sid);
+  if(activeStamp && activeStamp.sid===sid){ activeStamp=null; if(tool==='stamp') setTool('select'); }
+  persistStamps(); buildRecent();
+}
 
 // ---------------- tool selection
 function setTool(t){
@@ -1432,7 +1455,7 @@ function makeIcon(type, px){
   const g=c.getContext('2d'); g.scale(dpr,dpr);
   const cat=CATALOG[type], s=(size-pad*2)/(Math.max(cat.w,cat.h)*GRID);
   g.translate(size/2,size/2); g.scale(s,s);
-  g.strokeStyle = type==='shortwall' ? mixCol(cssVar('--ink'),cssVar('--canvas-bg'),0.5) : cssVar('--ink');
+  g.strokeStyle = LOW_TYPES.indexOf(type)!==-1 ? mixCol(cssVar('--ink'),cssVar('--canvas-bg'),0.5) : cssVar('--ink');
   g.fillStyle=g.strokeStyle;
   g.lineWidth=1.8/s; g.lineJoin='round'; g.lineCap='round';
   DRAWERS[type](g, cat.w*GRID, cat.h*GRID);
@@ -1476,7 +1499,10 @@ function buildRecent(){
     star.innerHTML = st.fav?'&#9733;':'&#9734;';
     star.title = st.fav?'Unstar':'Star to keep in Recent';
     star.onclick=(e)=>{ e.stopPropagation(); st.fav=!st.fav; persistStamps(); buildRecent(); };
-    b.appendChild(img); b.appendChild(nm); b.appendChild(star);
+    const rm=document.createElement('button'); rm.className='rm'; rm.innerHTML='&minus;';
+    rm.title='Remove from Recent';
+    rm.onclick=(e)=>{ e.stopPropagation(); removeStamp(st.sid); };
+    b.appendChild(img); b.appendChild(nm); b.appendChild(star); b.appendChild(rm);
     b.onclick=()=>{ startPlacing(st); };
     grid.appendChild(b);
   });
@@ -1759,12 +1785,12 @@ function exportPNG(){
   strokes.forEach(s=>{ if(!s.pts.length)return; g.beginPath(); g.moveTo(s.pts[0].x,s.pts[0].y);
     s.pts.forEach(pt=>g.lineTo(pt.x,pt.y)); g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round';g.lineCap='round'; g.stroke(); });
   const ink=curInk(), pbg=cssVar('--canvas-bg'), mxl=maxLayer();
-  const swc={}; pieces.forEach(p=>{ if(p.type==='shortwall'){ const k=swKey(p); swc[k]=(swc[k]||0)+1; } }); const swd=new Set();
-  [...pieces].sort((a,b)=>pieceLayer(a)-pieceLayer(b)).forEach(p=>{ const l=pieceLayer(p), off=layerOff(l);
-    let col=layerColor(ink,pbg,l,mxl);
-    if(p.type==='shortwall'){ const k=swKey(p), pair=swc[k]>=2;
-      if(pair){ if(swd.has(k)) return; swd.add(k); } else col=mixCol(col,pbg,0.5); }
-    g.save(); g.translate(off.x,off.y); if(l>0) maskPiece(g,p,pbg); drawPiece(g,p, col, 1); g.restore(); });
+  const lc=lowCounts(), swSet=shortwallCells(), lowDrawn=new Set();
+  pieces.map((p,i)=>({p,i})).sort((a,b)=> (pieceLayer(a.p)-pieceLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .map(o=>o.p).forEach(p=>{ const l=pieceLayer(p), off=layerOff(l);
+    const st=lowStyle(p, layerColor(ink,pbg,l,mxl), pbg, lc, swSet, lowDrawn);
+    if(st.skip) return;
+    g.save(); g.translate(off.x,off.y); if(l>0) maskPiece(g,p,pbg); drawPiece(g,p, st.col, 1); g.restore(); });
   texts.forEach(t=>drawText(g,t,ink));
   c.toBlob(blob=>{ if(blob) saveFile('fob-layout.png', blob); }, 'image/png');
 }
@@ -1794,7 +1820,7 @@ $('layer-down').onclick=()=>setLayer(curLayer-1);
 // draggable rail width (persisted)
 (function(){
   const h=$('rail-resize'), root=document.documentElement, MIN=80, MAX=300;
-  const cur=()=>{ const v=parseInt(getComputedStyle(root).getPropertyValue('--rail-w')); return isNaN(v)?120:v; };
+  const cur=()=>{ const v=parseInt(getComputedStyle(root).getPropertyValue('--rail-w')); return isNaN(v)?164:v; };
   h.addEventListener('pointerdown', e=>{
     e.preventDefault(); try{ h.setPointerCapture(e.pointerId); }catch(_){} h.classList.add('drag');
     const startX=e.clientX, startW=cur();
