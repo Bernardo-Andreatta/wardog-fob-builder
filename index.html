@@ -413,7 +413,7 @@
       <button class="x" id="cmd-close" title="Close">&times;</button>
       <h3>Controls &amp; Shortcuts</h3>
       <div class="modal-grid">
-        <div class="k touch-only">Tap a structure, then tap the grid</div><div class="d touch-only">Drag to aim the ghost &middot; lift to place</div>
+        <div class="k touch-only">Tap a structure, then tap the grid</div><div class="d touch-only">Drag only aims the ghost &middot; tap places it</div>
         <div class="k touch-only">Pinch / two-finger drag</div><div class="d touch-only">Zoom &middot; pan the camera</div>
         <div class="k touch-only">&times; Done chip</div><div class="d touch-only">Leave the current tool</div>
         <div class="k"><kbd>Click</kbd> a structure, then click the grid</div><div class="d">Place it &middot; repeat to place more</div>
@@ -611,12 +611,13 @@ function drawSingleWall(g,W,H){
   g.beginPath(); g.rect(-W/2+i,-H/2+i,W-2*i,H-2*i); g.stroke();
 }
 function drawQuadra(g,W,H){
-  const i=H*0.16;
-  g.beginPath(); g.rect(-W/2,-H/2,W,H); g.stroke();
-  g.beginPath(); g.rect(-W/2+i,-H/2+i,W-2*i,H-2*i); g.stroke();
-  g.beginPath();
-  for(let k=1;k<4;k++){ const x=-W/2+(W/4)*k; g.moveTo(x,-H/2); g.lineTo(x,H/2); }
-  g.stroke();
+  // four single-wall tiles in a row
+  const cell=W/4;
+  for(let k=0;k<4;k++){
+    g.save(); g.translate(-W/2+cell/2+cell*k,0);
+    drawSingleWall(g,cell,H);
+    g.restore();
+  }
 }
 // the "bottom" edge wall between two corner tiles: a thin double line spanning
 // x in [-span,span] with a centered opening. Interior is toward -y so the
@@ -1188,6 +1189,29 @@ function eraseAt(w){
   if(changed){ if(drag) drag.erased=true; render(); }
 }
 
+// world-space AABB of the current placement ghost (piece or stamp), or null
+function ghostBBox(){
+  if(CATALOG[tool]){
+    const c=snapCenter(tool,placeRot,hover.x,hover.y);
+    return pieceAABB({type:tool,x:c.x,y:c.y,rot:placeRot});
+  }
+  if(tool==='stamp' && activeStamp){
+    let b=null;
+    stampInstance(activeStamp,hover.x,hover.y,placeRot,placeFlip).forEach(ip=>{
+      const a=pieceAABB(ip);
+      b = b ? {minx:Math.min(b.minx,a.minx),miny:Math.min(b.miny,a.miny),
+               maxx:Math.max(b.maxx,a.maxx),maxy:Math.max(b.maxy,a.maxy)} : a;
+    });
+    return b;
+  }
+  return null;
+}
+function tapOnGhost(w){
+  const b=ghostBBox(); if(!b) return false;
+  const pad=GRID*0.4;
+  return w.x>=b.minx-pad && w.x<=b.maxx+pad && w.y>=b.miny-pad && w.y<=b.maxy+pad;
+}
+
 function placeStampAt(w){
   const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
   const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer}));
@@ -1212,18 +1236,18 @@ cv.addEventListener('pointerdown', e=>{
     strokes.push(s); drag={mode:'draw',s}; render(); return;
   }
   if(tool==='erase'){ drag={mode:'erase',erased:false}; eraseAt(w); return; }
-  // touch places on finger-lift (so the ghost can be dragged into position and a
-  // second finger can still start a pinch); mouse keeps placing on press
+  // touch: a drag only aims the ghost; a plain tap places it (on the ghost =
+  // confirm its aimed spot, elsewhere = place right there). Mouse places on press.
   if(tool==='stamp' && activeStamp){
-    if(e.pointerType==='touch'){ hover=w; drag={mode:'tapplace', kind:'stamp', w}; render(); return; }
+    if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'stamp', w, ss:sc, moved:false, prev:{x:hover.x,y:hover.y}}; return; }
     placeStampAt(w); drag={mode:'placed'}; return;
   }
   if(CATALOG[tool]){
-    if(e.pointerType==='touch'){ hover=w; drag={mode:'tapplace', kind:'piece', w}; render(); return; }
+    if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'piece', w, ss:sc, moved:false, prev:{x:hover.x,y:hover.y}}; return; }
     placePieceAt(w); drag={mode:'placed'}; return;
   }
   if(tool==='text'){
-    if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'text', w}; return; }
+    if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'text', w, ss:sc, moved:false}; return; }
     clearSelection(); addText(w); drag={mode:'placed'}; return;
   }
   // --- select tool ---
@@ -1332,16 +1356,26 @@ cv.addEventListener('pointermove', e=>{
       if(Math.hypot(w.x-last.x,w.y-last.y)>1.5){ drag.s.pts.push({x:w.x,y:w.y}); render(); }
     }
     else if(drag.mode==='erase'){ eraseAt(w); }
-    else if(drag.mode==='tapplace'){ drag.w=w; render(); }   // touch: ghost tracks the finger
+    else if(drag.mode==='tapplace'){
+      drag.w=w;
+      if(!drag.moved && Math.hypot(sc.x-drag.ss.x, sc.y-drag.ss.y)>10) drag.moved=true;
+      if(drag.moved) render();                       // dragging: ghost tracks the finger
+      else if(drag.prev) hover=drag.prev;            // mere tap wiggle: ghost stays put
+    }
   } else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)) render();  // ghost follows cursor
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
   if(drag){
-    if(drag.mode==='tapplace'){        // touch placement commits where the finger lifted
-      if(drag.kind==='stamp' && activeStamp) placeStampAt(drag.w);
-      else if(drag.kind==='piece' && CATALOG[tool]) placePieceAt(drag.w);
-      else if(drag.kind==='text'){ clearSelection(); addText(drag.w); }
+    if(drag.mode==='tapplace' && !drag.moved){   // only a plain tap places
+      const w=drag.w;
+      if(drag.kind==='text'){ clearSelection(); addText(w); }
+      else{
+        const at = tapOnGhost(w) ? {x:hover.x, y:hover.y} : w;  // hover = ghost aim
+        if(at===w) hover=w;                                     // ghost follows a direct tap
+        if(drag.kind==='stamp' && activeStamp) placeStampAt(at);
+        else if(drag.kind==='piece' && CATALOG[tool]) placePieceAt(at);
+      }
     }
     if(drag.mode==='gmove' && drag.moved) drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });
     if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
