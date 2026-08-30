@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Wardogs FOB Builder - a top-down grid editor for laying out Forward Operating Bases.">
 </head>
 <body>
@@ -227,6 +227,53 @@
     .ebtn .cap, .tool .cap{font-size:10px; transform:scale(.66)}
     .group-label{font-size:9px; letter-spacing:.08em}
   }
+
+  /* ---- mobile / touch only: desktop (fine pointer) is untouched ---- */
+  .tool-exit{display:none;}
+  .touch-only{display:none;}
+  @media (pointer:coarse){ .modal-grid .touch-only{display:block;} }
+  @media (pointer:coarse){
+    .app{height:100dvh;}
+    body{overscroll-behavior:none;}
+    button{-webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+    #board{-webkit-touch-callout:none;}
+    .zoombar .btn{width:44px; height:44px; font-size:20px;}
+    .layerbar .lbtn{width:34px; height:34px; font-size:18px;}
+    .layerbar .lval{font-size:15px;}
+    .piece-tool .grip{display:none;}   /* HTML5 drag reorder doesn't exist on touch */
+    .drawopts{top:60px;}               /* clear the Done chip */
+    .tool-exit.show{display:inline-flex; position:absolute; left:50%; top:14px;
+      transform:translateX(-50%); z-index:10; background:var(--panel);
+      box-shadow:0 4px 16px var(--shadow); padding:9px 14px;}
+  }
+  /* portrait phones / small tablets: rail becomes a horizontal bottom bar */
+  @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
+    .app{grid-template-columns:1fr; grid-template-rows:auto 1fr auto auto;
+      grid-template-areas:"top" "stage" "rail" "status";}
+    .topbar{padding:8px 10px; gap:10px; overflow-x:auto;}
+    .brand .sub{display:none;}
+    .brand .mark{font-size:15px; white-space:nowrap;}
+    .cmd{flex-wrap:nowrap;}
+    .cmd .btn span{display:none;}      /* icon-only commands */
+    .cmd .btn{padding:9px 10px;}
+    .rail{height:158px; flex-direction:row; align-items:stretch; gap:12px;
+      overflow-x:auto; overflow-y:hidden; padding:8px 10px;
+      border-right:none; border-top:1px solid var(--line);
+      -webkit-overflow-scrolling:touch; scrollbar-gutter:auto;}
+    .sec{flex:none; display:flex; flex-direction:column; min-width:0;}
+    .sec-body{flex:1; min-height:0; margin-top:5px;}
+    .tools, .edit-grid, .pieces{height:100%; grid-template-columns:none;
+      grid-auto-flow:column; grid-template-rows:1fr 1fr; grid-auto-columns:64px; gap:6px;}
+    .tool, .ebtn{padding:5px 3px;}
+    .tool svg, .ebtn svg{width:20px; height:20px;}
+    .piece-tool{padding:5px 3px; gap:3px;}
+    .piece-tool img{width:24px; height:24px;}
+    .colors{height:100%; display:grid; grid-auto-flow:column; grid-template-rows:1fr 1fr;
+      gap:8px; align-items:center; justify-items:center; padding:0 2px;}
+    .rail-resize{display:none;}        /* no side rail to resize */
+    .drawopts{max-width:min(290px, calc(100vw - 28px));}
+    .status{padding-bottom:calc(6px + env(safe-area-inset-bottom));}
+  }
 </style>
 
 <div class="app">
@@ -299,6 +346,8 @@
       <input type="range" id="draw-width" min="1" max="16" value="3">
     </div>
 
+    <button class="btn tool-exit" id="tool-exit" title="Back to Select">&times;&nbsp;Done</button>
+
     <div class="zoombar">
       <button class="btn" id="zoom-in" title="Zoom in">+</button>
       <button class="btn" id="zoom-out" title="Zoom out">&minus;</button>
@@ -317,6 +366,9 @@
       <button class="x" id="cmd-close" title="Close">&times;</button>
       <h3>Controls &amp; Shortcuts</h3>
       <div class="modal-grid">
+        <div class="k touch-only">Tap a structure, then tap the grid</div><div class="d touch-only">Drag to aim the ghost &middot; lift to place</div>
+        <div class="k touch-only">Pinch / two-finger drag</div><div class="d touch-only">Zoom &middot; pan the camera</div>
+        <div class="k touch-only">&times; Done chip</div><div class="d touch-only">Leave the current tool</div>
         <div class="k"><kbd>Click</kbd> a structure, then click the grid</div><div class="d">Place it &middot; repeat to place more</div>
         <div class="k"><kbd>Click</kbd> / drag empty ground</div><div class="d">Select a piece &middot; box-select a group</div>
         <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
@@ -375,6 +427,12 @@ const cv = document.getElementById('board');
 const ctx = cv.getContext('2d');
 const stage = document.getElementById('stage');
 const $ = id => document.getElementById(id);
+// touch-first device? gates every mobile-only behavior below (live query:
+// convertibles / docking a mouse can flip it after load)
+const COARSE_MQ = matchMedia('(pointer:coarse)');
+const isCoarse = ()=>COARSE_MQ.matches;
+COARSE_MQ.addEventListener('change', ()=>{ const ex=$('tool-exit');
+  if(ex) ex.classList.toggle('show', isCoarse() && tool!=='select'); });
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
@@ -1040,7 +1098,7 @@ function addText(pt){
 function openTextEditor(t, isNew){
   const ed=document.createElement('input'); ed.type='text'; ed.value=t.text||''; ed.className='text-edit'; ed.spellcheck=false;
   const place=()=>{ const s=worldToScreen(t.x,t.y); ed.style.left=s.x+'px'; ed.style.top=s.y+'px';
-    ed.style.font='600 '+Math.max(13,t.size*view.scale)+'px Oswald, sans-serif'; };
+    ed.style.font='600 '+Math.max(isCoarse()?16:13,t.size*view.scale)+'px Oswald, sans-serif'; };  // >=16px stops iOS zoom
   stage.appendChild(ed); place(); setTimeout(()=>{ ed.focus(); ed.select(); },0);
   let done=false;
   const finish=(keep)=>{ if(done) return; done=true;
@@ -1078,6 +1136,18 @@ function eraseAt(w){
   if(changed){ if(drag) drag.erased=true; render(); }
 }
 
+function placeStampAt(w){
+  const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
+  const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer}));
+  pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
+}
+function placePieceAt(w){
+  const c=snapCenter(tool,placeRot,w.x,w.y);
+  if(!canPlace(tool,c.x,c.y,placeRot,curLayer)){ flashLayerMsg(); return; }  // needs a base below
+  const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer};
+  pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
+}
+
 cv.addEventListener('pointerdown', e=>{
   if(e.button===2) return;                 // right-click handled by contextmenu
   cv.setPointerCapture(e.pointerId);
@@ -1090,18 +1160,20 @@ cv.addEventListener('pointerdown', e=>{
     strokes.push(s); drag={mode:'draw',s}; render(); return;
   }
   if(tool==='erase'){ drag={mode:'erase',erased:false}; eraseAt(w); return; }
+  // touch places on finger-lift (so the ghost can be dragged into position and a
+  // second finger can still start a pinch); mouse keeps placing on press
   if(tool==='stamp' && activeStamp){
-    const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
-    const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer}));
-    pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
+    if(e.pointerType==='touch'){ hover=w; drag={mode:'tapplace', kind:'stamp', w}; render(); return; }
+    placeStampAt(w); drag={mode:'placed'}; return;
   }
   if(CATALOG[tool]){
-    const c=snapCenter(tool,placeRot,w.x,w.y);
-    if(!canPlace(tool,c.x,c.y,placeRot,curLayer)){ flashLayerMsg(); drag={mode:'placed'}; return; }  // needs a base below
-    const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer};
-    pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
+    if(e.pointerType==='touch'){ hover=w; drag={mode:'tapplace', kind:'piece', w}; render(); return; }
+    placePieceAt(w); drag={mode:'placed'}; return;
   }
-  if(tool==='text'){ clearSelection(); addText(w); drag={mode:'placed'}; return; }
+  if(tool==='text'){
+    if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'text', w}; return; }
+    clearSelection(); addText(w); drag={mode:'placed'}; return;
+  }
   // --- select tool ---
   const singlePieceSel = selected.length===1 && !selImages.length && !selTexts.length && !selStrokes.length;
   const singleImgSel   = selImages.length===1 && !selected.length && !selTexts.length && !selStrokes.length;
@@ -1208,11 +1280,17 @@ cv.addEventListener('pointermove', e=>{
       if(Math.hypot(w.x-last.x,w.y-last.y)>1.5){ drag.s.pts.push({x:w.x,y:w.y}); render(); }
     }
     else if(drag.mode==='erase'){ eraseAt(w); }
+    else if(drag.mode==='tapplace'){ drag.w=w; render(); }   // touch: ghost tracks the finger
   } else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)) render();  // ghost follows cursor
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
   if(drag){
+    if(drag.mode==='tapplace'){        // touch placement commits where the finger lifted
+      if(drag.kind==='stamp' && activeStamp) placeStampAt(drag.w);
+      else if(drag.kind==='piece' && CATALOG[tool]) placePieceAt(drag.w);
+      else if(drag.kind==='text'){ clearSelection(); addText(drag.w); }
+    }
     if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
       || (drag.mode==='imgresize'&&drag.moved)) snapshot();
   }
@@ -1226,6 +1304,7 @@ cv.addEventListener('dblclick', e=>{
 // right-click: clear the current selection and return to the Select tool
 cv.addEventListener('contextmenu', e=>{
   e.preventDefault();
+  if(drag || pinch || tpts.size) return;   // touch long-press mid-gesture: not a deselect
   clearSelection(); clearOverlaySel();
   if(tool!=='select') setTool('select');
   render(); updateStatus();
@@ -1239,6 +1318,61 @@ cv.addEventListener('wheel', e=>{
   view.ox+=(after.x-before.x)*view.scale; view.oy+=(after.y-before.y)*view.scale;
   render(); updateStatus(); persist();
 }, {passive:false});
+
+// ---------------- touch: two-finger pinch zoom / pan (capture on stage runs
+// before the canvas handlers, so a second finger hijacks any single-finger
+// gesture into a pinch without desktop code ever seeing it)
+const tpts = new Map();     // active touch pointers on the canvas (screen coords)
+let pinch = null;
+stage.addEventListener('pointerdown', e=>{
+  if(e.pointerType!=='touch' || e.target!==cv) return;
+  tpts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(tpts.size===2){ e.preventDefault(); e.stopPropagation(); beginPinch(); }
+  else if(tpts.size>2){ e.stopPropagation(); }
+}, true);
+function beginPinch(){
+  if(drag){   // roll back whatever the first finger started
+    if(drag.mode==='draw') strokes.pop();
+    else if(drag.mode==='gmove'){
+      drag.ps.forEach(it=>{ it.p.x=it.ox; it.p.y=it.oy; });
+      drag.ims.forEach(it=>{ it.im.x=it.ox; it.im.y=it.oy; });
+      drag.ts.forEach(it=>{ it.t.x=it.ox; it.t.y=it.oy; });
+      drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x; pt.y=it.pts[k].y; }); });
+    }
+    else if(drag.mode==='imgresize'){ drag.im.w=drag.ow; drag.im.h=drag.ow/drag.ar; }
+    drag=null; marquee=null; stage.classList.remove('c-panning','c-move');
+  }
+  for(const id of tpts.keys()){ try{ cv.setPointerCapture(id); }catch(_){} }
+  const [a,b]=[...tpts.values()];
+  pinch={d:Math.max(10,Math.hypot(a.x-b.x,a.y-b.y)), cx:(a.x+b.x)/2, cy:(a.y+b.y)/2,
+    scale:view.scale, ox:view.ox, oy:view.oy};
+  render();
+}
+stage.addEventListener('pointermove', e=>{
+  if(e.pointerType!=='touch') return;
+  if(tpts.has(e.pointerId)) tpts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(!pinch || tpts.size<2) return;
+  e.stopPropagation();
+  const rc=cv.getBoundingClientRect();
+  const [a,b]=[...tpts.values()];
+  const d=Math.max(10,Math.hypot(a.x-b.x,a.y-b.y));
+  const cx=(a.x+b.x)/2-rc.left, cy=(a.y+b.y)/2-rc.top;
+  const ns=Math.min(6, Math.max(0.15, pinch.scale*(d/pinch.d)));
+  // keep the world point that was under the start midpoint glued to the current midpoint
+  const wx=((pinch.cx-rc.left)-pinch.ox)/pinch.scale, wy=((pinch.cy-rc.top)-pinch.oy)/pinch.scale;
+  view.scale=ns; view.ox=cx-wx*ns; view.oy=cy-wy*ns;
+  render(); updateStatus();
+}, true);
+function endTouch(e){
+  if(e.pointerType!=='touch') return;
+  tpts.delete(e.pointerId);
+  if(pinch){ e.stopPropagation(); if(tpts.size<2){ pinch=null; persist(); } }
+  else if(e.type==='pointercancel' && drag){   // OS stole the touch: drop the gesture
+    drag=null; marquee=null; stage.classList.remove('c-panning','c-move'); render();
+  }
+}
+stage.addEventListener('pointerup', endTouch, true);
+stage.addEventListener('pointercancel', endTouch, true);
 
 // ---------------- keyboard
 window.addEventListener('keydown', e=>{
@@ -1446,6 +1580,8 @@ function setTool(t){
   stage.classList.remove('c-cross','c-pan');
   if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text') stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
+  // mobile: no Esc / right-click, so surface a "Done" chip to leave the tool
+  const ex=$('tool-exit'); if(ex) ex.classList.toggle('show', isCoarse() && t!=='select');
   updateStatus(); render();
 }
 
@@ -1624,6 +1760,7 @@ function updateStatus(){
 }
 
 // ---------------- top bar buttons
+$('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool('select'); };
 $('btn-theme').onclick=()=>{
   const root=document.documentElement;
   const cur=root.getAttribute('data-theme');
@@ -1900,6 +2037,9 @@ function centerOnContent(){
 }
 window.addEventListener('beforeunload', ()=>{ try{ persist(); persistStamps(); }catch(e){} });
 window.addEventListener('resize', resize);
+// track any stage-box change (rotation, mobile browser chrome, rail collapse)
+if(window.ResizeObserver){ let first=true;
+  new ResizeObserver(()=>{ if(first){ first=false; return; } resize(); }).observe(stage); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ refreshIcons(); render(); });
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
