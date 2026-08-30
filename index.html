@@ -185,6 +185,18 @@
   .cswatch:hover{transform:scale(1.08)}
   .cswatch.active{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
   .drawopts input[type=range]{width:90px; accent-color:var(--accent)}
+  .layerbar{position:absolute; right:14px; top:14px; display:flex; align-items:center; gap:8px;
+    background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:6px 10px;
+    box-shadow:0 4px 16px var(--shadow);}
+  .layerbar .lab{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:10px; color:var(--muted); font-weight:600;}
+  .layerbar .lbtn{width:24px; height:24px; border-radius:6px; border:1px solid var(--line); background:var(--panel-2);
+    font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0;}
+  .layerbar .lbtn:hover{border-color:var(--accent)}
+  .layerbar .lval{font-family:var(--font-mono); font-size:13px; color:var(--ink); min-width:16px; text-align:center; font-weight:500;}
+  .toast{position:absolute; left:50%; bottom:22px; transform:translateX(-50%); background:var(--panel);
+    border:1px solid var(--bad); color:var(--ink); border-radius:8px; padding:8px 14px; font-size:12.5px;
+    font-family:var(--font-mono); box-shadow:0 4px 16px var(--shadow); z-index:15;}
+  .toast[hidden]{display:none}
   .text-edit{position:absolute; z-index:20; transform:translate(-50%,-50%); background:var(--panel);
     color:var(--ink); border:1px solid var(--accent); border-radius:6px; padding:2px 7px; outline:none;
     min-width:70px; text-align:center; font-family:var(--font-disp); font-weight:600;
@@ -268,6 +280,14 @@
   <div class="stage" id="stage">
     <div class="rail-resize" id="rail-resize" title="Drag to resize the menu"></div>
     <canvas id="board"></canvas>
+
+    <div class="layerbar" id="layerbar" title="Build floor - higher floors need a wall/bunker base below ( [ / ] )">
+      <span class="lab">Floor</span>
+      <button class="lbtn" id="layer-down">&minus;</button>
+      <span class="lval" id="layer-val">G</span>
+      <button class="lbtn" id="layer-up">+</button>
+    </div>
+    <div class="toast" id="toast" hidden></div>
 
     <div class="drawopts" id="drawopts">
       <span class="lab">Ink</span>
@@ -354,6 +374,7 @@ const $ = id => document.getElementById(id);
 
 const CATALOG = {
   wall:     {name:'Single Wall',  w:1, h:1},
+  shortwall:{name:'Short Wall',   w:1, h:1},
   quadra:   {name:'Quad Wall',    w:4, h:1},
   bunker:   {name:'Bunker',       w:4, h:4},
   door:     {name:'Door',         w:1, h:1},
@@ -373,7 +394,7 @@ const CATALOG = {
   parking:  {name:'Parking',      w:2, h:2},
   codetower:{name:'Code Tower',   w:10, h:10},
 };
-const PIECE_ORDER = ['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
+const PIECE_ORDER = ['wall','shortwall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
 const LOGI_ORDER = ['helipad','supply','parking','codetower'];
 const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
 
@@ -384,6 +405,7 @@ let tool = 'select';
 let selected = [];          // array of selected piece ids
 let marquee = null;         // {x0,y0,x1,y1} world coords, during rubber-band select
 let placeRot = 0, placeFlip = false, snapOn = true, uid = 1;
+let curLayer = 0;           // active build floor for placement (experimental)
 let hover = {x:0,y:0};
 let drawColor = DRAW_COLORS[0], drawWidth = 3;
 let stamps = [];            // reusable stamps: {sid,name,parts:[{type,dx,dy,rot}],fav,ts}
@@ -457,8 +479,10 @@ function snapCenter(type,rot,x,y){
 function screenToWorld(sx,sy){ return {x:(sx-view.ox)/view.scale, y:(sy-view.oy)/view.scale}; }
 function worldToScreen(wx,wy){ return {x:wx*view.scale+view.ox, y:wy*view.scale+view.oy}; }
 function hitPiece(wx,wy){
-  for(let i=pieces.length-1;i>=0;i--){
-    const p=pieces[i], rad=-p.rot*Math.PI/180, dx=wx-p.x, dy=wy-p.y;
+  // test top floors first, and undo each piece's layer offset before hit-testing
+  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (pieceLayer(b.p)-pieceLayer(a.p)) || (b.i-a.i));
+  for(const {p} of order){
+    const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
     if(Math.abs(lx)<=c.w*GRID/2 && Math.abs(ly)<=c.h*GRID/2) return p;
@@ -766,7 +790,7 @@ const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door
   barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower,
   mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh,
   hedgehog:drawHedgehog, fob:drawFOB, helipad:drawHelipad, supply:drawSupply, parking:drawParking,
-  codetower:drawCodeTower};
+  codetower:drawCodeTower, shortwall:drawSingleWall};
 
 function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
@@ -801,20 +825,40 @@ function render(){
     ctx.strokeStyle=s.color; ctx.lineWidth=s.width; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=1;
     ctx.stroke();
   }
-  for(const p of pieces) drawPiece(ctx,p,colInk,1);
+  const maxL=maxLayer(), bg=cssVar('--canvas-bg');
+  const swCount={}; pieces.forEach(p=>{ if(p.type==='shortwall'){ const k=swKey(p); swCount[k]=(swCount[k]||0)+1; } });
+  const swDrawn=new Set();
+  const sorted=[...pieces].sort((a,b)=>pieceLayer(a)-pieceLayer(b));   // bottom floors first
+  for(const p of sorted){ const l=pieceLayer(p), off=layerOff(l);
+    let col=layerColor(colInk,bg,l,maxL);
+    if(p.type==='shortwall'){ const k=swKey(p), pair=swCount[k]>=2;
+      if(pair){ if(swDrawn.has(k)) continue; swDrawn.add(k); }   // a merged pair draws once, as a full wall
+      else col=mixCol(col,bg,0.5);                               // a lone short wall is dimmer
+    }
+    ctx.save(); ctx.translate(off.x,off.y);
+    if(l>0) maskPiece(ctx,p,bg);   // upper floors are solid: occlude whatever is below
+    drawPiece(ctx,p, col, 1); ctx.restore(); }
   for(const t of texts) drawText(ctx,t,colInk);
   const selPs=selectedPieces();
   const soloPiece = selPs.length===1 && !selImages.length && !selTexts.length && !selStrokes.length;
-  selPs.forEach(p=>drawSelection(p, colAcc, soloPiece));
+  selPs.forEach(p=>{ const off=layerOff(pieceLayer(p));
+    ctx.save(); ctx.translate(off.x,off.y); drawSelection(p, colAcc, soloPiece); ctx.restore(); });
   const soloImg = selImages.length===1 && !selected.length && !selTexts.length && !selStrokes.length;
   selImages.forEach(id=>{ const im=images.find(i=>i.id===id); if(im) drawImageSel(im,colAcc,soloImg); });
   selTexts.forEach(id=>{ const t=texts.find(x=>x.id===id); if(t) drawTextSel(t,colAcc); });
   selStrokes.forEach(s=>drawStrokeSel(s,colAcc));
   if(marquee) drawMarquee(colAcc);
+  const goff=layerOff(curLayer);
   if(tool==='stamp' && activeStamp){
+    ctx.save(); ctx.translate(goff.x,goff.y);
     stampInstance(activeStamp, hover.x, hover.y, placeRot, placeFlip).forEach(ip=>drawPiece(ctx,ip,colAcc,0.5));
+    ctx.restore();
   } else if(CATALOG[tool]){ const c=snapCenter(tool,placeRot,hover.x,hover.y);
-    drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip},colAcc,0.5); }
+    const ok=canPlace(tool,c.x,c.y,placeRot,curLayer);
+    ctx.save(); ctx.translate(goff.x,goff.y);
+    drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip}, ok?colAcc:cssVar('--bad'), 0.5);
+    ctx.restore();
+  }
 }
 function drawMarquee(col){
   const x=Math.min(marquee.x0,marquee.x1), y=Math.min(marquee.y0,marquee.y1);
@@ -862,6 +906,55 @@ function pieceAABB(p){
   const r=((Math.round(p.rot)%360)+360)%360;
   if(r===90||r===270){ const t=w; w=h; h=t; }
   return {minx:p.x-w/2, miny:p.y-h/2, maxx:p.x+w/2, maxy:p.y+h/2};
+}
+
+// ---------------- layers (experimental "build up")
+// pieces may carry `l` (floor, default 0). Higher floors render offset up and
+// dimmed to fake depth, and may only sit on a wall/bunker base one floor below.
+const BASE_TYPES = ['wall','shortwall','quadra','bunker'];   // what a higher floor can rest on
+// a short wall reads darker/half-height; two stacked on the same cell+floor merge
+// into one full wall. Key groups short walls sharing a cell on the same floor.
+function swKey(p){ return Math.round(p.x)+','+Math.round(p.y)+','+pieceLayer(p); }
+const LAYER_OFF = GRID*0.34;                     // upward screen shift per floor
+function layerOff(l){ return {x:0, y:-l*LAYER_OFF}; }
+function pieceLayer(p){ return p.l||0; }
+function maxLayer(){ return pieces.reduce((m,p)=>Math.max(m,pieceLayer(p)),0); }
+// grid cells a footprint covers, as "col,row" keys
+function cellsOf(type, x, y, rot){
+  const f=cellFoot(type,rot);
+  const w=Math.max(1,Math.round(f.w)), h=Math.max(1,Math.round(f.h)), cells=[];
+  for(let i=0;i<w;i++) for(let j=0;j<h;j++){
+    const cx=x+(i-(w-1)/2)*GRID, cy=y+(j-(h-1)/2)*GRID;
+    cells.push(Math.round(cx/GRID-0.5)+','+Math.round(cy/GRID-0.5));
+  }
+  return cells;
+}
+function supportedCells(layer){
+  const set=new Set();
+  pieces.forEach(p=>{ if(pieceLayer(p)===layer && BASE_TYPES.indexOf(p.type)!==-1)
+    cellsOf(p.type,p.x,p.y,p.rot).forEach(c=>set.add(c)); });
+  return set;
+}
+// a footprint is placeable on `layer` if ground floor, or fully over a base below
+function canPlace(type, x, y, rot, layer){
+  if(layer<=0) return true;
+  const sup=supportedCells(layer-1);
+  return cellsOf(type,x,y,rot).every(c=>sup.has(c));
+}
+// colour helpers for depth dimming
+function _hx(c){ c=(c||'').trim();
+  if(c[0]==='#'){ if(c.length===4) c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+    return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)]; }
+  const m=c.match(/\d+/g); return m?[+m[0],+m[1],+m[2]]:[0,0,0]; }
+function mixCol(a,b,t){ const A=_hx(a),B=_hx(b);
+  return 'rgb('+Math.round(A[0]+(B[0]-A[0])*t)+','+Math.round(A[1]+(B[1]-A[1])*t)+','+Math.round(A[2]+(B[2]-A[2])*t)+')'; }
+// colour for a piece at floor l given the tallest floor present
+function layerColor(baseCol, bg, l, maxL){ return mixCol(baseCol, bg, Math.min(0.6,(maxL-l)*0.24)); }
+// fill a piece's footprint solid (used so an upper floor hides the floor below)
+function maskPiece(g,p,col){
+  const c=CATALOG[p.type], W=c.w*GRID, H=c.h*GRID;
+  g.save(); g.translate(p.x,p.y); if(p.flip) g.scale(-1,1); g.rotate(p.rot*Math.PI/180);
+  g.globalAlpha=1; g.fillStyle=col; g.fillRect(-W/2,-H/2,W,H); g.restore();
 }
 
 // ---------------- text + image overlays
@@ -980,12 +1073,13 @@ cv.addEventListener('pointerdown', e=>{
   if(tool==='erase'){ drag={mode:'erase',erased:false}; eraseAt(w); return; }
   if(tool==='stamp' && activeStamp){
     const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
-    const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip}));
+    const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer}));
     pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
   }
   if(CATALOG[tool]){
     const c=snapCenter(tool,placeRot,w.x,w.y);
-    const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip};
+    if(!canPlace(tool,c.x,c.y,placeRot,curLayer)){ flashLayerMsg(); drag={mode:'placed'}; return; }  // needs a base below
+    const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer};
     pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus(); drag={mode:'placed'}; return;
   }
   if(tool==='text'){ clearSelection(); addText(w); drag={mode:'placed'}; return; }
@@ -1159,6 +1253,8 @@ window.addEventListener('keydown', e=>{
   if(e.key==='v'||e.key==='V') setTool('select');
   if(e.key==='b'||e.key==='B') setTool('draw');
   if(e.key==='e'||e.key==='E') setTool('erase');
+  if(e.key===']') setLayer(curLayer+1);
+  if(e.key==='[') setLayer(curLayer-1);
   if((selPs.length||selImages.length||selTexts.length||selStrokes.length) && e.key.startsWith('Arrow')){
     e.preventDefault(); const d=e.shiftKey?SNAP:(snapOn?GRID:1);
     let dx=0,dy=0;
@@ -1336,7 +1432,8 @@ function makeIcon(type, px){
   const g=c.getContext('2d'); g.scale(dpr,dpr);
   const cat=CATALOG[type], s=(size-pad*2)/(Math.max(cat.w,cat.h)*GRID);
   g.translate(size/2,size/2); g.scale(s,s);
-  g.strokeStyle=cssVar('--ink'); g.fillStyle=g.strokeStyle;
+  g.strokeStyle = type==='shortwall' ? mixCol(cssVar('--ink'),cssVar('--canvas-bg'),0.5) : cssVar('--ink');
+  g.fillStyle=g.strokeStyle;
   g.lineWidth=1.8/s; g.lineJoin='round'; g.lineCap='round';
   DRAWERS[type](g, cat.w*GRID, cat.h*GRID);
   return c.toDataURL();
@@ -1564,15 +1661,15 @@ $('file-png').onclick=()=>{ closeFile(); exportPNG(); };
 // ---- shareable build code (base64 of the build JSON) ----
 // Fixed type list for share codes: APPEND-ONLY (indices must never change, or
 // old codes break). Decoupled from PIECE_ORDER so the rail can be reordered.
-const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob','helipad','supply','parking','codetower'];
+const CODE_TYPES=['wall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob','helipad','supply','parking','codetower','shortwall'];
 // URL/Reddit-safe base64: no + / = (those wrap or get mangled in links & comments)
 function b64enc(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function b64dec(str){ let s=str.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return decodeURIComponent(escape(atob(s))); }
 // v2: compact arrays, type as an index, no ids, default rot/flip trimmed
 function encodeBuild(){
   const P=pieces.map(p=>{
-    const a=[CODE_TYPES.indexOf(p.type), Math.round(p.x), Math.round(p.y), Math.round(p.rot)||0, p.flip?1:0];
-    while(a.length>3 && a[a.length-1]===0) a.pop();   // trim trailing flip / rot zeros
+    const a=[CODE_TYPES.indexOf(p.type), Math.round(p.x), Math.round(p.y), Math.round(p.rot)||0, p.flip?1:0, p.l||0];
+    while(a.length>3 && a[a.length-1]===0) a.pop();   // trim trailing floor / flip / rot zeros
     return a;
   });
   const obj={p:P};
@@ -1591,7 +1688,7 @@ function decodeBuild(code){
     const o=JSON.parse(b64dec(s.slice(5)));
     if(!o||!Array.isArray(o.p)) throw new Error('bad');
     const pieces=o.p.map(a=>{ const t=CODE_TYPES[a[0]]; if(!t) throw new Error('bad');
-      return {type:t, x:a[1], y:a[2], rot:a[3]||0, flip:!!a[4]}; });
+      return {type:t, x:a[1], y:a[2], rot:a[3]||0, flip:!!a[4], l:a[5]||0}; });
     const strokes=(o.s||[]).map(a=>{ const f=a[2]||[], pts=[];
       for(let i=0;i+1<f.length;i+=2) pts.push({x:f[i],y:f[i+1]});
       return {color:a[0], width:a[1], pts}; });
@@ -1605,7 +1702,7 @@ function decodeBuild(code){
   return o;
 }
 function loadBuild(o){
-  pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip}));
+  pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip, l:p.l||0}));
   strokes=o.strokes||[];
   texts=(o.texts||[]).map(t=>({id:uid++, text:t.text, x:t.x, y:t.y, size:t.size||GRID*0.6, color:t.color||cssVar('--piece')}));
   images=[]; clearOverlaySel();
@@ -1661,8 +1758,13 @@ function exportPNG(){
   images.forEach(im=>{ if(im._img&&im._img.complete) g.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); });
   strokes.forEach(s=>{ if(!s.pts.length)return; g.beginPath(); g.moveTo(s.pts[0].x,s.pts[0].y);
     s.pts.forEach(pt=>g.lineTo(pt.x,pt.y)); g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round';g.lineCap='round'; g.stroke(); });
-  const ink=curInk();
-  pieces.forEach(p=>drawPiece(g,p,ink,1));
+  const ink=curInk(), pbg=cssVar('--canvas-bg'), mxl=maxLayer();
+  const swc={}; pieces.forEach(p=>{ if(p.type==='shortwall'){ const k=swKey(p); swc[k]=(swc[k]||0)+1; } }); const swd=new Set();
+  [...pieces].sort((a,b)=>pieceLayer(a)-pieceLayer(b)).forEach(p=>{ const l=pieceLayer(p), off=layerOff(l);
+    let col=layerColor(ink,pbg,l,mxl);
+    if(p.type==='shortwall'){ const k=swKey(p), pair=swc[k]>=2;
+      if(pair){ if(swd.has(k)) return; swd.add(k); } else col=mixCol(col,pbg,0.5); }
+    g.save(); g.translate(off.x,off.y); if(l>0) maskPiece(g,p,pbg); drawPiece(g,p, col, 1); g.restore(); });
   texts.forEach(t=>drawText(g,t,ink));
   c.toBlob(blob=>{ if(blob) saveFile('fob-layout.png', blob); }, 'image/png');
 }
@@ -1679,6 +1781,15 @@ $('zoom-fit').onclick=()=>{ view={ox:stage.clientWidth/2, oy:stage.clientHeight/
 // snap toggle
 function toggleSnap(){ snapOn=!snapOn; $('btn-snap').classList.toggle('on',snapOn); render(); updateStatus(); }
 $('btn-snap').onclick=toggleSnap;
+
+// ---------------- layers (experimental build-up)
+let toastTimer=null;
+function flashToast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.hidden=true; }, 1600); }
+function flashLayerMsg(){ flashToast('Floor '+curLayer+' needs a wall or bunker below'); }
+function setLayer(n){ curLayer=Math.max(0,n); $('layer-val').textContent = curLayer===0?'G':curLayer; render(); }
+$('layer-up').onclick=()=>setLayer(curLayer+1);
+$('layer-down').onclick=()=>setLayer(curLayer-1);
 
 // draggable rail width (persisted)
 (function(){
@@ -1734,7 +1845,7 @@ function init(){
   let sharedLoaded=false;
   try{ const h=(location.hash||'').slice(1);
     if(/^FOB[12]\./.test(h)){ const o=decodeBuild(h);
-      uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip}));
+      uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
       strokes=o.strokes||[];
       texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece')}));
       images=[]; inkColor=o.ink||null; sharedLoaded=true; }
