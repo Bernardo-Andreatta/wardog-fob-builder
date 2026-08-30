@@ -621,8 +621,9 @@ function worldToScreen(wx,wy){ return {x:wx*view.scale+view.ox, y:wy*view.scale+
 function hitPiece(wx,wy){
   // test top floors first (and other structures before short walls), undoing each
   // piece's layer offset before hit-testing
-  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (pieceLayer(b.p)-pieceLayer(a.p)) || (swRank(b.p)-swRank(a.p)) || (b.i-a.i));
+  const order=pieces.map((p,i)=>({p,i})).sort((a,b)=> (drawLayer(b.p)-drawLayer(a.p)) || (swRank(b.p)-swRank(a.p)) || (b.i-a.i));
   for(const {p} of order){
+    if(pieceLayer(p)>curLayer) continue;   // floors above the view are untouchable
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
@@ -967,16 +968,21 @@ function render(){
     ctx.strokeStyle=s.color; ctx.lineWidth=s.width; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=1;
     ctx.stroke();
   }
-  const maxL=maxLayer(), bg=cssVar('--canvas-bg');
+  // floor view: show the current build floor and everything below, never above
+  const maxL=Math.min(curLayer, maxLayer()), bg=cssVar('--canvas-bg');
   const lc=lowCounts(), swSet=shortwallCells(), lowDrawn=new Set();
   const sorted=pieces.map((p,i)=>({p,i}))    // bottom floors first, short walls under others
-    .sort((a,b)=> (pieceLayer(a.p)-pieceLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .filter(o=>pieceLayer(o.p)<=curLayer)
+    .sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
     .map(o=>o.p);
-  for(const p of sorted){ const l=pieceLayer(p), off=layerOff(l);
-    const st=lowStyle(p, layerColor(colInk,bg,l,maxL), bg, lc, swSet, lowDrawn);
+  for(const p of sorted){ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
+    const st=lowStyle(p, layerColor(colInk,bg,dl,maxL), bg, lc, swSet, lowDrawn);
     if(st.skip) continue;
     ctx.save(); ctx.translate(off.x,off.y);
     if(l>0) maskPiece(ctx,p,bg);   // upper floors are solid: occlude whatever is below
+    // tall pieces: faint shadow marks the footprint, bright body raised above
+    // (fake 3d); the body is solid so the shadow can't bleed through it
+    if(dl>l){ drawPiece(ctx,p, mixCol(st.col,bg,0.55), 1); ctx.translate(0,-LAYER_OFF); maskPiece(ctx,p,bg); }
     drawPiece(ctx,p, st.col, 1); ctx.restore(); }
   for(const t of texts) drawText(ctx,t,colInk);
   const selPs=selectedPieces();
@@ -1070,11 +1076,19 @@ function lowStyle(p, baseCol, bg, counts, swSet, drawn){
   const key=p.type+'|'+swKey(p), pair=counts[key]>=2;
   if(pair){ if(drawn.has(key)) return {skip:true}; drawn.add(key); }   // merged pair draws once
   const overShort = p.type!=='shortwall' && cellsOf(p.type,p.x,p.y,p.rot).some(c=>swSet.has(pieceLayer(p)+':'+c));
-  return {skip:false, col:(pair||overShort) ? baseCol : mixCol(baseCol,bg,0.5)};
+  if(pair||overShort) return {skip:false, col:baseCol};
+  // above ground a low piece rests on a full wall, so it sits between its own
+  // floor's brightness and the floor below (a third shading step); on the
+  // ground it keeps the stronger "low" dim
+  return {skip:false, col:mixCol(baseCol,bg, pieceLayer(p)>0 ? 0.12 : 0.5)};
 }
 const LAYER_OFF = GRID*0.34;                     // upward screen shift per floor
 function layerOff(l){ return {x:0, y:-l*LAYER_OFF}; }
 function pieceLayer(p){ return p.l||0; }
+// tall pieces reach one floor above their base: they draw at that height and
+// stay bright alongside it, but keep their base floor for visibility/support
+const TALL_TYPES=['tower'];
+function drawLayer(p){ return pieceLayer(p) + (TALL_TYPES.indexOf(p.type)!==-1?1:0); }
 function maxLayer(){ return pieces.reduce((m,p)=>Math.max(m,pieceLayer(p)),0); }
 // grid cells a footprint covers, as "col,row" keys. Cell centers are rotated
 // through the piece's true angle, so 90/270 match the old axis swap exactly and
@@ -1111,7 +1125,7 @@ function _hx(c){ c=(c||'').trim();
 function mixCol(a,b,t){ const A=_hx(a),B=_hx(b);
   return 'rgb('+Math.round(A[0]+(B[0]-A[0])*t)+','+Math.round(A[1]+(B[1]-A[1])*t)+','+Math.round(A[2]+(B[2]-A[2])*t)+')'; }
 // colour for a piece at floor l given the tallest floor present
-function layerColor(baseCol, bg, l, maxL){ return mixCol(baseCol, bg, Math.min(0.6,(maxL-l)*0.24)); }
+function layerColor(baseCol, bg, l, maxL){ return mixCol(baseCol, bg, Math.max(0,Math.min(0.6,(maxL-l)*0.24))); }
 // fill a piece's footprint solid (used so an upper floor hides the floor below)
 function maskPiece(g,p,col){
   const c=CATALOG[p.type], W=c.w*GRID, H=c.h*GRID;
@@ -1371,7 +1385,7 @@ cv.addEventListener('pointermove', e=>{
       const bx1=Math.max(marquee.x0,marquee.x1), by1=Math.max(marquee.y0,marquee.y1);
       const B=marquee.base;
       selected=B.pieces.slice();
-      pieces.forEach(p=>{ const b=pieceAABB(p);
+      pieces.forEach(p=>{ if(pieceLayer(p)>curLayer) return; const b=pieceAABB(p);
         if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) selected.push(p.id); });
       selTexts=B.texts.slice();
       texts.forEach(t=>{ if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !selTexts.includes(t.id)) selTexts.push(t.id); });
@@ -1524,7 +1538,7 @@ window.addEventListener('keydown', e=>{
   if(meta && e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
   if(meta && e.key.toLowerCase()==='c'){ e.preventDefault(); duplicateSel(); return; }
   if(meta && e.key.toLowerCase()==='a'){ e.preventDefault();
-    selected=pieces.map(p=>p.id); selImages=images.map(i=>i.id); selTexts=texts.map(t=>t.id); selStrokes=strokes.slice();
+    selected=pieces.filter(p=>pieceLayer(p)<=curLayer).map(p=>p.id); selImages=images.map(i=>i.id); selTexts=texts.map(t=>t.id); selStrokes=strokes.slice();
     render(); updateStatus(); return; }
   // WASD = free camera pan. Works in every tool/mode and never touches the
   // selection or an active ghost, so the camera and the item move independently.
@@ -1671,9 +1685,25 @@ function mirrorGroup(){
   ss.forEach(s=>{ s.pts.forEach(pt=>{ pt.x=2*cx-pt.x; }); delete s._ipts; });
   snapshot(); render(); updateStatus();
 }
+// after removing supports, upper-floor pieces with nothing fully under them
+// fall: delete them too, cascading floor by floor upward
+function collapseUnsupported(){
+  let removedAny=false, changed=true;
+  while(changed){
+    changed=false;
+    for(let i=pieces.length-1;i>=0;i--){ const p=pieces[i];
+      if(pieceLayer(p)>0 && !canPlace(p.type,p.x,p.y,p.rot,pieceLayer(p))){
+        pieces.splice(i,1); changed=true; removedAny=true;
+      }
+    }
+  }
+  if(removedAny) selected=selected.filter(id=>pieces.some(p=>p.id===id));
+  return removedAny;
+}
 function deleteSel(){
   let changed=false;
-  if(selected.length){ pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); changed=true; }
+  if(selected.length){ pieces=pieces.filter(p=>!isSel(p.id)); clearSelection(); changed=true;
+    if(collapseUnsupported()) flashToast('Unsupported structures collapsed'); }
   if(selImages.length){ images=images.filter(i=>!selImages.includes(i.id)); selImages=[]; changed=true; }
   if(selTexts.length){ texts=texts.filter(t=>!selTexts.includes(t.id)); selTexts=[]; changed=true; }
   if(selStrokes.length){ strokes=strokes.filter(s=>selStrokes.indexOf(s)===-1); selStrokes=[]; changed=true; }
@@ -2136,11 +2166,13 @@ function exportPNG(){
     s.pts.forEach(pt=>g.lineTo(pt.x,pt.y)); g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round';g.lineCap='round'; g.stroke(); });
   const ink=curInk(), pbg=cssVar('--canvas-bg'), mxl=maxLayer();
   const lc=lowCounts(), swSet=shortwallCells(), lowDrawn=new Set();
-  pieces.map((p,i)=>({p,i})).sort((a,b)=> (pieceLayer(a.p)-pieceLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
-    .map(o=>o.p).forEach(p=>{ const l=pieceLayer(p), off=layerOff(l);
-    const st=lowStyle(p, layerColor(ink,pbg,l,mxl), pbg, lc, swSet, lowDrawn);
+  pieces.map((p,i)=>({p,i})).sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .map(o=>o.p).forEach(p=>{ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
+    const st=lowStyle(p, layerColor(ink,pbg,dl,mxl), pbg, lc, swSet, lowDrawn);
     if(st.skip) return;
-    g.save(); g.translate(off.x,off.y); if(l>0) maskPiece(g,p,pbg); drawPiece(g,p, st.col, 1); g.restore(); });
+    g.save(); g.translate(off.x,off.y); if(l>0) maskPiece(g,p,pbg);
+    if(dl>l){ drawPiece(g,p, mixCol(st.col,pbg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,pbg); }
+    drawPiece(g,p, st.col, 1); g.restore(); });
   texts.forEach(t=>drawText(g,t,ink));
   c.toBlob(blob=>{ if(blob) saveFile('fob-layout.png', blob); }, 'image/png');
 }
@@ -2163,7 +2195,10 @@ let toastTimer=null;
 function flashToast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false;
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.hidden=true; }, 1600); }
 function flashLayerMsg(){ flashToast('Floor '+curLayer+' needs a wall or bunker below'); }
-function setLayer(n){ curLayer=Math.max(0,n); $('layer-val').textContent = curLayer===0?'G':curLayer; render(); }
+function setLayer(n){ curLayer=Math.max(0,n); $('layer-val').textContent = curLayer===0?'G':curLayer;
+  // pieces on now-hidden floors can't stay selected
+  selected=selected.filter(id=>{ const p=pieces.find(x=>x.id===id); return p && pieceLayer(p)<=curLayer; });
+  render(); updateStatus(); }
 $('layer-up').onclick=()=>setLayer(curLayer+1);
 $('layer-down').onclick=()=>setLayer(curLayer-1);
 
