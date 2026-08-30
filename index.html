@@ -243,6 +243,7 @@
   /* ---- mobile / touch only: desktop (fine pointer) is untouched ---- */
   .tool-exit{display:none;}
   .rot-fab{display:none;}
+  .undo-fab{display:none;}
   .touch-only{display:none;}
   @media (pointer:coarse){ .modal-grid .touch-only{display:block;} }
   @media (pointer:coarse){
@@ -266,6 +267,11 @@
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
     .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete{display:none;}
+    .undo-fab{position:absolute; left:14px; top:14px; display:flex; gap:8px; z-index:9;}
+    .undo-fab .btn{width:44px; height:44px; padding:0; justify-content:center;
+      background:var(--panel); box-shadow:0 4px 16px var(--shadow);}
+    .undo-fab .btn svg{width:18px; height:18px;}
+    .undo-fab .btn:disabled{opacity:.35; pointer-events:none;}
   }
   /* portrait phones / small tablets: rail becomes a horizontal bottom bar */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
@@ -348,6 +354,10 @@
       <button class="group-label" data-sec="color">Color<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="colors" id="color-grid"></div></div>
     </div>
+    <div class="sec">
+      <button class="group-label" data-sec="symbols">Symbols<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="tools" id="sym-grid"></div></div>
+    </div>
     <div class="sec" id="recent-wrap" style="display:none">
       <button class="group-label" data-sec="recent">Recent<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body">
@@ -386,6 +396,11 @@
     </div>
 
     <button class="btn tool-exit" id="tool-exit" title="Back to Select">&times;&nbsp;Done</button>
+
+    <div class="undo-fab" id="undo-fab">
+      <button class="btn" id="fab-undo" title="Undo"><svg viewBox="0 0 24 24"><path d="M4 10h11a5 5 0 0 1 0 10h-5"/><path d="M8 6l-4 4 4 4"/></svg></button>
+      <button class="btn" id="fab-redo" title="Redo"><svg viewBox="0 0 24 24"><path d="M20 10H9a5 5 0 0 0 0 10h5"/><path d="M16 6l4 4-4 4"/></svg></button>
+    </div>
 
     <div class="rot-fab" id="rot-fab">
       <button class="btn" id="rot-ccw" title="Rotate 45&deg; counter-clockwise"><svg viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v5h5"/></svg><span>45&deg;</span></button>
@@ -506,6 +521,15 @@ const CATALOG = {
 const PIECE_ORDER = ['wall','shortwall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
 const LOGI_ORDER = ['helipad','supply','parking','codetower'];
 const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
+// simple annotation symbols: placed as strokes (point outlines), so they move /
+// rotate / mirror / erase / serialize exactly like free drawings
+const SYMBOLS = {
+  'sym-rect': (cx,cy,r)=>[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]].map(([a,b])=>({x:cx+a*r, y:cy+b*r})),
+  'sym-tri':  (cx,cy,r)=>[[0,-1],[1,1],[-1,1],[0,-1]].map(([a,b])=>({x:cx+a*r, y:cy+b*r})),
+  'sym-circle': (cx,cy,r)=>{ const pts=[];
+    for(let k=0;k<=40;k++){ const a=k/40*2*Math.PI; pts.push({x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r}); }
+    return pts; },
+};
 
 let view = {ox:0, oy:0, scale:1};
 let pieces = [];    // {id,type,x,y,rot}
@@ -540,6 +564,8 @@ function selectedPieces(){ return pieces.filter(p=>isSel(p.id)); }
 function clearSelection(){ selected = []; }
 function clearOverlaySel(){ selImages = []; selTexts = []; selStrokes = []; }
 function anySelected(){ return selected.length||selImages.length||selTexts.length||selStrokes.length; }
+// anything rotatable/mirrorable selected? (pieces, labels, drawings)
+function hasRotSel(){ return selected.length||selTexts.length||selStrokes.length; }
 // strip the runtime-only _img cache before serializing
 function imagesData(){ return images.map(im=>({id:im.id,x:im.x,y:im.y,w:im.w,h:im.h,src:im.src})); }
 // rebuild the HTMLImageElement cache after loading images from data
@@ -554,10 +580,15 @@ function snapshot(){
   history.push(s);
   if(history.length > 80) history.shift();
   hidx = history.length-1;
-  persist();
+  persist(); updateUndoFab();
 }
 function undo(){ if(hidx>0){ hidx--; restore(history[hidx]); } }
 function redo(){ if(hidx<history.length-1){ hidx++; restore(history[hidx]); } }
+function updateUndoFab(){
+  const u=$('fab-undo'), r=$('fab-redo');
+  if(u) u.disabled = hidx<=0;
+  if(r) r.disabled = hidx>=history.length-1;
+}
 function restore(s){ const o=JSON.parse(s); pieces=o.pieces; strokes=o.strokes; uid=o.uid||uid;
   images=o.images||[]; texts=o.texts||[]; hydrateImages();
   selected = selected.filter(id=>pieces.some(p=>p.id===id));
@@ -955,7 +986,8 @@ function render(){
   const soloImg = selImages.length===1 && !selected.length && !selTexts.length && !selStrokes.length;
   selImages.forEach(id=>{ const im=images.find(i=>i.id===id); if(im) drawImageSel(im,colAcc,soloImg); });
   selTexts.forEach(id=>{ const t=texts.find(x=>x.id===id); if(t) drawTextSel(t,colAcc); });
-  selStrokes.forEach(s=>drawStrokeSel(s,colAcc));
+  const soloStroke = selStrokes.length===1 && !selected.length && !selImages.length && !selTexts.length;
+  selStrokes.forEach(s=>drawStrokeSel(s,colAcc,soloStroke));
   if(marquee) drawMarquee(colAcc);
   const goff=layerOff(curLayer);
   if(tool==='stamp' && activeStamp){
@@ -1091,7 +1123,8 @@ function maskPiece(g,p,col){
 function drawText(g,t,col){
   g.save(); g.globalAlpha=1; g.fillStyle=col||t.color||cssVar('--piece');
   g.font='600 '+t.size+'px Oswald, sans-serif'; g.textAlign='center'; g.textBaseline='middle';
-  g.fillText(t.text||'', t.x, t.y); g.restore();
+  g.translate(t.x,t.y); g.rotate((t.rot||0)*Math.PI/180);
+  g.fillText(t.text||'', 0, 0); g.restore();
 }
 function textBox(t){
   ctx.save(); ctx.font='600 '+t.size+'px Oswald, sans-serif';
@@ -1100,12 +1133,15 @@ function textBox(t){
 }
 function hitText(pt){ const pad=4/view.scale;
   for(let i=texts.length-1;i>=0;i--){ const t=texts[i], b=textBox(t);
-    if(Math.abs(pt.x-t.x)<=b.w/2+pad && Math.abs(pt.y-t.y)<=b.h/2+pad) return t; }
+    const rad=-(t.rot||0)*Math.PI/180, dx=pt.x-t.x, dy=pt.y-t.y;
+    const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
+    if(Math.abs(lx)<=b.w/2+pad && Math.abs(ly)<=b.h/2+pad) return t; }
   return null;
 }
 function drawTextSel(t,col){ const b=textBox(t), pad=6/view.scale;
-  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
-  ctx.strokeRect(t.x-b.w/2-pad, t.y-b.h/2-pad, b.w+2*pad, b.h+2*pad); ctx.setLineDash([]); ctx.restore();
+  ctx.save(); ctx.translate(t.x,t.y); ctx.rotate((t.rot||0)*Math.PI/180);
+  ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
+  ctx.strokeRect(-b.w/2-pad, -b.h/2-pad, b.w+2*pad, b.h+2*pad); ctx.setLineDash([]); ctx.restore();
 }
 function hitImage(pt){ for(let i=images.length-1;i>=0;i--){ const im=images[i];
   if(Math.abs(pt.x-im.x)<=im.w/2 && Math.abs(pt.y-im.y)<=im.h/2) return im; } return null; }
@@ -1127,9 +1163,11 @@ function strokeBBox(s){ if(!s.pts||!s.pts.length) return null;
   let a=Infinity,b=Infinity,c=-Infinity,d=-Infinity;
   s.pts.forEach(pt=>{ a=Math.min(a,pt.x);c=Math.max(c,pt.x);b=Math.min(b,pt.y);d=Math.max(d,pt.y); });
   return {minx:a,miny:b,maxx:c,maxy:d}; }
-function drawStrokeSel(s,col){ const bb=strokeBBox(s); if(!bb) return; const pad=6/view.scale;
+function drawStrokeSel(s,col,handle){ const bb=strokeBBox(s); if(!bb) return; const pad=6/view.scale;
   ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=1.4/view.scale; ctx.setLineDash([6/view.scale,4/view.scale]);
-  ctx.strokeRect(bb.minx-pad,bb.miny-pad,(bb.maxx-bb.minx)+2*pad,(bb.maxy-bb.miny)+2*pad); ctx.setLineDash([]); ctx.restore(); }
+  ctx.strokeRect(bb.minx-pad,bb.miny-pad,(bb.maxx-bb.minx)+2*pad,(bb.maxy-bb.miny)+2*pad); ctx.setLineDash([]);
+  if(handle){ const r=6/view.scale; ctx.fillStyle=col; ctx.fillRect(bb.maxx-r,bb.maxy-r,2*r,2*r); }
+  ctx.restore(); }
 function uploadImage(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
   inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; const rd=new FileReader();
@@ -1212,6 +1250,15 @@ function tapOnGhost(w){
   return w.x>=b.minx-pad && w.x<=b.maxx+pad && w.y>=b.miny-pad && w.y<=b.maxy+pad;
 }
 
+function placeSymbolAt(w){
+  const cx=snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
+  const s={pts:SYMBOLS[tool](cx,cy,GRID), color:drawColor, width:drawWidth};
+  strokes.push(s);
+  clearSelection(); clearOverlaySel(); selStrokes=[s];   // selected + Select tool,
+  setTool('select');                                     // ready to resize/rotate
+  snapshot(); render(); updateStatus();
+}
+
 function placeStampAt(w){
   const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
   const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer}));
@@ -1246,6 +1293,10 @@ cv.addEventListener('pointerdown', e=>{
     if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'piece', w, ss:sc, moved:false, prev:{x:hover.x,y:hover.y}}; return; }
     placePieceAt(w); drag={mode:'placed'}; return;
   }
+  if(SYMBOLS[tool]){
+    if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'sym', w, ss:sc, moved:false}; return; }
+    placeSymbolAt(w); drag={mode:'placed'}; return;
+  }
   if(tool==='text'){
     if(e.pointerType==='touch'){ drag={mode:'tapplace', kind:'text', w, ss:sc, moved:false}; return; }
     clearSelection(); addText(w); drag={mode:'placed'}; return;
@@ -1263,6 +1314,13 @@ cv.addEventListener('pointerdown', e=>{
   if(singleImgSel){ const im=images.find(i=>i.id===selImages[0]);
     if(im){ const h=worldToScreen(im.x+im.w/2, im.y+im.h/2);
       if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){ drag={mode:'imgresize', im, ar:im.w/im.h, startW:{x:w.x,y:w.y}, ow:im.w, moved:false}; return; } } }
+  // drawing/symbol resize handle (single stroke only)
+  const singleStrokeSel = selStrokes.length===1 && !selected.length && !selImages.length && !selTexts.length;
+  if(singleStrokeSel){ const s=selStrokes[0], bb=strokeBBox(s);
+    if(bb){ const h=worldToScreen(bb.maxx, bb.maxy);
+      if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){
+        drag={mode:'strokeresize', s, bb, startW:{x:w.x,y:w.y},
+          pts0:s.pts.map(pt=>({x:pt.x,y:pt.y})), moved:false}; return; } } }
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
   // hit test top -> bottom: text, piece, drawing, image
   const tHit=hitText(w);
@@ -1351,6 +1409,16 @@ cv.addEventListener('pointermove', e=>{
       let nw=drag.ow+(w.x-drag.startW.x); nw=Math.max(GRID, nw);
       drag.im.w=nw; drag.im.h=nw/drag.ar; drag.moved=true; render();
     }
+    else if(drag.mode==='strokeresize'){
+      // scale about the bbox top-left corner; x and y scale independently
+      const bb=drag.bb, dx0=drag.startW.x-bb.minx, dy0=drag.startW.y-bb.miny;
+      const fx=dx0>4 ? Math.max(0.05,(w.x-bb.minx)/dx0) : 1;
+      const fy=dy0>4 ? Math.max(0.05,(w.y-bb.miny)/dy0) : 1;
+      drag.s.pts.forEach((pt,k)=>{ pt.x=bb.minx+(drag.pts0[k].x-bb.minx)*fx;
+        pt.y=bb.miny+(drag.pts0[k].y-bb.miny)*fy; });
+      delete drag.s._ipts;
+      drag.moved=true; render();
+    }
     else if(drag.mode==='draw'){
       const last=drag.s.pts[drag.s.pts.length-1];
       if(Math.hypot(w.x-last.x,w.y-last.y)>1.5){ drag.s.pts.push({x:w.x,y:w.y}); render(); }
@@ -1359,7 +1427,9 @@ cv.addEventListener('pointermove', e=>{
     else if(drag.mode==='tapplace'){
       drag.w=w;
       if(!drag.moved && Math.hypot(sc.x-drag.ss.x, sc.y-drag.ss.y)>10) drag.moved=true;
-      if(drag.moved) render();                       // dragging: ghost tracks the finger
+      // dragging: ghost rides above the finger so it isn't hidden under it;
+      // it stays at that offset spot on lift, and a tap on it confirms there
+      if(drag.moved){ hover={x:w.x, y:w.y-70/view.scale}; render(); }
       else if(drag.prev) hover=drag.prev;            // mere tap wiggle: ghost stays put
     }
   } else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)) render();  // ghost follows cursor
@@ -1370,6 +1440,7 @@ cv.addEventListener('pointerup', ()=>{
     if(drag.mode==='tapplace' && !drag.moved){   // only a plain tap places
       const w=drag.w;
       if(drag.kind==='text'){ clearSelection(); addText(w); }
+      else if(drag.kind==='sym'){ if(SYMBOLS[tool]) placeSymbolAt(w); }
       else{
         const at = tapOnGhost(w) ? {x:hover.x, y:hover.y} : w;  // hover = ghost aim
         if(at===w) hover=w;                                     // ghost follows a direct tap
@@ -1377,9 +1448,13 @@ cv.addEventListener('pointerup', ()=>{
         else if(drag.kind==='piece' && CATALOG[tool]) placePieceAt(at);
       }
     }
-    if(drag.mode==='gmove' && drag.moved) drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });
+    if(drag.mode==='gmove' && drag.moved){
+      drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });
+      drag.ts.forEach(it=>{ delete it.t._ix; delete it.t._iy; });
+      drag.ss.forEach(it=>{ delete it.s._ipts; });
+    }
     if((drag.mode==='gmove'&&drag.moved)||drag.mode==='rotate'||drag.mode==='draw'||(drag.mode==='erase'&&drag.erased)
-      || (drag.mode==='imgresize'&&drag.moved)) snapshot();
+      || (drag.mode==='imgresize'&&drag.moved) || (drag.mode==='strokeresize'&&drag.moved)) snapshot();
   }
   drag=null; marquee=null; stage.classList.remove('c-panning','c-move'); render();
 });
@@ -1480,13 +1555,13 @@ window.addEventListener('keydown', e=>{
   const selPs=selectedPieces();
   if(e.key==='r'||e.key==='R'){
     const dir=e.shiftKey?-1:1;
-    if(selPs.length){ rotateGroup(dir*rotStep()); }
+    if(hasRotSel()){ rotateGroup(dir*rotStep()); }
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ stepPlaceRot(dir); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); clearOverlaySel(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp'||tool==='text') setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); clearOverlaySel(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp'||tool==='text'||SYMBOLS[tool]) setTool('select'); render(); updateStatus(); }
   if(e.key==='f'||e.key==='F'){
-    if(selPs.length) mirrorGroup();
+    if(hasRotSel()) mirrorGroup();
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
   }
   if(e.key==='g'||e.key==='G') toggleSnap();
@@ -1502,8 +1577,8 @@ window.addEventListener('keydown', e=>{
     if(e.key==='ArrowUp')dy=-d; if(e.key==='ArrowDown')dy=d;
     selPs.forEach(p=>{ p.x+=dx; p.y+=dy; delete p._ix; delete p._iy; });
     images.filter(i=>selImages.includes(i.id)).forEach(im=>{ im.x+=dx; im.y+=dy; });
-    texts.filter(t=>selTexts.includes(t.id)).forEach(t=>{ t.x+=dx; t.y+=dy; });
-    strokes.filter(s=>selStrokes.indexOf(s)!==-1).forEach(s=>s.pts.forEach(pt=>{ pt.x+=dx; pt.y+=dy; }));
+    texts.filter(t=>selTexts.includes(t.id)).forEach(t=>{ t.x+=dx; t.y+=dy; delete t._ix; delete t._iy; });
+    strokes.filter(s=>selStrokes.indexOf(s)!==-1).forEach(s=>{ s.pts.forEach(pt=>{ pt.x+=dx; pt.y+=dy; }); delete s._ipts; });
     snapshot(); render(); updateStatus();
   }
 });
@@ -1542,43 +1617,62 @@ function stepPlaceRot(dir){
   else placeRot = ((placeRot + dir*5)%360+360)%360;
   render();
 }
+// texts and strokes in the current selection (rotate/mirror targets)
+function selTextObjs(){ return texts.filter(t=>selTexts.includes(t.id)); }
+function selStrokeObjs(){ return strokes.filter(s=>selStrokes.indexOf(s)!==-1); }
 function rotateGroup(step){
-  const items=selectedPieces(); if(!items.length) return;
+  const items=selectedPieces(), ts=selTextObjs(), ss=selStrokeObjs();
+  if(!items.length && !ts.length && !ss.length) return;
   // snap on: rotate to the nearest 45deg cardinal (fixes a freely-rotated object
   // that would otherwise gain 45deg on top of its off-grid angle)
-  if(snapOn){
-    const r0=items[0].rot, dir=step<0?-1:1;
+  const ref = items[0] || ts[0];
+  if(snapOn && ref){
+    const r0=ref.rot||0, dir=step<0?-1:1;
     const want=snapRotTarget(r0,dir)-r0;
-    step = items[0].flip ? -want : want;   // flipped pieces store the opposite sense
+    step = (items[0]&&items[0].flip) ? -want : want;   // flipped pieces store the opposite sense
   }
-  // rotate exact "ideal" centers, kept across consecutive rotations: the visible
-  // position re-derives from them every turn, so the half-cell re-snap below can
-  // never accumulate into drift (any move/mirror clears the ideals)
+  // rotate exact "ideal" positions, kept across consecutive rotations: the
+  // visible position re-derives from them every turn, so the half-cell re-snap
+  // below can never accumulate into drift (any move/mirror clears the ideals)
   items.forEach(p=>{ if(p._ix==null){ p._ix=p.x; p._iy=p.y; } });
+  ts.forEach(t=>{ if(t._ix==null){ t._ix=t.x; t._iy=t.y; } });
+  ss.forEach(s=>{ if(!s._ipts) s._ipts=s.pts.map(pt=>({x:pt.x,y:pt.y})); });
   let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
-  items.forEach(p=>{ const b=pieceAABB({type:p.type,x:p._ix,y:p._iy,rot:p.rot});
-    minx=Math.min(minx,b.minx); miny=Math.min(miny,b.miny);
-    maxx=Math.max(maxx,b.maxx); maxy=Math.max(maxy,b.maxy); });
+  const grow=(a,b,c,d)=>{ minx=Math.min(minx,a); miny=Math.min(miny,b); maxx=Math.max(maxx,c); maxy=Math.max(maxy,d); };
+  items.forEach(p=>{ const b=pieceAABB({type:p.type,x:p._ix,y:p._iy,rot:p.rot}); grow(b.minx,b.miny,b.maxx,b.maxy); });
+  ts.forEach(t=>{ const b=textBox(t), r=Math.hypot(b.w,b.h)/2; grow(t._ix-r,t._iy-r,t._ix+r,t._iy+r); });
+  ss.forEach(s=>{ s._ipts.forEach(pt=>grow(pt.x,pt.y,pt.x,pt.y)); });
   const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
   const rad=step*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
+  const rotPt=(o)=>{ const dx=o.x-cx, dy=o.y-cy;
+    return {x:cx + dx*cs - dy*sn, y:cy + dx*sn + dy*cs}; };   // clockwise (canvas y-down)
   items.forEach(p=>{
-    const dx=p._ix-cx, dy=p._iy-cy;
-    p._ix=cx + dx*cs - dy*sn;             // clockwise rotation (canvas y-down)
-    p._iy=cy + dx*sn + dy*cs;
-    p.x=p._ix; p.y=p._iy;
+    const n=rotPt({x:p._ix,y:p._iy}); p._ix=n.x; p._iy=n.y; p.x=n.x; p.y=n.y;
     // drawPiece applies flip BEFORE rotate, so a mirrored piece rotates the
     // opposite way on screen: R(step)*S = S*R(-step). Subtract for flipped ones.
     const st=p.flip?-step:step;
     p.rot=(((p.rot+st)%360)+360)%360;
   });
+  ts.forEach(t=>{
+    const n=rotPt({x:t._ix,y:t._iy}); t._ix=n.x; t._iy=n.y; t.x=n.x; t.y=n.y;
+    t.rot=((((t.rot||0)+step)%360)+360)%360;
+  });
+  ss.forEach(s=>{
+    s._ipts=s._ipts.map(pt=>rotPt(pt));
+    s.pts.forEach((pt,k)=>{ pt.x=s._ipts[k].x; pt.y=s._ipts[k].y; });
+  });
   // A rotation about the bbox center can land the whole arrangement a half-cell
   // off the grid. The offset is uniform for every piece, so snap ONE anchor and
   // shift the rest by the same delta: keeps the shape while putting cells back on
   // grid lines. Only meaningful at right angles, so skip it for 45deg/free steps.
-  if(snapOn && ((Math.round(items[0].rot)%90)===0)){
+  if(snapOn && items.length && ((Math.round(items[0].rot)%90)===0)){
     const a=items[0], s=snapCenter(a.type,a.rot,a.x,a.y);
     const dx=s.x-a.x, dy=s.y-a.y;
-    if(dx||dy) items.forEach(p=>{ p.x+=dx; p.y+=dy; });
+    if(dx||dy){
+      items.forEach(p=>{ p.x+=dx; p.y+=dy; });
+      ts.forEach(t=>{ t.x+=dx; t.y+=dy; });
+      ss.forEach(s2=>s2.pts.forEach(pt=>{ pt.x+=dx; pt.y+=dy; }));
+    }
   }
   snapshot(); render(); updateStatus();
 }
@@ -1586,11 +1680,17 @@ function rotateGroup(step){
 // in drawPiece handles per-piece reflection; rotation is preserved because the
 // flip is applied before the rotate, so M*R(theta) is the true mirror.
 function mirrorGroup(){
-  const items=selectedPieces(); if(!items.length) return;
+  const items=selectedPieces(), ts=selTextObjs(), ss=selStrokeObjs();
+  if(!items.length && !ts.length && !ss.length) return;
   let minx=Infinity,maxx=-Infinity;
   items.forEach(p=>{ const b=pieceAABB(p); minx=Math.min(minx,b.minx); maxx=Math.max(maxx,b.maxx); });
+  ts.forEach(t=>{ const b=textBox(t), r=Math.hypot(b.w,b.h)/2; minx=Math.min(minx,t.x-r); maxx=Math.max(maxx,t.x+r); });
+  ss.forEach(s=>{ const b=strokeBBox(s); if(b){ minx=Math.min(minx,b.minx); maxx=Math.max(maxx,b.maxx); } });
   const cx=(minx+maxx)/2;
   items.forEach(p=>{ p.x=2*cx-p.x; p.flip=!p.flip; delete p._ix; delete p._iy; });
+  // labels mirror their spot and angle but keep readable glyphs
+  ts.forEach(t=>{ t.x=2*cx-t.x; t.rot=((-(t.rot||0))%360+360)%360; delete t._ix; delete t._iy; });
+  ss.forEach(s=>{ s.pts.forEach(pt=>{ pt.x=2*cx-pt.x; }); delete s._ipts; });
   snapshot(); render(); updateStatus();
 }
 function deleteSel(){
@@ -1668,9 +1768,9 @@ function setTool(t){
   tool=t;
   document.querySelectorAll('[data-tool]').forEach(el=>el.classList.toggle('active', el.dataset.tool===t));
   highlightRecent();
-  $('drawopts').classList.toggle('show', t==='draw');
+  $('drawopts').classList.toggle('show', t==='draw'||!!SYMBOLS[t]);
   stage.classList.remove('c-cross','c-pan');
-  if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text') stage.classList.add('c-cross');
+  if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text'||SYMBOLS[t]) stage.classList.add('c-cross');
   if(t==='pan') stage.classList.add('c-pan');
   // mobile: no Esc / right-click, so surface a "Done" chip to leave the tool
   const ex=$('tool-exit'); if(ex) ex.classList.toggle('show', isCoarse() && t!=='select');
@@ -1755,6 +1855,20 @@ function buildRail(){
     b.innerHTML=TOOL_ICONS[t]+'<span class="cap">'+label+'</span>';
     b.onclick=()=>setTool(t); tg.appendChild(b);
   });
+  // symbol tools (placed as resizable drawings)
+  const SYM_ICONS={
+    'sym-rect':'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/></svg>',
+    'sym-tri':'<svg viewBox="0 0 24 24"><path d="M12 4l8 16H4z"/></svg>',
+    'sym-circle':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg>',
+  };
+  const sg=$('sym-grid'); if(sg){ sg.innerHTML='';
+    [['sym-rect','Square'],['sym-tri','Triangle'],['sym-circle','Circle']].forEach(([t,label])=>{
+      const b=document.createElement('button');
+      b.className='tool'; b.dataset.tool=t; b.title=label+' - click, then click the grid';
+      b.innerHTML=SYM_ICONS[t]+'<span class="cap">'+label+'</span>';
+      b.onclick=()=>setTool(t); sg.appendChild(b);
+    });
+  }
   // Image = an action (opens the file picker), not a persistent tool
   const ib=document.createElement('button');
   ib.className='tool'; ib.title='Upload an image overlay';
@@ -1851,6 +1965,7 @@ function updateStatus(){
   $('st-zoom').textContent = Math.round(view.scale*100)+'%';
   // mobile: floating 45deg rotate buttons while pieces are selected (the drag
   // handle on top stays the free-rotation control)
+  updateUndoFab();
   const ghost = CATALOG[tool] || (tool==='stamp'&&activeStamp);
   const rf=$('rot-fab'); if(rf){
     rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
@@ -1862,17 +1977,19 @@ function updateStatus(){
 $('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool('select'); };
 const inGhost=()=>CATALOG[tool] || (tool==='stamp'&&activeStamp);
 function fabRot(d){
-  if(selectedPieces().length) rotateGroup(d);
+  if(hasRotSel()) rotateGroup(d);
   else if(inGhost()){ placeRot=((placeRot+d)%360+360)%360; render(); }
 }
 $('rot-cw').onclick=()=>fabRot(45);
 $('rot-ccw').onclick=()=>fabRot(-45);
 $('fab-mirror').onclick=()=>{
-  if(selectedPieces().length) mirrorGroup();
+  if(hasRotSel()) mirrorGroup();
   else if(inGhost()){ placeFlip=!placeFlip; render(); }
 };
 $('fab-copy').onclick=()=>duplicateSel();
 $('fab-delete').onclick=()=>deleteSel();
+$('fab-undo').onclick=()=>undo();
+$('fab-redo').onclick=()=>redo();
 $('btn-theme').onclick=()=>{
   const root=document.documentElement;
   const cur=root.getAttribute('data-theme');
@@ -1882,9 +1999,9 @@ $('btn-theme').onclick=()=>{
   refreshIcons(); render();
 };
 $('btn-delete').onclick=deleteSel;
-$('btn-rotate').onclick=()=>{ if(selectedPieces().length) rotateGroup(rotStep()); else stepPlaceRot(1); };
+$('btn-rotate').onclick=()=>{ if(hasRotSel()) rotateGroup(rotStep()); else stepPlaceRot(1); };
 $('btn-mirror').onclick=()=>{
-  if(selectedPieces().length) mirrorGroup();
+  if(hasRotSel()) mirrorGroup();
   else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
 };
 $('btn-duplicate').onclick=duplicateSel;
@@ -1953,7 +2070,7 @@ function encodeBuild(){
     s.pts.flatMap(pt=>[Math.round(pt.x),Math.round(pt.y)])]);
   if(S.length) obj.s=S;
   // labels ride along (small); uploaded images do not (too large for a code)
-  const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color]);
+  const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color, Math.round(t.rot||0)]);
   if(T.length) obj.t=T;
   if(inkColor) obj.c=inkColor;   // global structure/text colour
   return 'FOB2.'+b64enc(JSON.stringify(obj));
@@ -1968,7 +2085,7 @@ function decodeBuild(code){
     const strokes=(o.s||[]).map(a=>{ const f=a[2]||[], pts=[];
       for(let i=0;i+1<f.length;i+=2) pts.push({x:f[i],y:f[i+1]});
       return {color:a[0], width:a[1], pts}; });
-    const texts=(o.t||[]).map(a=>({text:a[0], x:a[1], y:a[2], size:a[3]||GRID*0.6, color:a[4]}));
+    const texts=(o.t||[]).map(a=>({text:a[0], x:a[1], y:a[2], size:a[3]||GRID*0.6, color:a[4], rot:a[5]||0}));
     return {pieces, strokes, texts, ink:o.c||null};
   }
   // legacy FOB1: base64 of the full JSON
@@ -1980,7 +2097,7 @@ function decodeBuild(code){
 function loadBuild(o){
   pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip, l:p.l||0}));
   strokes=o.strokes||[];
-  texts=(o.texts||[]).map(t=>({id:uid++, text:t.text, x:t.x, y:t.y, size:t.size||GRID*0.6, color:t.color||cssVar('--piece')}));
+  texts=(o.texts||[]).map(t=>({id:uid++, text:t.text, x:t.x, y:t.y, size:t.size||GRID*0.6, color:t.color||cssVar('--piece'), rot:t.rot||0}));
   images=[]; clearOverlaySel();
   inkColor = o.ink||null; buildColors();
   clearSelection(); snapshot(); render(); updateStatus();
@@ -2021,7 +2138,8 @@ function exportPNG(){
     minY=Math.min(minY,p.y-hh); maxY=Math.max(maxY,p.y+hh); });
   strokes.forEach(s=>s.pts.forEach(pt=>{ minX=Math.min(minX,pt.x);maxX=Math.max(maxX,pt.x);minY=Math.min(minY,pt.y);maxY=Math.max(maxY,pt.y); }));
   images.forEach(im=>{ minX=Math.min(minX,im.x-im.w/2); maxX=Math.max(maxX,im.x+im.w/2); minY=Math.min(minY,im.y-im.h/2); maxY=Math.max(maxY,im.y+im.h/2); });
-  texts.forEach(t=>{ const b=textBox(t); minX=Math.min(minX,t.x-b.w/2); maxX=Math.max(maxX,t.x+b.w/2); minY=Math.min(minY,t.y-b.h/2); maxY=Math.max(maxY,t.y+b.h/2); });
+  texts.forEach(t=>{ const b=textBox(t), r=t.rot?Math.hypot(b.w,b.h)/2:0, hw=r||b.w/2, hh=r||b.h/2;
+    minX=Math.min(minX,t.x-hw); maxX=Math.max(maxX,t.x+hw); minY=Math.min(minY,t.y-hh); maxY=Math.max(maxY,t.y+hh); });
   const m=GRID; minX-=m;minY-=m;maxX+=m;maxY+=m;
   const W=maxX-minX, H=maxY-minY, sc=2;
   const c=document.createElement('canvas'); c.width=W*sc; c.height=H*sc;
@@ -2132,7 +2250,7 @@ function init(){
     if(/^FOB[12]\./.test(h)){ const o=decodeBuild(h);
       uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
       strokes=o.strokes||[];
-      texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece')}));
+      texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece'),rot:t.rot||0}));
       images=[]; inkColor=o.ink||null; sharedLoaded=true; }
   }catch(e){}
   buildRecent(); buildColors();
