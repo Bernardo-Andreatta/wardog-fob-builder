@@ -213,6 +213,18 @@
   .status .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
   .status .sp{flex:1}
 
+  /* fullscreen mode: hide the whole rail; the chevron tab brings it back */
+  .app.rail-off .rail, .app.rail-off .rail-resize{display:none;}
+  .app.rail-off{grid-template-columns:0 1fr;}
+  #rail-toggle{position:absolute; left:0; top:50%; transform:translateY(-50%); z-index:9;
+    background:var(--panel); border:1px solid var(--line); border-left:none;
+    border-radius:0 8px 8px 0; padding:16px 3px; display:flex; align-items:center;
+    color:var(--muted); box-shadow:0 4px 16px var(--shadow);}
+  #rail-toggle:hover{color:var(--accent); border-color:var(--accent);}
+  #rail-toggle svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2;
+    stroke-linecap:round; stroke-linejoin:round; transition:transform .15s;}
+  .app.rail-off #rail-toggle svg{transform:rotate(180deg);}
+
   .rail-resize{position:absolute; left:0; top:0; bottom:0; width:10px; z-index:6; cursor:col-resize; user-select:none;}
   .rail-resize::after{content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:transparent; transition:background .12s;}
   .rail-resize:hover::after, .rail-resize.drag::after{background:var(--accent);}
@@ -230,6 +242,7 @@
 
   /* ---- mobile / touch only: desktop (fine pointer) is untouched ---- */
   .tool-exit{display:none;}
+  .rot-fab{display:none;}
   .touch-only{display:none;}
   @media (pointer:coarse){ .modal-grid .touch-only{display:block;} }
   @media (pointer:coarse){
@@ -245,10 +258,15 @@
     .tool-exit.show{display:inline-flex; position:absolute; left:50%; top:14px;
       transform:translateX(-50%); z-index:10; background:var(--panel);
       box-shadow:0 4px 16px var(--shadow); padding:9px 14px;}
+    .rot-fab.show{position:absolute; left:14px; bottom:14px; right:76px; display:flex;
+      gap:8px; z-index:10; flex-wrap:wrap;}
+    .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
+      background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
+    .rot-fab .btn svg{width:17px; height:17px;}
   }
   /* portrait phones / small tablets: rail becomes a horizontal bottom bar */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
-    .app{grid-template-columns:1fr; grid-template-rows:auto 1fr auto auto;
+    .app, .app.rail-off{grid-template-columns:1fr; grid-template-rows:auto 1fr auto auto;
       grid-template-areas:"top" "stage" "rail" "status";}
     .topbar{padding:8px 10px; gap:10px; overflow-x:auto;}
     .brand .sub{display:none;}
@@ -271,8 +289,20 @@
     .colors{height:100%; display:grid; grid-auto-flow:column; grid-template-rows:1fr 1fr;
       gap:8px; align-items:center; justify-items:center; padding:0 2px;}
     .rail-resize{display:none;}        /* no side rail to resize */
+    /* collapsed sections shrink to a thin vertical title strip */
+    .sec.collapsed{width:auto;}
+    .sec.collapsed .group-label{writing-mode:vertical-rl; height:100%; padding:2px 1px;
+      gap:6px; justify-content:flex-start;}
+    /* selection edit ops live in the floating bar instead of the rail */
+    #btn-rotate, #btn-mirror, #btn-duplicate, #btn-delete{display:none;}
     .drawopts{max-width:min(290px, calc(100vw - 28px));}
     .status{padding-bottom:calc(6px + env(safe-area-inset-bottom));}
+    /* rail toggle sits at the bottom edge of the stage, above the bottom bar */
+    #rail-toggle{left:50%; top:auto; bottom:0; transform:translateX(-50%);
+      border:1px solid var(--line); border-bottom:none; border-radius:8px 8px 0 0;
+      padding:3px 20px;}
+    #rail-toggle svg{transform:rotate(-90deg);}
+    .app.rail-off #rail-toggle svg{transform:rotate(90deg);}
   }
 </style>
 
@@ -331,6 +361,8 @@
     <div class="rail-resize" id="rail-resize" title="Drag to resize the menu"></div>
     <canvas id="board"></canvas>
 
+    <button id="rail-toggle" title="Hide / show the menu (fullscreen)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+
     <div class="layerbar" id="layerbar" title="Build floor - higher floors need a wall/bunker base below ( [ / ] )">
       <span class="lab">Floor</span>
       <button class="lbtn" id="layer-down">&minus;</button>
@@ -347,6 +379,14 @@
     </div>
 
     <button class="btn tool-exit" id="tool-exit" title="Back to Select">&times;&nbsp;Done</button>
+
+    <div class="rot-fab" id="rot-fab">
+      <button class="btn" id="rot-ccw" title="Rotate 45&deg; counter-clockwise"><svg viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v5h5"/></svg><span>45&deg;</span></button>
+      <button class="btn" id="rot-cw" title="Rotate 45&deg; clockwise"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span>45&deg;</span></button>
+      <button class="btn" id="fab-mirror" title="Mirror / flip"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg></button>
+      <button class="btn" id="fab-copy" title="Duplicate"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg></button>
+      <button class="btn danger" id="fab-delete" title="Delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+    </div>
 
     <div class="zoombar">
       <button class="btn" id="zoom-in" title="Zoom in">+</button>
@@ -1150,7 +1190,7 @@ function placePieceAt(w){
 
 cv.addEventListener('pointerdown', e=>{
   if(e.button===2) return;                 // right-click handled by contextmenu
-  cv.setPointerCapture(e.pointerId);
+  try{ cv.setPointerCapture(e.pointerId); }catch(_){}
   const w=evtW(e), sc=evtS(e);
   if(e.button===1 || spaceDown || tool==='pan'){
     drag={mode:'pan',sx:sc.x,sy:sc.y,ox:view.ox,oy:view.oy}; stage.classList.add('c-panning'); return;
@@ -1251,7 +1291,7 @@ cv.addEventListener('pointermove', e=>{
     }
     else if(drag.mode==='rotate'){
       let ang=Math.atan2(w.x-drag.p.x, -(w.y-drag.p.y))*180/Math.PI;
-      if(!e.shiftKey) ang=Math.round(ang/5)*5;
+      if(!e.shiftKey && e.pointerType!=='touch') ang=Math.round(ang/5)*5;   // touch handle = free rotation
       drag.p.rot=((ang%360)+360)%360; render(); updateStatus();
     }
     else if(drag.mode==='marquee'){
@@ -1757,10 +1797,18 @@ function buildSwatches(){
 function updateCursor(w){}
 function updateStatus(){
   $('st-zoom').textContent = Math.round(view.scale*100)+'%';
+  // mobile: floating 45deg rotate buttons while pieces are selected (the drag
+  // handle on top stays the free-rotation control)
+  const rf=$('rot-fab'); if(rf) rf.classList.toggle('show', isCoarse() && !!anySelected());
 }
 
 // ---------------- top bar buttons
 $('tool-exit').onclick=()=>{ clearSelection(); clearOverlaySel(); setTool('select'); };
+$('rot-cw').onclick=()=>rotateGroup(45);
+$('rot-ccw').onclick=()=>rotateGroup(-45);
+$('fab-mirror').onclick=()=>mirrorGroup();
+$('fab-copy').onclick=()=>duplicateSel();
+$('fab-delete').onclick=()=>deleteSel();
 $('btn-theme').onclick=()=>{
   const root=document.documentElement;
   const cur=root.getAttribute('data-theme');
@@ -1970,6 +2018,14 @@ $('layer-down').onclick=()=>setLayer(curLayer-1);
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
   });
 })();
+// fullscreen mode: collapse the whole rail (persisted)
+const appEl=document.querySelector('.app');
+$('rail-toggle').onclick=()=>{
+  const off=!appEl.classList.contains('rail-off');
+  appEl.classList.toggle('rail-off', off);
+  try{ localStorage.setItem('wardog-fob-railoff', off?'1':''); }catch(e){}
+};
+
 // commands / controls modal
 function openCmd(){ $('cmd-modal').hidden=false; }
 function closeCmd(){ $('cmd-modal').hidden=true; }
@@ -1992,6 +2048,7 @@ function initCollapsibles(){
 }
 function init(){
   try{ const rw=localStorage.getItem('wardog-fob-railw'); if(rw) document.documentElement.style.setProperty('--rail-w', parseInt(rw)+'px'); }catch(e){}
+  try{ if(localStorage.getItem('wardog-fob-railoff')==='1') document.querySelector('.app').classList.add('rail-off'); }catch(e){}
   applySavedOrder(PIECE_ORDER, 'wardog-fob-order'); applySavedOrder(LOGI_ORDER, 'wardog-fob-logi');
   buildRail(); buildSwatches(); initCollapsibles();
   try{ const saved=JSON.parse(localStorage.getItem('wardog-fob')||'null');
