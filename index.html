@@ -2409,14 +2409,17 @@ $('btn-duplicate').onclick=duplicateSel;
 let clearArm=false, clearTimer=null;
 function resetClearBtn(){ clearArm=false; const b=$('btn-clear'); b.classList.remove('armed'); b.querySelector('span').textContent='Clear'; }
 $('btn-clear').onclick=()=>{
-  if(!pieces.length && !strokes.length){ return; }
+  if(!pieces.length && !strokes.length && !images.length && !texts.length && layers.length<=1){ return; }
   const b=$('btn-clear');
   if(!clearArm){
     clearArm=true; b.classList.add('armed'); b.querySelector('span').textContent='Confirm?';
     clearTimer=setTimeout(resetClearBtn, 2600); return;
   }
   clearTimeout(clearTimer); resetClearBtn();
-  pieces=[]; strokes=[]; images=[]; texts=[]; clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
+  pieces=[]; strokes=[]; images=[]; texts=[]; clearSelection(); clearOverlaySel();
+  layers=[]; selLayers=[]; curLayerId=0; curLayer=0; ensureLayers();   // back to a single Ground layer
+  $('layer-val').textContent='G'; renderLayerPanel();
+  snapshot(); render(); updateStatus();
 };
 // unified save: uses the artifact downloads capability when present, else a normal browser download
 async function saveFile(filename, data){
