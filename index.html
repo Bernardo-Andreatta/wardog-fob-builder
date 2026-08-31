@@ -384,7 +384,7 @@
       width:1px; background:var(--line);}
     .sec-tools.collapsed{padding-right:2px;}
     .drawopts{max-width:min(290px, calc(100vw - 28px));}
-    .status{padding-bottom:calc(6px + env(safe-area-inset-bottom));}
+    .status{display:none;}   /* hide the bottom zoom bar on mobile to free map space */
     /* rail toggle sits at the bottom edge of the stage, above the bottom bar */
     #rail-toggle{left:50%; top:auto; bottom:0; transform:translateX(-50%);
       border:1px solid var(--line); border-bottom:none; border-radius:8px 8px 0 0;
@@ -2833,6 +2833,16 @@ function showPanel(on){
 $('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));
 $('panel-toggle').onclick=()=>showPanel(true);
 $('lp-close').onclick=()=>showPanel(false);
+// mobile: tapping outside the floating panel dismisses it (a tap on the canvas is
+// swallowed so it doesn't also place/select; taps on other UI still act)
+document.addEventListener('pointerdown', e=>{
+  const app=document.querySelector('.app');
+  if(app.classList.contains('panel-off')) return;
+  if(!(isCoarse() || window.innerWidth<=720)) return;
+  if(e.target.closest('#layers-panel, #btn-layers, #panel-toggle')) return;
+  showPanel(false);
+  if(e.target.id==='board'){ e.preventDefault(); e.stopPropagation(); }
+}, true);
 // group / ungroup buttons
 $('btn-group').onclick=groupSel;
 $('btn-ungroup').onclick=ungroupSel;
