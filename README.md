@@ -52,10 +52,12 @@ The floating side panel (**Layers** in the top bar) has two tabs: *Layers* and
 - **Builder** — *who* puts it there. Ships with Builder 1 and Builder 2.
 
 New pieces take the active stage and builder. To re-tag pieces that are already
-down, select them and hit **Stage → sel.** / **Builder → sel.**
+down, select them and hit **Set stage → <name>** / **Set builder → <name>**.
 
-- **Colour by** paints the board by stage or by builder, so you can see the plan at
-  a glance.
+- **Highlight** has four modes. *Stage* and *Builder* colour the piece outlines;
+  *Both* shows the two at once — the outline is the stage colour, and the piece is
+  washed in its builder's colour with a hatch at that builder's own angle, so the
+  builders stay apart in greyscale or if the colours are hard to tell apart.
 - The **eye** on a row filters that stage/builder off the board (hidden pieces
   can't be selected either) — handy for working on one phase at a time.
 - Removing a tag never deletes pieces; they just become *Unassigned*.
@@ -72,8 +74,9 @@ Pick any combination of:
 - All stages, colour-coded · one image per stage (optionally cumulative: stage 1, 1–2, 1–3…)
 - All builders, colour-coded · one image per builder
 
-Options: ghost the pieces left out of a view, draw the grid, include drawings &
-labels, caption each image, and pick 1×–4× resolution. Your choices are remembered.
+Options: mark builders with a hatch fill (stage-coloured images then carry both
+dimensions), ghost the pieces left out of a view, draw the grid, include drawings
+& labels, caption each image, and pick 1×–4× resolution. Choices are remembered.
 
 Every image is rendered into the **whole build's** frame, so the PNGs line up
 exactly when you stack them or flip through them.

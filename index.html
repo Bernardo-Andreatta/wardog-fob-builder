@@ -438,14 +438,19 @@
   .pl-ic svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .pl-rename{flex:1; min-width:0; font-family:var(--font-ui); font-size:12.5px; padding:1px 4px;
     border:1px solid var(--accent); border-radius:4px; background:var(--panel); color:var(--ink);}
-  .plan-seg{display:flex; gap:4px;}
+  .plan-seg{display:grid; grid-template-columns:1fr 1fr; gap:4px;}
   .plan-seg button{flex:1; padding:4px 0; font-size:11px; border:1px solid var(--line); border-radius:6px;
     background:var(--panel-2); color:var(--muted); font-family:var(--font-disp); letter-spacing:.06em;
     text-transform:uppercase;}
   .plan-seg button.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
-  .plan-apply{display:flex; gap:4px;}
-  .plan-apply button{flex:1; padding:5px 0; font-size:11.5px; border:1px solid var(--line); border-radius:6px;
-    background:var(--panel-2); color:var(--ink);}
+  .plan-legend{font-family:var(--font-mono); font-size:10.5px; color:var(--muted); line-height:1.35;}
+  .plan-legend[hidden]{display:none}
+  .plan-apply{display:flex; flex-direction:column; gap:5px;}
+  .plan-apply button{padding:6px 9px; font-size:12px; text-align:left; border:1px solid var(--line);
+    border-radius:6px; background:var(--panel-2); color:var(--muted);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .plan-apply button b{color:var(--accent); font-weight:600;}
+  .plan-apply button:disabled b{color:var(--muted)}
   .plan-apply button:hover:not(:disabled){border-color:var(--accent)}
   .plan-apply button:disabled{opacity:.38; cursor:default;}
   .plan-hint{font-size:10.5px; color:var(--muted); line-height:1.35;}
@@ -573,17 +578,20 @@
             <div class="plan-list" id="stage-list"></div>
             <div class="plan-sub">Builder<em>who puts it there</em><span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
             <div class="plan-list" id="builder-list"></div>
-            <div class="plan-sub">Colour by</div>
+            <div class="plan-sub">Highlight<em>what the board shows</em></div>
             <div class="plan-seg" id="plan-colorby">
               <button data-mode="none" class="on">Off</button>
               <button data-mode="stage">Stage</button>
               <button data-mode="builder">Builder</button>
+              <button data-mode="both">Both</button>
             </div>
+            <div class="plan-legend" id="plan-legend" hidden>outline = stage &middot; fill + hatch = builder</div>
+            <div class="plan-sub">Apply to selection</div>
             <div class="plan-apply">
-              <button id="plan-apply-stage" title="Tag the selected pieces with the active stage" disabled>Stage &rarr; sel.</button>
-              <button id="plan-apply-builder" title="Tag the selected pieces with the active builder" disabled>Builder &rarr; sel.</button>
+              <button id="plan-apply-stage" title="Re-tag the selected pieces with the active stage" disabled>Set stage <b id="plan-as-name">&mdash;</b></button>
+              <button id="plan-apply-builder" title="Re-tag the selected pieces with the active builder" disabled>Set builder <b id="plan-ab-name">&mdash;</b></button>
             </div>
-            <div class="plan-hint">New pieces take the active stage &amp; builder. The eye filters the board; Export image writes one PNG per stage / builder.</div>
+            <div class="plan-hint">New pieces take the active stage &amp; builder; the two buttons above re-tag whatever is selected. The eye filters the board; Export image writes one PNG per stage / builder.</div>
           </div>
         </div>
       </div>
@@ -656,7 +664,8 @@
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
         <div class="k">Layers button &rarr; Build Plan tab</div><div class="d">Tag pieces with a stage (early &middot; mid &middot; late) and a builder as you place them</div>
         <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
-        <div class="k">Stage &rarr; sel. &middot; Builder &rarr; sel.</div><div class="d">Re-tag pieces that are already built</div>
+        <div class="k">Highlight: Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the stage colour and washes the piece in its builder's colour + hatch angle</div>
+        <div class="k">Set stage / Set builder buttons</div><div class="d">Re-tag the selected pieces with the active stage / builder</div>
         <div class="k">Export / Import &rarr; Export image</div><div class="d">One PNG per stage / builder, all sharing the same frame</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
         <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
@@ -698,6 +707,7 @@
         </div>
         <div class="exp-col">
           <h4>Options</h4>
+          <label class="exp-opt" title="Stage-coloured images also wash each piece in its builder's colour and hatch, so one image shows both"><input type="checkbox" id="exp-fill-builder"><span>Mark builders with a hatch fill</span></label>
           <label class="exp-opt"><input type="checkbox" id="exp-ghost"><span>Ghost the pieces left out</span></label>
           <label class="exp-opt"><input type="checkbox" id="exp-grid"><span>Draw the grid</span></label>
           <label class="exp-opt"><input type="checkbox" id="exp-notes"><span>Include drawings &amp; labels</span></label>
@@ -853,9 +863,36 @@ function planVisible(p){
 }
 // colour-by paints each piece in its tag's colour; untagged pieces stay ink, dimmed
 function planColorOf(p, ink, bg){
-  if(planColorBy==='stage'){ const s=stageOf(p); return s?s.color:mixCol(ink,bg,0.5); }
+  if(planColorBy==='stage'||planColorBy==='both'){ const s=stageOf(p); return s?s.color:mixCol(ink,bg,0.5); }
   if(planColorBy==='builder'){ const b=builderOf(p); return b?b.color:mixCol(ink,bg,0.5); }
   return ink;
+}
+// Second visual channel. The outline says *when* (stage); this says *who*: a
+// translucent wash plus a hatch whose angle belongs to that builder, so the two
+// dimensions read at the same time - and the hatch still separates builders in
+// greyscale or for anyone who can't split the colours apart.
+const HATCH_ANGLES=[Math.PI/4, -Math.PI/4, 0, Math.PI/2, Math.PI/8, -Math.PI/8, 3*Math.PI/8, -3*Math.PI/8];
+function drawPlanFill(g, p, col, idx){
+  const c=CATALOG[p.type]; if(!c) return;
+  const w=c.w*GRID, h=c.h*GRID, r=(p.rot||0)*Math.PI/180;
+  const n=HATCH_ANGLES.length, ang=HATCH_ANGLES[((idx%n)+n)%n];
+  g.save();
+  g.translate(p.x,p.y); g.rotate(r);
+  g.beginPath(); g.rect(-w/2,-h/2,w,h); g.clip();
+  g.globalAlpha=0.14; g.fillStyle=col; g.fillRect(-w/2,-h/2,w,h);
+  g.rotate(ang-r);                       // hatch angle is absolute, not per-piece
+  const R=Math.hypot(w,h)/2+GRID/4, step=GRID/3.2;
+  g.globalAlpha=0.42; g.strokeStyle=col; g.lineWidth=1.5; g.lineCap='butt';
+  g.beginPath();
+  for(let d=-R; d<=R; d+=step){ g.moveTo(-R,d); g.lineTo(R,d); }
+  g.stroke();
+  g.restore();
+}
+// the board's own fill pass (export builds its own from the job's fill channel)
+function planFill(g, p){
+  if(planColorBy!=='both') return;
+  const b=builderOf(p); if(!b) return;
+  drawPlanFill(g, p, b.color, builders.indexOf(b));
 }
 function planCount(kind, id){
   return pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
@@ -1459,6 +1496,7 @@ function drawLayerContent(g, L, colInk, bg, maxL){
     g.save(); g.translate(off.x,off.y);
     if(masksBelow(p)) maskPiece(g,p,bg);
     if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,bg); }
+    planFill(g,p);
     drawPiece(g,p, st.col, 1); g.restore(); }
   for(const t of texts){ if(itemLayerId(t)!==lid) continue; drawText(g,t,colInk); }
 }
@@ -3172,6 +3210,7 @@ function renderPlanPanel(){
   bl.innerHTML=''; builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
   bl.appendChild(buildPlanRow('builder',null));
   document.querySelectorAll('#plan-colorby button').forEach(b=>b.classList.toggle('on', b.dataset.mode===planColorBy));
+  const lg=$('plan-legend'); if(lg) lg.hidden = planColorBy!=='both';
   updatePlanApply();
 }
 // runs from updateStatus, so the tallies keep up with placing / deleting without
@@ -3180,6 +3219,10 @@ function updatePlanApply(){
   const has=!!selected.length, a=$('plan-apply-stage'), b=$('plan-apply-builder');
   if(a) a.disabled=!has;
   if(b) b.disabled=!has;
+  const set=(el,v)=>{ if(el && el.textContent!==v) el.textContent=v; };
+  const S=curStageId==null?null:stageById(curStageId), B=curBuilderId==null?null:builderById(curBuilderId);
+  set($('plan-as-name'), S?S.name:'Unassigned');
+  set($('plan-ab-name'), B?B.name:'Unassigned');
   document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
     const n=row.querySelector('.pl-n'); if(!n) return;
     const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
@@ -3200,9 +3243,10 @@ document.querySelectorAll('#plan-colorby button').forEach(b=>{
 // flip cleanly: stage 1 sits exactly where stage 1 sits in the finished base.
 let expCfg={whole:true, stagesAll:true, stagesEach:true, stagesCum:false,
             buildersAll:true, buildersEach:true,
-            ghost:true, grid:true, notes:true, title:true, scale:2};
+            fillBuilder:true, ghost:true, grid:true, notes:true, title:true, scale:2};
 const EXP_FIELDS=[['whole','exp-whole'],['stagesAll','exp-stages-all'],['stagesEach','exp-stages-each'],
   ['stagesCum','exp-stages-cum'],['buildersAll','exp-builders-all'],['buildersEach','exp-builders-each'],
+  ['fillBuilder','exp-fill-builder'],
   ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],['title','exp-title']];
 function loadExpCfg(){ try{ const o=JSON.parse(localStorage.getItem('wardog-fob-export')||'null');
   if(o&&typeof o==='object') Object.assign(expCfg,o); }catch(e){} }
@@ -3222,13 +3266,14 @@ function jobFile(kind, i, name){ const sl=slug(name), pre=kind+'-'+(i+1);
 // palette the focused pieces are painted with
 function exportJobs(){
   const jobs=[], all=()=>true;
+  const sf = expCfg.fillBuilder && builders.length ? 'builder' : null;   // stage images also carry the builder
   if(expCfg.whole) jobs.push({file:'whole-build', title:'Whole build', inc:all, col:null});
-  if(expCfg.stagesAll && stages.length) jobs.push({file:'all-stages', title:'All stages', inc:all, col:'stage'});
+  if(expCfg.stagesAll && stages.length) jobs.push({file:'all-stages', title:'All stages', inc:all, col:'stage', fill:sf});
   if(expCfg.stagesEach) stages.forEach((s,i)=>{
     const inc = expCfg.stagesCum ? (p=>{ const k=stageIndex(p); return k>=0 && k<=i; })
                                  : (p=>p.st===s.id);
     jobs.push({file:jobFile('stage',i,s.name),
-      title:(expCfg.stagesCum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name, inc:inc, col:'stage'});
+      title:(expCfg.stagesCum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name, inc:inc, col:'stage', fill:sf});
   });
   if(expCfg.buildersAll && builders.length) jobs.push({file:'all-builders', title:'All builders', inc:all, col:'builder'});
   if(expCfg.buildersEach) builders.forEach((b,i)=>
@@ -3295,6 +3340,7 @@ function renderExport(job, B){
         g.save(); g.translate(off.x,off.y);
         if(!ghost && masksBelow(p)) maskPiece(g,p,bg);
         if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); if(!ghost) maskPiece(g,p,bg); }
+        if(!ghost && job.fill==='builder'){ const b=builderOf(p); if(b) drawPlanFill(g,p,b.color,builders.indexOf(b)); }
         drawPiece(g,p, st.col, 1); g.restore();
       });
   };
