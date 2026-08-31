@@ -182,11 +182,6 @@
   .swatches{display:flex; gap:5px}
   .sw{width:20px;height:20px;border-radius:50%; border:2px solid transparent; cursor:pointer; box-shadow:0 0 0 1px var(--line)}
   .sw.active{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink)}
-  .colors{display:flex; gap:8px; flex-wrap:wrap; padding:2px;}
-  .cswatch{width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer;
-    box-shadow:0 0 0 1px var(--line); transition:transform .08s;}
-  .cswatch:hover{transform:scale(1.08)}
-  .cswatch.active{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
   .drawopts input[type=range]{width:90px; accent-color:var(--accent)}
   .layerbar{position:absolute; right:14px; top:14px; display:flex; align-items:center; gap:8px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:6px 10px;
@@ -375,8 +370,6 @@
     .tool svg, .ebtn svg{width:20px; height:20px;}
     .piece-tool{padding:5px 3px; gap:3px;}
     .piece-tool img{width:24px; height:24px;}
-    .colors{height:100%; display:grid; grid-auto-flow:column; grid-template-rows:1fr 1fr;
-      gap:8px; align-items:center; justify-items:center; padding:0 2px;}
     .rail-resize{display:none;}        /* no side rail to resize */
     /* collapsed sections shrink to a thin vertical title strip */
     .sec.collapsed{width:auto;}
@@ -507,12 +500,12 @@
       </div></div>
     </div>
     <div class="sec">
-      <button class="group-label" data-sec="color">Color<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div class="sec-body"><div class="colors" id="color-grid"></div></div>
+      <button class="group-label" data-sec="structures">Structures<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="pieces" id="piece-grid"></div></div>
     </div>
     <div class="sec">
-      <button class="group-label" data-sec="symbols">Annotate<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div class="sec-body"><div class="tools" id="sym-grid"></div></div>
+      <button class="group-label" data-sec="logistics">Logistics<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="pieces" id="logi-grid"></div></div>
     </div>
     <div class="sec" id="recent-wrap" style="display:none">
       <button class="group-label" data-sec="recent">Recent<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -521,12 +514,8 @@
       </div>
     </div>
     <div class="sec">
-      <button class="group-label" data-sec="structures">Structures<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div class="sec-body"><div class="pieces" id="piece-grid"></div></div>
-    </div>
-    <div class="sec">
-      <button class="group-label" data-sec="logistics">Logistics<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div class="sec-body"><div class="pieces" id="logi-grid"></div></div>
+      <button class="group-label" data-sec="symbols">Annotate<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="tools" id="sym-grid"></div></div>
     </div>
   </div>
 
@@ -816,15 +805,10 @@ const STAMP_CAP = 14;       // max non-favorite recents kept
 let images = [];            // uploaded overlays: {id,x,y,w,h,src,_img}  (center x,y)
 let texts = [];             // labels: {id,x,y,text,size,color}          (center x,y)
 let selImages = [], selTexts = [], selStrokes = [];   // multi-select of overlays (ids / stroke refs)
-let inkColor = null;        // global structure/text colour; null = theme default
-// Wardogs team colours (red / green / blue) + the theme default
-const INK_COLORS = [
-  {name:'Default', val:null},
-  {name:'Red',   val:'#e23b3b'},
-  {name:'Green', val:'#43c43a'},
-  {name:'Blue',  val:'#5bc0eb'},
-];
-function curInk(){ return inkColor || cssVar('--piece'); }
+// Base structure/label colour. There is no global ink picker any more: a piece's
+// colour says which stage / builder it belongs to (see planColorOf), so this is
+// only the neutral theme colour everything falls back to.
+function curInk(){ return cssVar('--piece'); }
 
 // ---------------- build plan: stages + builders -------------------------------
 // A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
@@ -837,7 +821,7 @@ let stages=[], builders=[];              // {id,name,color,visible}
 let stageUid=1, builderUid=1;
 let curStageId, curBuilderId;            // tags stamped onto newly placed pieces (undefined = never chosen)
 let showNoStage=true, showNoBuilder=true;// filter rows for untagged pieces
-let planColorBy='none';                  // 'none' | 'stage' | 'builder'
+let planColorBy='none';                  // 'none' | 'stage' | 'builder' | 'both'
 function ensurePlan(){
   if(!Array.isArray(stages) || !stages.length)
     stages=DEFAULT_STAGES.map((s,i)=>({id:stageUid++, name:s[0], note:s[1], color:PLAN_COLORS[i], visible:true}));
@@ -1051,7 +1035,7 @@ function restore(s){ const o=JSON.parse(s); pieces=o.pieces; strokes=o.strokes; 
   selTexts = selTexts.filter(id=>texts.some(t=>t.id===id));
   selStrokes = selStrokes.filter(s=>strokes.indexOf(s)!==-1);
   render(); updateStatus(); persist(); }
-function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,ink:inkColor,layers,curLayerId,curLayer,layerUid,groupUid,higherFloorOnTop,stages,builders,stageUid,builderUid,curStageId,curBuilderId,planColorBy,showNoStage,showNoBuilder})); }catch(e){} }
+function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,layers,curLayerId,curLayer,layerUid,groupUid,higherFloorOnTop,stages,builders,stageUid,builderUid,curStageId,curBuilderId,planColorBy,showNoStage,showNoBuilder})); }catch(e){} }
 
 // ---------------- geometry
 function snapVal(v){ return snapOn ? Math.round(v/SNAP)*SNAP : v; }
@@ -2572,19 +2556,6 @@ function refreshIcons(){
   buildRecent();   // stamp icons use theme colors too
 }
 
-// ---------------- structure/text colour picker
-function buildColors(){
-  const g=$('color-grid'); if(!g) return; g.innerHTML='';
-  INK_COLORS.forEach(c=>{
-    const b=document.createElement('button');
-    b.className='cswatch'+(inkColor===c.val?' active':'');
-    b.title=c.name+(c.val?'':' (theme)'); b.style.background = c.val || 'var(--piece)';
-    b.onclick=()=>{ inkColor=c.val;
-      document.querySelectorAll('.cswatch').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-      persist(); render(); };
-    g.appendChild(b);
-  });
-}
 // ---------------- swatches
 function buildSwatches(){
   const sw=$('swatches'); sw.innerHTML='';
@@ -2690,7 +2661,7 @@ function exportFile(){
     st:p.st==null?null:p.st, bd:p.bd==null?null:p.bd}));
   const S=strokes.map(s=>({pts:s.pts,color:s.color,width:s.width}));
   const T=texts.map(t=>({id:t.id,text:t.text,x:t.x,y:t.y,size:t.size,color:t.color,rot:t.rot||0}));
-  saveFile('fob-layout.json', JSON.stringify({pieces:P,strokes:S,view,images:imagesData(),texts:T,ink:inkColor,stages,builders},null,2));
+  saveFile('fob-layout.json', JSON.stringify({pieces:P,strokes:S,view,images:imagesData(),texts:T,stages,builders},null,2));
 }
 function importFile(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
@@ -2700,7 +2671,6 @@ function importFile(){
       const map=adoptPlan(o);            // the file brings its own stage/builder tables
       pieces.forEach(p=>{ p.st=map('stage',p); p.bd=map('builder',p); });
       cleanPlan(); renderPlanPanel();
-      if('ink' in o){ inkColor=o.ink; buildColors(); }
       if(o.view)view=o.view; uid=Math.max(1,...pieces.map(p=>p.id||0), ...images.map(i=>i.id||0), ...texts.map(t=>t.id||0))+1; clearSelection();
       snapshot(); render(); updateStatus(); closeFile(); }catch(err){ alert('Could not read that file.'); } };
     rd.readAsText(f); };
@@ -2761,7 +2731,6 @@ function payloadV3(){
   if(S.length) obj.s=S;
   const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color, Math.round(t.rot||0)]);
   if(T.length) obj.t=T;
-  if(inkColor) obj.c=inkColor;
   if(stages.length) obj.g=stages.map(t=>[t.name,t.color]);
   if(builders.length) obj.b=builders.map(t=>[t.name,t.color]);
   return obj;
@@ -2787,7 +2756,6 @@ function encodeBuildV2(){
   // labels ride along (small); uploaded images do not (too large for a code)
   const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color, Math.round(t.rot||0)]);
   if(T.length) obj.t=T;
-  if(inkColor) obj.c=inkColor;   // global structure/text colour
   return 'FOB2.'+b64enc(JSON.stringify(obj));
 }
 async function decodeBuild(code){
@@ -2832,7 +2800,6 @@ function loadBuild(o){
   strokes=o.strokes||[];
   texts=(o.texts||[]).map(t=>({id:uid++, text:t.text, x:t.x, y:t.y, size:t.size||GRID*0.6, color:t.color||cssVar('--piece'), rot:t.rot||0}));
   images=[]; clearOverlaySel();
-  inkColor = o.ink||null; buildColors();
   clearSelection(); snapshot(); render(); updateStatus();
 }
 async function openCode(){
@@ -3398,7 +3365,6 @@ function init(){
   try{ const saved=JSON.parse(localStorage.getItem('wardog-fob')||'null');
     if(saved){ pieces=saved.pieces||[]; strokes=saved.strokes||[];
       images=saved.images||[]; texts=saved.texts||[]; hydrateImages();
-      if('ink' in saved) inkColor=saved.ink;
       if(saved.view)view=saved.view;
       if(saved.layers) layers=saved.layers;
       if(saved.curLayerId!=null) curLayerId=saved.curLayerId;
@@ -3422,7 +3388,7 @@ function init(){
     if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
-  buildRecent(); buildColors(); renderLayerPanel(); renderPlanPanel();
+  buildRecent(); renderLayerPanel(); renderPlanPanel();
   { const AL=layerById(curLayerId); if(AL) curLayer=Math.max(0,AL.floor||0); }  // floor follows active layer
   $('layer-val').textContent = curLayer===0?'G':curLayer;   // restore floor readout
   // Floors & Layers panel: shown on desktop, hidden on mobile; last choice remembered
@@ -3453,9 +3419,9 @@ async function loadSharedHash(){
     cleanPlan();
     strokes=o.strokes||[];
     texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece'),rot:t.rot||0}));
-    images=[]; inkColor=o.ink||null;
+    images=[];
     layers=[]; curLayerId=0; ensureLayers(); migrateLayers(); renderLayerPanel(); renderPlanPanel();
-    clearSelection(); clearOverlaySel(); buildColors();
+    clearSelection(); clearOverlaySel();
     history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId,stages,builders})]; hidx=0;
     centerOnContent(); render(); updateStatus(); persist();
   }catch(e){ flashToast('That shared link could not be read'); }
