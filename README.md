@@ -67,19 +67,34 @@ all carry them.
 
 ## Image export
 
-**Export / Import → Export image** opens a dialog instead of dropping a single PNG.
-Pick any combination of:
+**Export / Import → Export image** renders a set of schematic sheets. Pick any
+combination of:
 
 - Whole build
-- All stages, colour-coded · one image per stage (optionally cumulative: stage 1, 1–2, 1–3…)
-- All builders, colour-coded · one image per builder
+- All stages, colour-coded · one sheet per stage (optionally cumulative: 1, 1–2, 1–3…)
+- All builders, colour-coded · one sheet per builder
 
-Options: mark builders with a hatch fill (stage-coloured images then carry both
-dimensions), ghost the pieces left out of a view, draw the grid, include drawings
-& labels, caption each image, and pick 1×–4× resolution. Choices are remembered.
+Every sheet is framed on the whole build — snapped out to whole blocks — and every
+sheet in a run comes out at exactly the same pixel size, so they overlay and flip
+cleanly. On top of the map each one carries what a builder needs on site:
 
-Every image is rendered into the **whole build's** frame, so the PNGs line up
-exactly when you stack them or flip through them.
+- a **title bar** with the build name, what the sheet shows, and the footprint in blocks
+- a **badge** in the corner naming the stage or builder the sheet is for
+- **block rulers** down the top and left edges, ticked every block and numbered every 4
+- a **legend** listing only the stages / builders actually on that sheet, with piece counts
+
+**Quality** is set in pixels per block (40 / 80 / 120 / 200), so a large base
+exports at the same detail as a small one and stays readable when zoomed. A sheet
+too large for the browser's canvas limit is scaled back, and the dialog says so.
+
+With more than one sheet selected, **Package as a .zip folder** delivers a single
+download: a folder named after the build holding every sheet in build order
+(`01-whole-build.png`, `02-all-stages.png`, `03-stage-1-early.png`, …) plus a
+`00-build-info.txt` with the footprint, piece total, and the stage/builder tallies.
+
+Other options: mark builders with a hatch fill (stage-coloured sheets then carry
+both dimensions), ghost the pieces left out of a view, draw the grid, and include
+drawings & labels. Choices are remembered.
 
 ## Tech
 
