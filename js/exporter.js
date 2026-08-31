@@ -61,12 +61,17 @@ export function exportJobs(){
   if(ST.expCfg.whole) jobs.push({file:'whole-build', title:'Whole build', inc:all, col:null});
   if(ST.expCfg.stagesAll && uS.length) jobs.push({file:'all-stages', title:'All stages', inc:all, col:so, fill:'stage'});
   if(ST.expCfg.stagesEach) uS.forEach(s=>{
-    const i=ST.stages.indexOf(s);
-    const inc = ST.expCfg.stagesCum ? (p=>{ const k=stageIndex(p); return k>=0 && k<=i; })
-                                 : (p=>p.st===s.id);
+    const i=ST.stages.indexOf(s), cum=ST.expCfg.stagesCum;
+    // Only ever one stage is drawn solid: the one the sheet is for. A cumulative
+    // sheet is a build-up, so everything already standing from the earlier
+    // stages sits behind it as a ghost - which is what makes the new work on
+    // this sheet readable at a glance. (Drawing them solid too, as it used to,
+    // made stage 1 and stage 2 indistinguishable on the stage 2 sheet.)
     jobs.push({file:jobFile('stage',i,s.name),
-      title:(ST.expCfg.stagesCum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
-      inc:inc, col:so, fill:'stage', badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
+      title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
+      inc:p=>p.st===s.id,
+      rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
+      col:so, fill:'stage', badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
   });
   if(ST.expCfg.buildersAll && uB.length) jobs.push({file:'all-builders', title:'All builders', inc:all, col:'builder'});
   if(ST.expCfg.buildersEach) uB.forEach(b=>
@@ -209,7 +214,11 @@ export function expSheet(job, B){
   const nrows=Math.max(rows.length, ST.expLegRows);
   const legH=nrows ? EXP_ROW*nrows + GRID*0.24 : 0;
   const w=EXP_PAD*2+rule+mapW, h=EXP_PAD*2+head+rule+mapH+legH;
-  return {focus:focus, rest:ST.expCfg.ghost?shown.filter(p=>!job.inc(p)):[],
+  // a job may name its own ghost set (the cumulative build-up); otherwise the
+  // "Ghost the pieces left out" switch decides whether the rest shows at all
+  const rest = job.rest ? shown.filter(job.rest)
+                        : (ST.expCfg.ghost ? shown.filter(p=>!job.inc(p)) : []);
+  return {focus:focus, rest:rest,
           rows:rows, head:head, rule:rule, legH:legH, w:w, h:h,
           ox:EXP_PAD+rule-B.minX, oy:EXP_PAD+head+rule-B.minY};
 }
