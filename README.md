@@ -42,6 +42,41 @@ Each is drawn as clean, symmetric top-down vector art on an HTML5 canvas.
 Snapping is footprint-aware: odd-width pieces centre inside a cell, even-width pieces sit on
 grid lines, so everything tiles flush. Major grid lines mark 4×4 blocks.
 
+## Build planner (experimental)
+
+Every piece carries two tags, set in the **Build Plan** rail section:
+
+- **Stage** — *when* it goes down. Ships with Early (walls & basic structure), Mid
+  (deployables) and Late (fluff & detail); add, rename, recolour or remove your own.
+- **Builder** — *who* puts it there. Ships with Builder 1 and Builder 2.
+
+New pieces take the active stage and builder. To re-tag pieces that are already
+down, select them and hit **Stage → sel.** / **Builder → sel.**
+
+- **Colour by** paints the board by stage or by builder, so you can see the plan at
+  a glance.
+- The **eye** on a row filters that stage/builder off the board (hidden pieces
+  can't be selected either) — handy for working on one phase at a time.
+- Removing a tag never deletes pieces; they just become *Unassigned*.
+
+Tags travel with the layout: autosave, undo/redo, `.json` export and share codes
+all carry them.
+
+## Image export
+
+**Export / Import → Export image** opens a dialog instead of dropping a single PNG.
+Pick any combination of:
+
+- Whole build
+- All stages, colour-coded · one image per stage (optionally cumulative: stage 1, 1–2, 1–3…)
+- All builders, colour-coded · one image per builder
+
+Options: ghost the pieces left out of a view, draw the grid, include drawings &
+labels, caption each image, and pick 1×–4× resolution. Your choices are remembered.
+
+Every image is rendered into the **whole build's** frame, so the PNGs line up
+exactly when you stack them or flip through them.
+
 ## Tech
 
 Vanilla HTML/CSS/JavaScript, HTML5 Canvas. Theme-aware (tactical dark / desert light).

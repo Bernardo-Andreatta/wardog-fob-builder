@@ -396,6 +396,64 @@
     #rail-toggle svg{transform:rotate(-90deg);}
     .app.rail-off #rail-toggle svg{transform:rotate(90deg);}
   }
+  /* ---- build plan: stage / builder tags ---- */
+  .plan{display:flex; flex-direction:column; gap:8px;}
+  .plan-sub{display:flex; align-items:center; gap:6px; font-family:var(--font-disp); text-transform:uppercase;
+    letter-spacing:.12em; font-size:10.5px; color:var(--accent); font-weight:600;}
+  .plan-sub .grow{flex:1}
+  .plan-sub button{width:20px; height:20px; line-height:1; border:1px solid var(--line); background:var(--panel-2);
+    border-radius:5px; color:var(--muted); font-size:13px; display:flex; align-items:center; justify-content:center; padding:0;}
+  .plan-sub button:hover{border-color:var(--accent); color:var(--accent)}
+  .plan-list{display:flex; flex-direction:column; border:1px solid var(--line); border-radius:8px;
+    overflow:hidden; background:var(--panel-2);}
+  .pl-row{display:flex; align-items:center; gap:4px; padding:5px 6px; cursor:pointer; font-size:12.5px;
+    border-bottom:1px solid var(--line);}
+  .pl-row:last-child{border-bottom:none}
+  .pl-row:hover{background:var(--panel)}
+  .pl-row.active{background:var(--accent-soft); box-shadow:inset 3px 0 0 var(--accent);}
+  .pl-row.active .pl-name{color:var(--accent); font-weight:600;}
+  .pl-row.off .pl-name{opacity:.45; text-decoration:line-through;}
+  .pl-dot{width:14px; height:14px; flex:0 0 14px; padding:0; border:1px solid var(--line); border-radius:4px;
+    background:none; cursor:pointer; appearance:none; -webkit-appearance:none;}
+  .pl-dot::-webkit-color-swatch-wrapper{padding:0}
+  .pl-dot::-webkit-color-swatch{border:none; border-radius:3px}
+  .pl-dot.plain{background:var(--muted); opacity:.45; cursor:default;}
+  .pl-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .pl-n{font-family:var(--font-mono); font-size:11px; color:var(--muted)}
+  .pl-ic{width:16px; height:16px; flex:0 0 16px; padding:0; border:none; background:none; color:var(--muted);
+    display:flex; align-items:center; justify-content:center;}
+  .pl-ic:hover{color:var(--ink)}
+  .pl-ic.x:hover{color:var(--bad)}
+  .pl-ic svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .pl-rename{flex:1; min-width:0; font-family:var(--font-ui); font-size:12.5px; padding:1px 4px;
+    border:1px solid var(--accent); border-radius:4px; background:var(--panel); color:var(--ink);}
+  .plan-seg{display:flex; gap:4px;}
+  .plan-seg button{flex:1; padding:4px 0; font-size:11px; border:1px solid var(--line); border-radius:6px;
+    background:var(--panel-2); color:var(--muted); font-family:var(--font-disp); letter-spacing:.06em;
+    text-transform:uppercase;}
+  .plan-seg button.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+  .plan-apply{display:flex; gap:4px;}
+  .plan-apply button{flex:1; padding:5px 0; font-size:11.5px; border:1px solid var(--line); border-radius:6px;
+    background:var(--panel-2); color:var(--ink);}
+  .plan-apply button:hover:not(:disabled){border-color:var(--accent)}
+  .plan-apply button:disabled{opacity:.38; cursor:default;}
+  .plan-hint{font-size:10.5px; color:var(--muted); line-height:1.35;}
+
+  /* ---- multi-image export ---- */
+  .modal-card.wide{width:min(640px,92vw);}
+  .exp-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px 22px;}
+  .exp-col h4{margin:0 0 8px; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
+    font-size:11.5px; color:var(--accent); font-weight:600;}
+  .exp-opt{display:flex; align-items:center; gap:8px; padding:3px 0; font-size:13px; cursor:pointer;}
+  .exp-opt input{accent-color:var(--accent); width:15px; height:15px; flex:0 0 15px;}
+  .exp-opt.sub{padding-left:23px; font-size:12.5px; color:var(--muted)}
+  .exp-row{display:flex; align-items:center; gap:8px; margin-top:8px; font-size:13px;}
+  .exp-row select{background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:6px;
+    padding:4px 7px; font-family:var(--font-ui); font-size:12.5px;}
+  .exp-foot{display:flex; align-items:center; gap:10px; margin-top:18px;}
+  .exp-count{font-family:var(--font-mono); font-size:12px; color:var(--muted)}
+  @media (max-width:720px){ .exp-grid{grid-template-columns:1fr} }
+
 </style>
 
 <div class="app">
@@ -430,6 +488,26 @@
         <button class="ebtn" id="btn-group" title="Group selection (Ctrl+G)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg><span class="cap">Group</span></button>
         <button class="ebtn" id="btn-ungroup" title="Ungroup (Ctrl+Shift+G)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg><span class="cap">Ungroup</span></button>
         <button class="ebtn danger" id="btn-clear" title="Clear the whole board"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg><span class="cap">Clear</span></button>
+      </div></div>
+    </div>
+    <div class="sec">
+      <button class="group-label" data-sec="plan">Build Plan<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="sec-body"><div class="plan">
+        <div class="plan-sub">Stage<span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
+        <div class="plan-list" id="stage-list"></div>
+        <div class="plan-sub">Builder<span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
+        <div class="plan-list" id="builder-list"></div>
+        <div class="plan-sub">Colour by</div>
+        <div class="plan-seg" id="plan-colorby">
+          <button data-mode="none" class="on">Off</button>
+          <button data-mode="stage">Stage</button>
+          <button data-mode="builder">Builder</button>
+        </div>
+        <div class="plan-apply">
+          <button id="plan-apply-stage" title="Tag the selected pieces with the active stage" disabled>Stage &rarr; sel.</button>
+          <button id="plan-apply-builder" title="Tag the selected pieces with the active builder" disabled>Builder &rarr; sel.</button>
+        </div>
+        <div class="plan-hint">New pieces take the active stage &amp; builder. The eye filters the board; Export image writes one PNG per stage / builder.</div>
       </div></div>
     </div>
     <div class="sec">
@@ -556,6 +634,10 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
+        <div class="k">Build Plan rail section</div><div class="d">Tag pieces with a stage (early &middot; mid &middot; late) and a builder as you place them</div>
+        <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
+        <div class="k">Stage &rarr; sel. &middot; Builder &rarr; sel.</div><div class="d">Re-tag pieces that are already built</div>
+        <div class="k">Export / Import &rarr; Export image</div><div class="d">One PNG per stage / builder, all sharing the same frame</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
         <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
         <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid (Edit &rarr; Snap)</div>
@@ -575,6 +657,40 @@
       <label class="code-lab">Load a code</label>
       <textarea id="code-in" class="code-area" spellcheck="false" placeholder="Paste a build code here&hellip;"></textarea>
       <div class="code-row"><button class="btn" id="code-load"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v5h16v-5"/></svg><span>Load build</span></button><span class="code-msg" id="code-loadmsg"></span></div>
+    </div>
+  </div>
+
+  <div class="modal" id="exp-modal" hidden>
+    <div class="modal-bg" id="exp-bg"></div>
+    <div class="modal-card wide" role="dialog" aria-label="Export images">
+      <button class="x" id="exp-close" title="Close">&times;</button>
+      <h3>Export Images</h3>
+      <p class="code-lead">Pick which views to render. Every image is framed on the whole build, so they line up when you stack them or flip through them.</p>
+      <div class="exp-grid">
+        <div class="exp-col">
+          <h4>Views</h4>
+          <label class="exp-opt"><input type="checkbox" id="exp-whole"><span>Whole build</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-stages-all"><span>All stages, colour-coded</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-stages-each"><span>One image per stage</span></label>
+          <label class="exp-opt sub"><input type="checkbox" id="exp-stages-cum"><span>Cumulative (stage 1&hellip;N)</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-builders-all"><span>All builders, colour-coded</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-builders-each"><span>One image per builder</span></label>
+        </div>
+        <div class="exp-col">
+          <h4>Options</h4>
+          <label class="exp-opt"><input type="checkbox" id="exp-ghost"><span>Ghost the pieces left out</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-grid"><span>Draw the grid</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-notes"><span>Include drawings &amp; labels</span></label>
+          <label class="exp-opt"><input type="checkbox" id="exp-title"><span>Caption each image</span></label>
+          <div class="exp-row"><label for="exp-scale">Resolution</label>
+            <select id="exp-scale"><option value="1">1&times;</option><option value="2">2&times;</option><option value="3">3&times;</option><option value="4">4&times;</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="exp-foot">
+        <button class="btn" id="exp-run"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>Export</span></button>
+        <span class="exp-count" id="exp-count"></span>
+      </div>
     </div>
   </div>
 
@@ -680,6 +796,75 @@ const INK_COLORS = [
 ];
 function curInk(){ return inkColor || cssVar('--piece'); }
 
+// ---------------- build plan: stages + builders -------------------------------
+// A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
+// a builder answers *who* puts it there. Both are plain tags on a piece (p.st /
+// p.bd), independent of floors and layers, so they survive move / rotate /
+// duplicate and can be re-tagged long after the build is finished.
+const PLAN_COLORS=['#e6a51e','#4aa3e0','#7ec46a','#e0574a','#b98cff','#3fd0c9','#ff8fbf','#8fb0ff'];
+const DEFAULT_STAGES=[['Early','walls & basic structure'],['Mid','deployables'],['Late','fluff & detail']];
+let stages=[], builders=[];              // {id,name,color,visible}
+let stageUid=1, builderUid=1;
+let curStageId, curBuilderId;            // tags stamped onto newly placed pieces (undefined = never chosen)
+let showNoStage=true, showNoBuilder=true;// filter rows for untagged pieces
+let planColorBy='none';                  // 'none' | 'stage' | 'builder'
+function ensurePlan(){
+  if(!Array.isArray(stages) || !stages.length)
+    stages=DEFAULT_STAGES.map((s,i)=>({id:stageUid++, name:s[0], note:s[1], color:PLAN_COLORS[i], visible:true}));
+  if(!Array.isArray(builders) || !builders.length)
+    builders=[1,2].map(n=>({id:builderUid++, name:'Builder '+n, color:PLAN_COLORS[(n+2)%PLAN_COLORS.length], visible:true}));
+  stages.concat(builders).forEach(e=>{ if(e.visible==null) e.visible=true; });
+  stageUid=Math.max(stageUid, ...stages.map(s=>s.id+1));
+  builderUid=Math.max(builderUid, ...builders.map(b=>b.id+1));
+  if(curStageId===undefined) curStageId = stages.length?stages[0].id:null;
+  if(curBuilderId===undefined) curBuilderId = builders.length?builders[0].id:null;
+  if(curStageId!=null && !stageById(curStageId)) curStageId = stages.length?stages[0].id:null;
+  if(curBuilderId!=null && !builderById(curBuilderId)) curBuilderId = builders.length?builders[0].id:null;
+}
+function stageById(id){ return stages.find(s=>s.id===id)||null; }
+function builderById(id){ return builders.find(b=>b.id===id)||null; }
+function stageOf(p){ return p.st==null?null:stageById(p.st); }
+function builderOf(p){ return p.bd==null?null:builderById(p.bd); }
+function stageIndex(p){ const s=stageOf(p); return s?stages.indexOf(s):-1; }
+// a piece shows on the board only while both of its tags are unfiltered
+function planVisible(p){
+  const s=stageOf(p), b=builderOf(p);
+  return (s?s.visible:showNoStage) && (b?b.visible:showNoBuilder);
+}
+// colour-by paints each piece in its tag's colour; untagged pieces stay ink, dimmed
+function planColorOf(p, ink, bg){
+  if(planColorBy==='stage'){ const s=stageOf(p); return s?s.color:mixCol(ink,bg,0.5); }
+  if(planColorBy==='builder'){ const b=builderOf(p); return b?b.color:mixCol(ink,bg,0.5); }
+  return ink;
+}
+function planCount(kind, id){
+  return pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
+}
+// filtering a tag off the board must not leave its pieces selected
+function pruneSelToPlan(){
+  selected=selected.filter(id=>{ const p=pieces.find(x=>x.id===id); return p && planVisible(p); });
+}
+// share codes and .json files carry their own tag tables: adopt them under fresh
+// local ids and hand back a mapper from a stored tag (index or old id) to the new id
+function adoptPlan(o){
+  const S=(o.stages||[]).map((s,i)=>({id:stageUid++, name:s.name||('Stage '+(i+1)),
+    color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], visible:true, _old:s.id}));
+  const B=(o.builders||[]).map((b,i)=>({id:builderUid++, name:b.name||('Builder '+(i+1)),
+    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], visible:true, _old:b.id}));
+  if(S.length) stages=S;
+  if(B.length) builders=B;
+  curStageId=undefined; curBuilderId=undefined; showNoStage=true; showNoBuilder=true;
+  ensurePlan();
+  return (kind,p)=>{
+    const arr = kind==='stage'?stages:builders;
+    const idx = kind==='stage'?p._s:p._b, old = kind==='stage'?p.st:p.bd;
+    if(idx){ const e=arr[idx-1]; return e?e.id:null; }          // v3 code: 1-based index
+    if(old!=null){ const e=arr.find(x=>x._old===old); return e?e.id:null; }   // .json: old id
+    return null;
+  };
+}
+function cleanPlan(){ stages.concat(builders).forEach(e=>{ delete e._old; }); }
+
 // ---------------- layers (Photoshop-style: z-order, visibility, opacity) --------
 // Distinct from the "Floor" system (curLayer / p.l), which fakes vertical build
 // height. A layer is an organizational sheet every item (piece / image / text /
@@ -782,7 +967,7 @@ function hydrateImages(){ images.forEach(im=>{ if(!im._img && im.src){ const i=n
 let history = [], hidx = -1;
 function snapshot(){
   pendingMove=false;   // whatever is being recorded already includes the move
-  const s = JSON.stringify({pieces, strokes, uid, images:imagesData(), texts, layers, curLayerId});
+  const s = JSON.stringify({pieces, strokes, uid, images:imagesData(), texts, layers, curLayerId, stages, builders});
   if(history[hidx] === s) return;
   history = history.slice(0, hidx+1);
   history.push(s);
@@ -800,13 +985,16 @@ function updateUndoFab(){
 function restore(s){ const o=JSON.parse(s); pieces=o.pieces; strokes=o.strokes; uid=o.uid||uid;
   images=o.images||[]; texts=o.texts||[]; hydrateImages();
   if(o.layers){ layers=o.layers; if(o.curLayerId!=null) curLayerId=o.curLayerId; }
-  migrateLayers(); renderLayerPanel();
+  if(o.stages) stages=o.stages;
+  if(o.builders) builders=o.builders;
+  ensurePlan();
+  migrateLayers(); renderLayerPanel(); renderPlanPanel();
   selected = selected.filter(id=>pieces.some(p=>p.id===id));
   selImages = selImages.filter(id=>images.some(i=>i.id===id));
   selTexts = selTexts.filter(id=>texts.some(t=>t.id===id));
   selStrokes = selStrokes.filter(s=>strokes.indexOf(s)!==-1);
   render(); updateStatus(); persist(); }
-function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,ink:inkColor,layers,curLayerId,curLayer,layerUid,groupUid,higherFloorOnTop})); }catch(e){} }
+function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces,strokes,view,uid,images:imagesData(),texts,ink:inkColor,layers,curLayerId,curLayer,layerUid,groupUid,higherFloorOnTop,stages,builders,stageUid,builderUid,curStageId,curBuilderId,planColorBy,showNoStage,showNoBuilder})); }catch(e){} }
 
 // ---------------- geometry
 function snapVal(v){ return snapOn ? Math.round(v/SNAP)*SNAP : v; }
@@ -839,6 +1027,7 @@ function hitPiece(wx,wy){
   for(const {p} of order){
     if(pieceLayer(p)>curLayer) continue;   // floors above the view are untouchable
     if(!layerEditable(p)) continue;        // hidden/locked layers aren't selectable
+    if(!planVisible(p)) continue;          // filtered-out stages/builders aren't either
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
@@ -1238,14 +1427,14 @@ function drawLayerContent(g, L, colInk, bg, maxL){
     for(let i=1;i<s.pts.length;i++) g.lineTo(s.pts[i].x,s.pts[i].y);
     if(s.pts.length===1) g.lineTo(s.pts[0].x+0.1,s.pts[0].y);
     g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round'; g.lineCap='round'; g.globalAlpha=1; g.stroke(); }
-  const lp=pieces.filter(p=>itemLayerId(p)===lid);
+  const lp=pieces.filter(p=>itemLayerId(p)===lid && planVisible(p));
   const lc=lowCounts(lp), swSet=shortwallCells(lp), lowDrawn=new Set();
   const sorted=lp.map((p,i)=>({p,i}))
     .filter(o=>pieceLayer(o.p)<=curLayer)
     .sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
     .map(o=>o.p);
   for(const p of sorted){ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
-    const st=lowStyle(p, layerColor(colInk,bg,dl,maxL), bg, lc, swSet, lowDrawn);
+    const st=lowStyle(p, layerColor(planColorOf(p,colInk,bg),bg,dl,maxL), bg, lc, swSet, lowDrawn);
     if(st.skip) continue;
     g.save(); g.translate(off.x,off.y);
     if(masksBelow(p)) maskPiece(g,p,bg);
@@ -1561,7 +1750,7 @@ function placeStampAt(w){
   for(const ip of inst){ const err=placeError(ip.type, ip.x, ip.y, ip.rot, curLayer); if(err){ flashToast(err); return; } }
   ensureFloorLayer();
   const gid = inst.length>1 ? groupUid++ : undefined;   // a multi-piece stamp lands as one Group
-  const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer, ly:curLayerId, g:gid}));
+  const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer, ly:curLayerId, g:gid, st:curStageId, bd:curBuilderId}));
   pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
 function placePieceAt(w){
@@ -1569,7 +1758,7 @@ function placePieceAt(w){
   const err=placeError(tool,c.x,c.y,placeRot,curLayer);
   if(err){ flashToast(err); return; }
   ensureFloorLayer();
-  const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer,ly:curLayerId};
+  const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer,ly:curLayerId,st:curStageId,bd:curBuilderId};
   pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
 }
 
@@ -1721,7 +1910,7 @@ cv.addEventListener('pointermove', e=>{
       const bx1=Math.max(marquee.x0,marquee.x1), by1=Math.max(marquee.y0,marquee.y1);
       const B=marquee.base;
       selected=B.pieces.slice();
-      pieces.forEach(p=>{ if(pieceLayer(p)>curLayer || !layerEditable(p)) return; const b=pieceAABB(p);
+      pieces.forEach(p=>{ if(pieceLayer(p)>curLayer || !layerEditable(p) || !planVisible(p)) return; const b=pieceAABB(p);
         if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) selected.push(p.id); });
       selTexts=B.texts.slice();
       texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !selTexts.includes(t.id)) selTexts.push(t.id); });
@@ -1912,7 +2101,7 @@ window.addEventListener('keydown', e=>{
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ stepPlaceRot(dir); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); clearOverlaySel(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp'||tool==='text'||SYMBOLS[tool]) setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); clearOverlaySel(); marquee=null; if(CATALOG[tool]||tool==='draw'||tool==='stamp'||tool==='text'||SYMBOLS[tool]) setTool('select'); render(); updateStatus(); }
   if(e.key==='f'||e.key==='F'){
     if(hasRotSel()) mirrorGroup();
     else if(CATALOG[tool] || (tool==='stamp'&&activeStamp)){ placeFlip=!placeFlip; render(); }
@@ -2355,7 +2544,7 @@ function updateStatus(){
   $('st-zoom').textContent = Math.round(view.scale*100)+'%';
   // mobile: floating 45deg rotate buttons while pieces are selected (the drag
   // handle on top stays the free-rotation control)
-  updateUndoFab(); updateToolChip();
+  updateUndoFab(); updateToolChip(); updatePlanApply();
   const ghost = CATALOG[tool] || (tool==='stamp'&&activeStamp);
   const rf=$('rot-fab'); if(rf){
     rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
@@ -2419,6 +2608,9 @@ $('btn-clear').onclick=()=>{
   pieces=[]; strokes=[]; images=[]; texts=[]; clearSelection(); clearOverlaySel();
   layers=[]; selLayers=[]; curLayerId=0; curLayer=0; ensureLayers();   // back to a single Ground layer
   $('layer-val').textContent='G'; renderLayerPanel();
+  showNoStage=true; showNoBuilder=true;                 // the plan itself survives a Clear
+  stages.concat(builders).forEach(e=>{ e.visible=true; });
+  renderPlanPanel();
   snapshot(); render(); updateStatus();
 };
 // unified save: uses the artifact downloads capability when present, else a normal browser download
@@ -2436,16 +2628,20 @@ async function saveFile(filename, data){
 }
 function exportFile(){
   // strip runtime-only fields (_ix/_iy/_ipts rotation ideals) from the file
-  const P=pieces.map(p=>({id:p.id,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
+  const P=pieces.map(p=>({id:p.id,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0,
+    st:p.st==null?null:p.st, bd:p.bd==null?null:p.bd}));
   const S=strokes.map(s=>({pts:s.pts,color:s.color,width:s.width}));
   const T=texts.map(t=>({id:t.id,text:t.text,x:t.x,y:t.y,size:t.size,color:t.color,rot:t.rot||0}));
-  saveFile('fob-layout.json', JSON.stringify({pieces:P,strokes:S,view,images:imagesData(),texts:T,ink:inkColor},null,2));
+  saveFile('fob-layout.json', JSON.stringify({pieces:P,strokes:S,view,images:imagesData(),texts:T,ink:inkColor,stages,builders},null,2));
 }
 function importFile(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const rd=new FileReader();
     rd.onload=()=>{ try{ const o=JSON.parse(rd.result); pieces=o.pieces||[]; strokes=o.strokes||[];
       images=o.images||[]; texts=o.texts||[]; hydrateImages(); clearOverlaySel();
+      const map=adoptPlan(o);            // the file brings its own stage/builder tables
+      pieces.forEach(p=>{ p.st=map('stage',p); p.bd=map('builder',p); });
+      cleanPlan(); renderPlanPanel();
       if('ink' in o){ inkColor=o.ink; buildColors(); }
       if(o.view)view=o.view; uid=Math.max(1,...pieces.map(p=>p.id||0), ...images.map(i=>i.id||0), ...texts.map(t=>t.id||0))+1; clearSelection();
       snapshot(); render(); updateStatus(); closeFile(); }catch(err){ alert('Could not read that file.'); } };
@@ -2459,7 +2655,7 @@ $('file-close').onclick=closeFile;
 $('file-bg').onclick=closeFile;
 $('file-export').onclick=()=>{ exportFile(); closeFile(); };
 $('file-import').onclick=importFile;
-$('file-png').onclick=()=>{ closeFile(); exportPNG(); };
+$('file-png').onclick=()=>{ closeFile(); openExp(); };
 // ---- shareable build code (base64 of the build JSON) ----
 // Fixed type list for share codes: APPEND-ONLY (indices must never change, or
 // old codes break). Decoupled from PIECE_ORDER so the rail can be reordered.
@@ -2491,7 +2687,8 @@ function payloadV3(){
   let px=0, py=0;
   const P=pieces.map(p=>{
     const x=Math.round(p.x), y=Math.round(p.y);
-    const a=[CODE_TYPES.indexOf(p.type), x-px, y-py, Math.round(p.rot)||0, p.flip?1:0, p.l||0];
+    const a=[CODE_TYPES.indexOf(p.type), x-px, y-py, Math.round(p.rot)||0, p.flip?1:0, p.l||0,
+      p.st==null?0:stages.findIndex(t=>t.id===p.st)+1, p.bd==null?0:builders.findIndex(t=>t.id===p.bd)+1];
     px=x; py=y;
     while(a.length>3 && a[a.length-1]===0) a.pop();
     return a;
@@ -2507,6 +2704,8 @@ function payloadV3(){
   const T=(texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color, Math.round(t.rot||0)]);
   if(T.length) obj.t=T;
   if(inkColor) obj.c=inkColor;
+  if(stages.length) obj.g=stages.map(t=>[t.name,t.color]);
+  if(builders.length) obj.b=builders.map(t=>[t.name,t.color]);
   return obj;
 }
 async function encodeBuild(){
@@ -2541,12 +2740,14 @@ async function decodeBuild(code){
     let px=0, py=0;
     const pieces=o.d.map(a=>{ const t=CODE_TYPES[a[0]]; if(!t) throw new Error('bad');
       px+=a[1]||0; py+=a[2]||0;
-      return {type:t, x:px, y:py, rot:a[3]||0, flip:!!a[4], l:a[5]||0}; });
+      return {type:t, x:px, y:py, rot:a[3]||0, flip:!!a[4], l:a[5]||0, _s:a[6]||0, _b:a[7]||0}; });
     const strokes=(o.s||[]).map(a=>{ const f=a[2]||[], pts=[]; let qx=0, qy=0;
       for(let i=0;i+1<f.length;i+=2){ qx+=f[i]; qy+=f[i+1]; pts.push({x:qx,y:qy}); }
       return {color:a[0], width:a[1], pts}; });
     const texts=(o.t||[]).map(a=>({text:a[0], x:a[1], y:a[2], size:a[3]||GRID*0.6, color:a[4], rot:a[5]||0}));
-    return {pieces, strokes, texts, ink:o.c||null};
+    return {pieces, strokes, texts, ink:o.c||null,
+      stages:(o.g||[]).map(a=>({name:a[0], color:a[1]})),
+      builders:(o.b||[]).map(a=>({name:a[0], color:a[1]}))};
   }
   if(s.startsWith('FOB2.')){
     const o=JSON.parse(b64dec(s.slice(5)));
@@ -2566,7 +2767,10 @@ async function decodeBuild(code){
   return o;
 }
 function loadBuild(o){
-  pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip, l:p.l||0}));
+  const map=adoptPlan(o);
+  pieces=(o.pieces||[]).map(p=>({id:uid++, type:p.type, x:p.x, y:p.y, rot:p.rot||0, flip:!!p.flip, l:p.l||0,
+    st:map('stage',p), bd:map('builder',p)}));
+  cleanPlan(); renderPlanPanel();
   strokes=o.strokes||[];
   texts=(o.texts||[]).map(t=>({id:uid++, text:t.text, x:t.x, y:t.y, size:t.size||GRID*0.6, color:t.color||cssVar('--piece'), rot:t.rot||0}));
   images=[]; clearOverlaySel();
@@ -2599,43 +2803,6 @@ $('code-load').onclick=async ()=>{
     setTimeout(closeCode, 700); }
   catch(e){ msg.className='code-msg bad'; msg.textContent='Not a valid build code.'; }
 };
-
-function exportPNG(){
-  if(!pieces.length && !strokes.length && !images.length && !texts.length){ alert('Nothing to export yet.'); return; }
-  // compute bounds of all content
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-  pieces.forEach(p=>{ const c=CATALOG[p.type]; const rad=Math.abs(p.rot%180)===90;
-    const hw=(rad?c.h:c.w)*GRID/2, hh=(rad?c.w:c.h)*GRID/2;
-    minX=Math.min(minX,p.x-hw); maxX=Math.max(maxX,p.x+hw);
-    minY=Math.min(minY,p.y-hh); maxY=Math.max(maxY,p.y+hh); });
-  strokes.forEach(s=>s.pts.forEach(pt=>{ minX=Math.min(minX,pt.x);maxX=Math.max(maxX,pt.x);minY=Math.min(minY,pt.y);maxY=Math.max(maxY,pt.y); }));
-  images.forEach(im=>{ minX=Math.min(minX,im.x-im.w/2); maxX=Math.max(maxX,im.x+im.w/2); minY=Math.min(minY,im.y-im.h/2); maxY=Math.max(maxY,im.y+im.h/2); });
-  texts.forEach(t=>{ const b=textBox(t), r=t.rot?Math.hypot(b.w,b.h)/2:0, hw=r||b.w/2, hh=r||b.h/2;
-    minX=Math.min(minX,t.x-hw); maxX=Math.max(maxX,t.x+hw); minY=Math.min(minY,t.y-hh); maxY=Math.max(maxY,t.y+hh); });
-  const m=GRID; minX-=m;minY-=m;maxX+=m;maxY+=m;
-  const W=maxX-minX, H=maxY-minY, sc=2;
-  const c=document.createElement('canvas'); c.width=W*sc; c.height=H*sc;
-  const g=c.getContext('2d'); g.scale(sc,sc); g.translate(-minX,-minY);
-  g.fillStyle=cssVar('--canvas-bg'); g.fillRect(minX,minY,W,H);
-  // grid
-  g.strokeStyle=cssVar('--grid'); g.lineWidth=1;
-  for(let x=Math.ceil(minX/GRID)*GRID;x<maxX;x+=GRID){ g.beginPath();g.moveTo(x,minY);g.lineTo(x,maxY);g.stroke(); }
-  for(let y=Math.ceil(minY/GRID)*GRID;y<maxY;y+=GRID){ g.beginPath();g.moveTo(minX,y);g.lineTo(maxX,y);g.stroke(); }
-  images.forEach(im=>{ if(im._img&&im._img.complete) g.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); });
-  strokes.forEach(s=>{ if(!s.pts.length)return; g.beginPath(); g.moveTo(s.pts[0].x,s.pts[0].y);
-    s.pts.forEach(pt=>g.lineTo(pt.x,pt.y)); g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round';g.lineCap='round'; g.stroke(); });
-  const ink=curInk(), pbg=cssVar('--canvas-bg'), mxl=maxLayer();
-  const lc=lowCounts(), swSet=shortwallCells(), lowDrawn=new Set();
-  pieces.map((p,i)=>({p,i})).sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
-    .map(o=>o.p).forEach(p=>{ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
-    const st=lowStyle(p, layerColor(ink,pbg,dl,mxl), pbg, lc, swSet, lowDrawn);
-    if(st.skip) return;
-    g.save(); g.translate(off.x,off.y); if(masksBelow(p)) maskPiece(g,p,pbg);
-    if(dl>l){ drawPiece(g,p, mixCol(st.col,pbg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,pbg); }
-    drawPiece(g,p, st.col, 1); g.restore(); });
-  texts.forEach(t=>drawText(g,t,ink));
-  c.toBlob(blob=>{ if(blob) saveFile('fob-layout.png', blob); }, 'image/png');
-}
 
 // zoom buttons
 function zoomBy(f){ const cx=stage.clientWidth/2, cy=stage.clientHeight/2;
@@ -2881,6 +3048,256 @@ $('cmd-close').onclick=closeCmd;
 $('cmd-bg').onclick=closeCmd;
 $('draw-width').oninput=e=>{ drawWidth=+e.target.value; };
 
+// ---------------- Build Plan panel (stage + builder tags) --------------------
+const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function planEntries(kind){ return kind==='stage'?stages:builders; }
+function planActive(kind){ return kind==='stage'?curStageId:curBuilderId; }
+function setPlanActive(kind, id){
+  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
+  if(E) E.visible=true;                 // never leave the active tag filtered out
+  if(kind==='stage') curStageId=id; else curBuilderId=id;
+  render(); renderPlanPanel(); persist();
+}
+function addPlanEntry(kind){
+  const arr=planEntries(kind), col=PLAN_COLORS[arr.length%PLAN_COLORS.length];
+  const E = kind==='stage'
+    ? {id:stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
+    : {id:builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
+  arr.push(E); setPlanActive(kind, E.id); snapshot();
+}
+// removing a tag untags its pieces; it never deletes anything from the board
+function delPlanEntry(kind, id){
+  const arr=planEntries(kind), i=arr.findIndex(e=>e.id===id); if(i<0) return;
+  arr.splice(i,1);
+  pieces.forEach(p=>{ if(kind==='stage'){ if(p.st===id) p.st=null; } else if(p.bd===id) p.bd=null; });
+  if(planActive(kind)===id){ if(kind==='stage') curStageId=null; else curBuilderId=null; }
+  snapshot(); render(); renderPlanPanel();
+}
+function assignPlanToSel(kind){
+  const items=selectedPieces();
+  if(!items.length){ flashToast('Select some pieces first'); return; }
+  const id=planActive(kind);
+  items.forEach(p=>{ if(kind==='stage') p.st=id; else p.bd=id; });
+  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
+  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'Unassigned'));
+  snapshot(); render(); renderPlanPanel();
+}
+function planRename(E, nameEl){
+  const inp=document.createElement('input'); inp.type='text'; inp.className='pl-rename'; inp.value=E.name;
+  inp.onclick=e=>e.stopPropagation();
+  let done=false;
+  const finish=keep=>{ if(done)return; done=true; if(keep){ const v=inp.value.trim(); if(v) E.name=v; }
+    snapshot(); renderPlanPanel(); };
+  inp.onkeydown=e=>{ e.stopPropagation();
+    if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } };
+  inp.onblur=()=>finish(true);
+  nameEl.replaceWith(inp); inp.focus(); inp.select();
+}
+// E === null builds the "Unassigned" bucket row (filterable, not editable)
+function buildPlanRow(kind, E){
+  const id = E?E.id:null, active = planActive(kind)===id;
+  const vis = E ? E.visible : (kind==='stage'?showNoStage:showNoBuilder);
+  const row=document.createElement('div');
+  row.className='pl-row'+(active?' active':'')+(vis?'':' off');
+  row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
+  row.title = E ? 'Click to make active · double-click the name to rename'
+                : 'Pieces with no '+kind+' tag yet';
+  let dot;
+  if(E){
+    dot=document.createElement('input'); dot.type='color'; dot.className='pl-dot'; dot.value=E.color;
+    dot.title='Tag colour';
+    dot.onclick=ev=>ev.stopPropagation();
+    dot.oninput=()=>{ E.color=dot.value; render(); };
+    dot.onchange=()=>{ E.color=dot.value; snapshot(); render(); };
+  } else { dot=document.createElement('span'); dot.className='pl-dot plain'; }
+  const name=document.createElement('span'); name.className='pl-name';
+  name.textContent = E ? E.name : 'Unassigned';
+  if(E && E.note) name.title=E.note;
+  if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
+  const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
+  const eye=document.createElement('button'); eye.className='pl-ic'; eye.innerHTML=vis?EYE_ON:EYE_OFF;
+  eye.title = vis?'Hide these on the board':'Show these again';
+  eye.onclick=ev=>{ ev.stopPropagation();
+    if(E) E.visible=!vis; else if(kind==='stage') showNoStage=!vis; else showNoBuilder=!vis;
+    pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist(); };
+  row.onclick=()=>setPlanActive(kind, id);
+  row.appendChild(dot); row.appendChild(name); row.appendChild(n); row.appendChild(eye);
+  if(E){
+    const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
+    x.title='Remove this tag (its pieces become unassigned)';
+    x.onclick=ev=>{ ev.stopPropagation(); delPlanEntry(kind, E.id); };
+    row.appendChild(x);
+  }
+  return row;
+}
+function renderPlanPanel(){
+  const sl=$('stage-list'), bl=$('builder-list'); if(!sl||!bl) return;
+  ensurePlan();
+  sl.innerHTML=''; stages.forEach(s=>sl.appendChild(buildPlanRow('stage',s)));
+  sl.appendChild(buildPlanRow('stage',null));
+  bl.innerHTML=''; builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
+  bl.appendChild(buildPlanRow('builder',null));
+  document.querySelectorAll('#plan-colorby button').forEach(b=>b.classList.toggle('on', b.dataset.mode===planColorBy));
+  updatePlanApply();
+}
+// runs from updateStatus, so the tallies keep up with placing / deleting without
+// rebuilding the rows (which would kill an in-progress rename)
+function updatePlanApply(){
+  const has=!!selected.length, a=$('plan-apply-stage'), b=$('plan-apply-builder');
+  if(a) a.disabled=!has;
+  if(b) b.disabled=!has;
+  document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
+    const n=row.querySelector('.pl-n'); if(!n) return;
+    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    const v=String(planCount(row.dataset.kind, id));
+    if(n.textContent!==v) n.textContent=v;
+  });
+}
+$('plan-addstage').onclick=()=>addPlanEntry('stage');
+$('plan-addbuilder').onclick=()=>addPlanEntry('builder');
+$('plan-apply-stage').onclick=()=>assignPlanToSel('stage');
+$('plan-apply-builder').onclick=()=>assignPlanToSel('builder');
+document.querySelectorAll('#plan-colorby button').forEach(b=>{
+  b.onclick=()=>{ planColorBy=b.dataset.mode; render(); renderPlanPanel(); persist(); };
+});
+
+// ---------------- image export (one or many views of the same build) ---------
+// Every view is rendered into the *whole build's* frame, so the PNGs stack and
+// flip cleanly: stage 1 sits exactly where stage 1 sits in the finished base.
+let expCfg={whole:true, stagesAll:true, stagesEach:true, stagesCum:false,
+            buildersAll:true, buildersEach:true,
+            ghost:true, grid:true, notes:true, title:true, scale:2};
+const EXP_FIELDS=[['whole','exp-whole'],['stagesAll','exp-stages-all'],['stagesEach','exp-stages-each'],
+  ['stagesCum','exp-stages-cum'],['buildersAll','exp-builders-all'],['buildersEach','exp-builders-each'],
+  ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],['title','exp-title']];
+function loadExpCfg(){ try{ const o=JSON.parse(localStorage.getItem('wardog-fob-export')||'null');
+  if(o&&typeof o==='object') Object.assign(expCfg,o); }catch(e){} }
+function saveExpCfg(){ try{ localStorage.setItem('wardog-fob-export', JSON.stringify(expCfg)); }catch(e){} }
+function expToForm(){
+  EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) el.checked=!!expCfg[k]; });
+  $('exp-scale').value=String(expCfg.scale); updateExpCount();
+}
+function expFromForm(){
+  EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) expCfg[k]=el.checked; });
+  expCfg.scale=parseInt($('exp-scale').value,10)||2; saveExpCfg(); updateExpCount();
+}
+function slug(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'x'; }
+function jobFile(kind, i, name){ const sl=slug(name), pre=kind+'-'+(i+1);
+  return (sl===pre||sl===kind) ? pre : pre+'-'+sl; }
+// one job = one PNG: a caption, a filename, which pieces are in focus, and the
+// palette the focused pieces are painted with
+function exportJobs(){
+  const jobs=[], all=()=>true;
+  if(expCfg.whole) jobs.push({file:'whole-build', title:'Whole build', inc:all, col:null});
+  if(expCfg.stagesAll && stages.length) jobs.push({file:'all-stages', title:'All stages', inc:all, col:'stage'});
+  if(expCfg.stagesEach) stages.forEach((s,i)=>{
+    const inc = expCfg.stagesCum ? (p=>{ const k=stageIndex(p); return k>=0 && k<=i; })
+                                 : (p=>p.st===s.id);
+    jobs.push({file:jobFile('stage',i,s.name),
+      title:(expCfg.stagesCum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name, inc:inc, col:'stage'});
+  });
+  if(expCfg.buildersAll && builders.length) jobs.push({file:'all-builders', title:'All builders', inc:all, col:'builder'});
+  if(expCfg.buildersEach) builders.forEach((b,i)=>
+    jobs.push({file:jobFile('builder',i,b.name), title:b.name, inc:p=>p.bd===b.id, col:'builder'}));
+  return jobs;
+}
+function updateExpCount(){
+  const el=$('exp-count'); if(!el) return;
+  const n=exportJobs().length;
+  el.textContent = n ? n+' image'+(n>1?'s':'') : 'nothing selected';
+}
+// bounds of everything on the board (floor offsets included), padded by a cell
+function contentBounds(){
+  let a=Infinity,b=Infinity,c=-Infinity,d=-Infinity;
+  pieces.forEach(p=>{ const k=CATALOG[p.type]; if(!k) return;
+    const rad=Math.abs(p.rot%180)===90, off=layerOff(pieceLayer(p));
+    const hw=(rad?k.h:k.w)*GRID/2, hh=(rad?k.w:k.h)*GRID/2;
+    a=Math.min(a,p.x-hw); c=Math.max(c,p.x+hw);
+    b=Math.min(b,p.y-hh+off.y); d=Math.max(d,p.y+hh+off.y); });
+  strokes.forEach(s=>s.pts.forEach(pt=>{ a=Math.min(a,pt.x); c=Math.max(c,pt.x); b=Math.min(b,pt.y); d=Math.max(d,pt.y); }));
+  images.forEach(im=>{ a=Math.min(a,im.x-im.w/2); c=Math.max(c,im.x+im.w/2); b=Math.min(b,im.y-im.h/2); d=Math.max(d,im.y+im.h/2); });
+  texts.forEach(t=>{ const bx=textBox(t), r=t.rot?Math.hypot(bx.w,bx.h)/2:0, hw=r||bx.w/2, hh=r||bx.h/2;
+    a=Math.min(a,t.x-hw); c=Math.max(c,t.x+hw); b=Math.min(b,t.y-hh); d=Math.max(d,t.y+hh); });
+  if(a===Infinity) return null;
+  const m=GRID;
+  return {minX:a-m, minY:b-m, maxX:c+m, maxY:d+m};
+}
+function renderExport(job, B){
+  const sc=Math.max(1,Math.min(4,(expCfg.scale|0)||2));
+  const cap=expCfg.title ? GRID : 0;                        // caption strip above the frame
+  const W=B.maxX-B.minX, H=(B.maxY-B.minY)+cap;
+  const cx=document.createElement('canvas'); cx.width=Math.round(W*sc); cx.height=Math.round(H*sc);
+  const g=cx.getContext('2d'); g.scale(sc,sc); g.translate(-B.minX, -B.minY+cap);
+  const bg=cssVar('--canvas-bg'), ink=curInk();
+  g.fillStyle=bg; g.fillRect(B.minX, B.minY-cap, W, H);
+  if(expCfg.grid){
+    g.strokeStyle=cssVar('--grid'); g.lineWidth=1;
+    for(let x=Math.ceil(B.minX/GRID)*GRID;x<B.maxX;x+=GRID){ g.beginPath(); g.moveTo(x,B.minY); g.lineTo(x,B.maxY); g.stroke(); }
+    for(let y=Math.ceil(B.minY/GRID)*GRID;y<B.maxY;y+=GRID){ g.beginPath(); g.moveTo(B.minX,y); g.lineTo(B.maxX,y); g.stroke(); }
+  }
+  if(expCfg.notes){
+    images.forEach(im=>{ if(im._img&&im._img.complete) g.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); });
+    strokes.forEach(s=>{ if(!s.pts.length) return;
+      g.beginPath(); g.moveTo(s.pts[0].x,s.pts[0].y); s.pts.forEach(pt=>g.lineTo(pt.x,pt.y));
+      g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round'; g.lineCap='round'; g.stroke(); });
+  }
+  const shown=pieces.filter(planVisible);
+  const focus=shown.filter(job.inc);
+  const rest=expCfg.ghost ? shown.filter(p=>!job.inc(p)) : [];
+  const mxl=maxLayer();
+  // out-of-focus pieces go down first as a faint ghost, the focused set on top
+  const paint=(arr, ghost)=>{
+    const lc=lowCounts(arr), swSet=shortwallCells(arr), drawn=new Set();
+    arr.map((p,i)=>({p:p,i:i}))
+      .sort((x,y)=> (drawLayer(x.p)-drawLayer(y.p)) || (swRank(x.p)-swRank(y.p)) || (x.i-y.i))
+      .map(o=>o.p).forEach(p=>{
+        const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
+        let base = ink;
+        if(job.col==='stage'){ const s=stageOf(p); base = s?s.color:mixCol(ink,bg,0.5); }
+        else if(job.col==='builder'){ const b=builderOf(p); base = b?b.color:mixCol(ink,bg,0.5); }
+        if(ghost) base=mixCol(base,bg,0.8);
+        const st=lowStyle(p, layerColor(base,bg,dl,mxl), bg, lc, swSet, drawn);
+        if(st.skip) return;
+        g.save(); g.translate(off.x,off.y);
+        if(!ghost && masksBelow(p)) maskPiece(g,p,bg);
+        if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); if(!ghost) maskPiece(g,p,bg); }
+        drawPiece(g,p, st.col, 1); g.restore();
+      });
+  };
+  paint(rest, true); paint(focus, false);
+  if(expCfg.notes) texts.forEach(t=>drawText(g,t,ink));
+  if(expCfg.title){
+    g.save(); g.textBaseline='alphabetic';
+    const y=B.minY-cap*0.3;
+    g.fillStyle=ink; g.font='600 '+Math.round(GRID*0.5)+'px Oswald, sans-serif';
+    g.fillText(job.title, B.minX+GRID*0.4, y);
+    const cnt=focus.length+(focus.length===1?' piece':' pieces');
+    g.fillStyle=mixCol(ink,bg,0.45); g.font=Math.round(GRID*0.34)+'px IBM Plex Mono, monospace';
+    g.fillText(cnt, B.maxX-GRID*0.4-g.measureText(cnt).width, y);
+    g.restore();
+  }
+  return cx;
+}
+async function runExport(){
+  const B=contentBounds();
+  if(!B){ alert('Nothing to export yet.'); return; }
+  const jobs=exportJobs();
+  if(!jobs.length){ flashToast('Pick at least one view to export'); return; }
+  closeExp();
+  for(const job of jobs){
+    const canv=renderExport(job, B);
+    const blob=await new Promise(res=>canv.toBlob(res, 'image/png'));
+    if(blob) await saveFile('fob-'+job.file+'.png', blob);
+  }
+  flashToast(jobs.length+' image'+(jobs.length>1?'s':'')+' exported');
+}
+function openExp(){ ensurePlan(); expToForm(); $('exp-modal').hidden=false; }
+function closeExp(){ $('exp-modal').hidden=true; }
+$('exp-close').onclick=closeExp;
+$('exp-bg').onclick=closeExp;
+$('exp-modal').addEventListener('change', expFromForm);
+$('exp-run').onclick=runExport;
+
 // ---------------- init
 // collapsible rail sections (state persisted per section)
 function initCollapsibles(){
@@ -2909,14 +3326,23 @@ function init(){
       if(saved.groupUid) groupUid=saved.groupUid;
       if('higherFloorOnTop' in saved) higherFloorOnTop=saved.higherFloorOnTop;
       if(saved.curLayer!=null) curLayer=Math.max(0,saved.curLayer);
+      if(saved.stages) stages=saved.stages;
+      if(saved.builders) builders=saved.builders;
+      if(saved.stageUid) stageUid=saved.stageUid;
+      if(saved.builderUid) builderUid=saved.builderUid;
+      if('curStageId' in saved) curStageId=saved.curStageId;
+      if('curBuilderId' in saved) curBuilderId=saved.curBuilderId;
+      if(saved.planColorBy) planColorBy=saved.planColorBy;
+      if('showNoStage' in saved) showNoStage=saved.showNoStage;
+      if('showNoBuilder' in saved) showNoBuilder=saved.showNoBuilder;
       uid=saved.uid||Math.max(1,...pieces.map(p=>p.id||0),...images.map(i=>i.id||0),...texts.map(t=>t.id||0),0)+1; }
   }catch(e){}
-  migrateLayers();
+  migrateLayers(); ensurePlan(); loadExpCfg();
   try{ const sv=JSON.parse(localStorage.getItem('wardog-fob-stamps')||'null');
     if(Array.isArray(sv)){ stamps=sv.filter(s=>s&&Array.isArray(s.parts)&&s.parts.length);
       stampUid=Math.max(0,...stamps.map(s=>s.sid||0))+1; }
   }catch(e){}
-  buildRecent(); buildColors(); renderLayerPanel();
+  buildRecent(); buildColors(); renderLayerPanel(); renderPlanPanel();
   { const AL=layerById(curLayerId); if(AL) curLayer=Math.max(0,AL.floor||0); }  // floor follows active layer
   $('layer-val').textContent = curLayer===0?'G':curLayer;   // restore floor readout
   // Floors & Layers panel: shown on desktop, hidden on mobile; last choice remembered
@@ -2928,7 +3354,7 @@ function init(){
   applyTouchDefault();
   // some browsers settle the pointer type just after scripts run, so re-check
   requestAnimationFrame(applyTouchDefault);
-  history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId})]; hidx=0;
+  history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId,stages,builders})]; hidx=0;
   resize();
   updateStatus();
   loadSharedHash();   // a shared build in the URL hash (#FOB...) overrides the autosave
@@ -2939,13 +3365,16 @@ async function loadSharedHash(){
   if(!/^FOB[123]\./.test(h)) return;
   try{
     const o=await decodeBuild(h);
-    uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0}));
+    const map=adoptPlan(o);
+    uid=1; pieces=(o.pieces||[]).map(p=>({id:uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0,
+      st:map('stage',p), bd:map('builder',p)}));
+    cleanPlan();
     strokes=o.strokes||[];
     texts=(o.texts||[]).map(t=>({id:uid++,text:t.text,x:t.x,y:t.y,size:t.size||GRID*0.6,color:t.color||cssVar('--piece'),rot:t.rot||0}));
     images=[]; inkColor=o.ink||null;
-    layers=[]; curLayerId=0; ensureLayers(); migrateLayers(); renderLayerPanel();
+    layers=[]; curLayerId=0; ensureLayers(); migrateLayers(); renderLayerPanel(); renderPlanPanel();
     clearSelection(); clearOverlaySel(); buildColors();
-    history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId})]; hidx=0;
+    history=[JSON.stringify({pieces,strokes,uid,images:imagesData(),texts,layers,curLayerId,stages,builders})]; hidx=0;
     centerOnContent(); render(); updateStatus(); persist();
   }catch(e){ flashToast('That shared link could not be read'); }
 }
