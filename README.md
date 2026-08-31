@@ -6,7 +6,43 @@ annotations — all in a single self-contained HTML file (no build step, no depe
 
 ## Run it
 
-Open `index.html` in any modern browser. That's it.
+Open `dist/index.html` in any modern browser. That's it - it is a single
+self-contained file with no imports, so it works straight off disk.
+
+## Develop it
+
+The source lives in `js/` as ES modules; `index.html` loads `js/main.js`.
+Modules need a server (`file://` blocks module imports), so:
+
+```
+npx serve .          # or: python3 -m http.server
+```
+
+then open `http://localhost:3000/index.html`.
+
+After changing anything in `js/`, regenerate the single-file build:
+
+```
+node build.js        # js/*.js -> dist/index.html
+```
+
+`build.js` follows the import graph from `main.js`, strips the `import` /
+`export` keywords, and inlines every module into one `<script>` in evaluation
+order. `dist/index.html` is generated - never edit it by hand.
+
+### Module layout
+
+`state.js` holds every piece of mutable app state on one object, `ST`. Modules
+import `ST` and read/write through it, because plain ES module bindings are
+read-only for importers and nearly all of this app's state gets reassigned.
+
+`dom.js` (canvas handles, `GRID`), `catalog.js` (the structure table) and
+`svg.js` (tool icons) import nothing, so they always evaluate first and no
+import cycle can catch a constant in the temporal dead zone. The rest split by
+concern: `drawers.js` / `render.js` draw, `pointer.js` / `touch.js` /
+`keyboard.js` take input, `plan.js` / `layers.js` / `groups.js` hold the data
+models, the `*panel.js` files own their panels, and `exporter.js` renders the
+schematic sheets.
 
 ## Structures
 
