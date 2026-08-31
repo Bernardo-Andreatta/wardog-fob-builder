@@ -217,7 +217,18 @@
   .floorrow .lbtn:hover{border-color:var(--accent)}
   .floorrow .lval{font-family:var(--font-mono); font-size:15.5px; color:var(--ink); min-width:22px; text-align:center; font-weight:500;}
   .floorhint{flex-basis:100%; font-size:11px; color:var(--muted); font-family:var(--font-mono); line-height:1.4;}
-  .lp-head{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid var(--line);}
+  .lp-head{display:flex; align-items:center; justify-content:space-between; padding:7px 8px; border-bottom:1px solid var(--line);}
+  .sp-tabs{display:flex; gap:4px; min-width:0;}
+  .sp-tabs button{padding:4px 9px; border:1px solid transparent; border-radius:6px; background:none;
+    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:11.5px;
+    color:var(--muted); font-weight:600; cursor:pointer; white-space:nowrap;}
+  .sp-tabs button:hover{color:var(--ink)}
+  .sp-tabs button.on{color:var(--accent); border-color:var(--line); background:var(--panel-2);}
+  .sp-body{display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;}
+  .sp-body[hidden]{display:none}
+  .sp-sec.sp-scroll{overflow-y:auto; padding-bottom:10px;}
+  .plan-sub em{color:var(--muted); font-style:normal; font-weight:500; letter-spacing:.04em;
+    text-transform:none; font-size:10.5px; margin-left:6px;}
   .lp-head span{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em; font-size:12.5px; color:var(--muted); font-weight:600;}
   .lp-head .lp-x{background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; line-height:1; width:26px; height:26px;}
   .lp-head .lp-x:hover{color:var(--ink)}
@@ -406,7 +417,7 @@
   .plan-sub button:hover{border-color:var(--accent); color:var(--accent)}
   .plan-list{display:flex; flex-direction:column; border:1px solid var(--line); border-radius:8px;
     overflow:hidden; background:var(--panel-2);}
-  .pl-row{display:flex; align-items:center; gap:4px; padding:5px 6px; cursor:pointer; font-size:12.5px;
+  .pl-row{display:flex; align-items:center; gap:5px; padding:6px 8px; cursor:pointer; font-size:13px;
     border-bottom:1px solid var(--line);}
   .pl-row:last-child{border-bottom:none}
   .pl-row:hover{background:var(--panel)}
@@ -491,26 +502,6 @@
       </div></div>
     </div>
     <div class="sec">
-      <button class="group-label" data-sec="plan">Build Plan<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-      <div class="sec-body"><div class="plan">
-        <div class="plan-sub">Stage<span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
-        <div class="plan-list" id="stage-list"></div>
-        <div class="plan-sub">Builder<span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
-        <div class="plan-list" id="builder-list"></div>
-        <div class="plan-sub">Colour by</div>
-        <div class="plan-seg" id="plan-colorby">
-          <button data-mode="none" class="on">Off</button>
-          <button data-mode="stage">Stage</button>
-          <button data-mode="builder">Builder</button>
-        </div>
-        <div class="plan-apply">
-          <button id="plan-apply-stage" title="Tag the selected pieces with the active stage" disabled>Stage &rarr; sel.</button>
-          <button id="plan-apply-builder" title="Tag the selected pieces with the active builder" disabled>Builder &rarr; sel.</button>
-        </div>
-        <div class="plan-hint">New pieces take the active stage &amp; builder. The eye filters the board; Export image writes one PNG per stage / builder.</div>
-      </div></div>
-    </div>
-    <div class="sec">
       <button class="group-label" data-sec="color">Color<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="sec-body"><div class="colors" id="color-grid"></div></div>
     </div>
@@ -542,7 +533,14 @@
 
     <button id="panel-toggle" title="Floors &amp; Layers"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
     <div class="side-panel" id="layers-panel">
-      <div class="lp-head"><span>Floors &amp; Layers</span><button class="lp-x" id="lp-close" title="Close">&times;</button></div>
+      <div class="lp-head">
+        <div class="sp-tabs" id="sp-tabs">
+          <button data-tab="layers" class="on" title="Floors, layers, z-order">Layers</button>
+          <button data-tab="plan" title="Stages &amp; builders">Build Plan</button>
+        </div>
+        <button class="lp-x" id="lp-close" title="Close">&times;</button>
+      </div>
+      <div class="sp-body" id="tab-layers">
       <div class="sp-sec">
         <div class="sp-title">Floor <em>build height</em></div>
         <div class="floorrow">
@@ -564,6 +562,28 @@
             <span class="grow"></span>
             <button id="lp-up" title="Move layer up">&#9650;</button>
             <button id="lp-down" title="Move layer down">&#9660;</button>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div class="sp-body" id="tab-plan" hidden>
+        <div class="sp-sec sp-grow sp-scroll">
+          <div class="plan">
+            <div class="plan-sub">Stage<em>when it goes down</em><span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
+            <div class="plan-list" id="stage-list"></div>
+            <div class="plan-sub">Builder<em>who puts it there</em><span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
+            <div class="plan-list" id="builder-list"></div>
+            <div class="plan-sub">Colour by</div>
+            <div class="plan-seg" id="plan-colorby">
+              <button data-mode="none" class="on">Off</button>
+              <button data-mode="stage">Stage</button>
+              <button data-mode="builder">Builder</button>
+            </div>
+            <div class="plan-apply">
+              <button id="plan-apply-stage" title="Tag the selected pieces with the active stage" disabled>Stage &rarr; sel.</button>
+              <button id="plan-apply-builder" title="Tag the selected pieces with the active builder" disabled>Builder &rarr; sel.</button>
+            </div>
+            <div class="plan-hint">New pieces take the active stage &amp; builder. The eye filters the board; Export image writes one PNG per stage / builder.</div>
           </div>
         </div>
       </div>
@@ -634,7 +654,7 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
-        <div class="k">Build Plan rail section</div><div class="d">Tag pieces with a stage (early &middot; mid &middot; late) and a builder as you place them</div>
+        <div class="k">Layers button &rarr; Build Plan tab</div><div class="d">Tag pieces with a stage (early &middot; mid &middot; late) and a builder as you place them</div>
         <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
         <div class="k">Stage &rarr; sel. &middot; Builder &rarr; sel.</div><div class="d">Re-tag pieces that are already built</div>
         <div class="k">Export / Import &rarr; Export image</div><div class="d">One PNG per stage / builder, all sharing the same frame</div>
@@ -2995,9 +3015,23 @@ $('lp-floordir').onclick=()=>{ higherFloorOnTop=!higherFloorOnTop; render(); ren
 $('lp-opacity').oninput=e=>{ const v=(+e.target.value)/100; selectedLayerObjs().forEach(l=>l.opacity=v);
   $('lp-opacity-val').textContent=(+e.target.value)+'%'; render(); };
 $('lp-opacity').onchange=()=>{ snapshot(); };
-function showPanel(on){
+// the floating panel carries both sheets; the tab strip swaps which one shows,
+// so Build Plan gets a real panel without adding a second one to the stage
+let spTab='layers';
+function setSpTab(t){
+  spTab = t==='plan' ? 'plan' : 'layers';
+  document.querySelectorAll('#sp-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===spTab));
+  const L=$('tab-layers'), P=$('tab-plan');
+  if(L) L.hidden = spTab!=='layers';
+  if(P) P.hidden = spTab!=='plan';
+  if(spTab==='layers') renderLayerPanel(); else renderPlanPanel();
+  try{ localStorage.setItem('wardog-fob-sptab', spTab); }catch(e){}
+}
+document.querySelectorAll('#sp-tabs button').forEach(b=>{ b.onclick=()=>setSpTab(b.dataset.tab); });
+// open the panel, optionally jumping straight to one of its tabs
+function showPanel(on, tab){
   document.querySelector('.app').classList.toggle('panel-off', !on);
-  if(on) renderLayerPanel();
+  if(on) setSpTab(tab||spTab);
   try{ localStorage.setItem('wardog-fob-panel', on?'':'off'); }catch(e){}
 }
 $('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));
@@ -3348,7 +3382,9 @@ function init(){
   // Floors & Layers panel: shown on desktop, hidden on mobile; last choice remembered
   (function(){ let pref=null; try{ pref=localStorage.getItem('wardog-fob-panel'); }catch(e){}
     const hide = pref==='off' || (pref==null && isCoarse());
-    document.querySelector('.app').classList.toggle('panel-off', hide); })();
+    document.querySelector('.app').classList.toggle('panel-off', hide);
+    let tab=null; try{ tab=localStorage.getItem('wardog-fob-sptab'); }catch(e){}
+    setSpTab(tab==='plan'?'plan':'layers'); })();
   if(!view.ox && !view.oy){ view.ox=stage.clientWidth/2; view.oy=stage.clientHeight/2; }
   setTool('select');
   applyTouchDefault();

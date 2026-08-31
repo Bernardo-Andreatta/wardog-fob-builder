@@ -44,7 +44,8 @@ grid lines, so everything tiles flush. Major grid lines mark 4×4 blocks.
 
 ## Build planner (experimental)
 
-Every piece carries two tags, set in the **Build Plan** rail section:
+The floating side panel (**Layers** in the top bar) has two tabs: *Layers* and
+*Build Plan*. Under Build Plan, every piece carries two tags:
 
 - **Stage** — *when* it goes down. Ships with Early (walls & basic structure), Mid
   (deployables) and Late (fluff & detail); add, rename, recolour or remove your own.
