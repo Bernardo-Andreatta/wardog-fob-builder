@@ -511,6 +511,8 @@
       <button class="btn" id="rot-cw" title="Rotate 45&deg; clockwise"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg><span>45&deg;</span></button>
       <button class="btn" id="fab-mirror" title="Mirror / flip"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg></button>
       <button class="btn" id="fab-copy" title="Duplicate"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg></button>
+      <button class="btn" id="fab-group" title="Group"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg></button>
+      <button class="btn" id="fab-ungroup" title="Ungroup"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg></button>
       <button class="btn danger" id="fab-delete" title="Delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
     </div>
 
@@ -538,7 +540,8 @@
         <div class="k"><kbd>Click</kbd> a structure, then click the grid</div><div class="d">Place it &middot; repeat to place more</div>
         <div class="k"><kbd>Click</kbd> / drag empty ground</div><div class="d">Select a piece &middot; box-select a group</div>
         <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
-        <div class="k">Right-click</div><div class="d">Deselect &amp; back to Select tool</div>
+        <div class="k">Right-click a structure &middot; empty ground</div><div class="d">Pick that structure to place more &middot; deselect</div>
+        <div class="k">Place a FOB first</div><div class="d">Each FOB opens a 40&times;40 build area (areas can't overlap); build inside it</div>
         <div class="k">Drag selection &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd></div><div class="d">Move &middot; nudge by grid</div>
         <div class="k"><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd></div><div class="d">Rotate (snap: 45&deg; &middot; free: 5&deg;) &middot; reverse</div>
         <div class="k"><kbd>F</kbd></div><div class="d">Mirror / flip selection</div>
@@ -813,14 +816,18 @@ function cellFoot(type,rot){
   if(r===90||r===270){ const t=w; w=h; h=t; }
   return {w,h};
 }
-// snap a piece CENTER so its cells land on grid lines:
-// even span -> center on a grid line; odd span -> center on a cell centre
+// snap one axis so a piece of `cells` size tiles cleanly:
+// integer even -> grid line, integer odd -> cell centre,
+// fractional (e.g. 0.5) -> tile by its own size so copies stack flush (2 half-cells fill a cell)
+function snapAxis(v, cells){
+  if(Number.isInteger(cells)) return (cells%2===0) ? Math.round(v/GRID)*GRID : (Math.round(v/GRID-0.5)+0.5)*GRID;
+  const size=cells*GRID;
+  return Math.round((v-size/2)/size)*size + size/2;
+}
 function snapCenter(type,rot,x,y){
   if(!snapOn) return {x:x,y:y};
   const f=cellFoot(type,rot);
-  const ax = (f.w%2===0) ? Math.round(x/GRID)*GRID : (Math.round(x/GRID-0.5)+0.5)*GRID;
-  const ay = (f.h%2===0) ? Math.round(y/GRID)*GRID : (Math.round(y/GRID-0.5)+0.5)*GRID;
-  return {x:ax,y:ay};
+  return {x:snapAxis(x,f.w), y:snapAxis(y,f.h)};
 }
 function screenToWorld(sx,sy){ return {x:(sx-view.ox)/view.scale, y:(sy-view.oy)/view.scale}; }
 function worldToScreen(wx,wy){ return {x:wx*view.scale+view.ox, y:wy*view.scale+view.oy}; }
@@ -1168,6 +1175,7 @@ function render(){
   ctx.setTransform(dpr*view.scale,0,0,dpr*view.scale, dpr*view.ox, dpr*view.oy);
   const colInk=curInk(), colAcc=cssVar('--accent');
   drawGrid(cssVar('--grid'), cssVar('--grid-major'));
+  drawFobAreas(colAcc);
   // draw each Photoshop layer bottom -> top; a layer under 100% opacity renders
   // to an offscreen buffer and composites at its opacity (true layer alpha, so
   // the floor/mask logic inside stays exactly as-is)
@@ -1202,15 +1210,20 @@ function render(){
   const soloStroke = selStrokes.length===1 && !selected.length && !selImages.length && !selTexts.length;
   selStrokes.forEach(s=>drawStrokeSel(s,colAcc,soloStroke));
   if(marquee) drawMarquee(colAcc);
-  const goff=layerOff(curLayer);
+  const goff=layerOff(curLayer), colBad=cssVar('--bad');
   if(tool==='stamp' && activeStamp){
     ctx.save(); ctx.translate(goff.x,goff.y);
-    stampInstance(activeStamp, hover.x, hover.y, placeRot, placeFlip).forEach(ip=>drawPiece(ctx,ip,colAcc,0.5));
+    stampInstance(activeStamp, hover.x, hover.y, placeRot, placeFlip).forEach(ip=>{
+      const ok=!placeError(ip.type,ip.x,ip.y,ip.rot,curLayer);
+      drawPiece(ctx,ip, ok?colAcc:colBad, 0.5); });
     ctx.restore();
   } else if(CATALOG[tool]){ const c=snapCenter(tool,placeRot,hover.x,hover.y);
-    const ok=canPlace(tool,c.x,c.y,placeRot,curLayer);
+    const ok=!placeError(tool,c.x,c.y,placeRot,curLayer);
+    if(tool==='fob'){ ctx.save(); ctx.translate(goff.x,goff.y);   // preview the zone this FOB would claim
+      const a=fobArea(c.x,c.y); ctx.globalAlpha=1; ctx.strokeStyle=ok?colAcc:colBad; ctx.lineWidth=1.5/view.scale;
+      ctx.setLineDash([10/view.scale,7/view.scale]); ctx.strokeRect(a.minx,a.miny,a.maxx-a.minx,a.maxy-a.miny); ctx.setLineDash([]); ctx.restore(); }
     ctx.save(); ctx.translate(goff.x,goff.y);
-    drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip}, ok?colAcc:cssVar('--bad'), 0.5);
+    drawPiece(ctx,{type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip}, ok?colAcc:colBad, 0.5);
     ctx.restore();
   }
 }
@@ -1238,6 +1251,15 @@ function drawLayerContent(g, L, colInk, bg, maxL){
     if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,bg); }
     drawPiece(g,p, st.col, 1); g.restore(); }
   for(const t of texts){ if(itemLayerId(t)!==lid) continue; drawText(g,t,colInk); }
+}
+// each FOB's 40x40 build zone, drawn as a faint dashed boundary
+function drawFobAreas(col){
+  const fs=fobList(); if(!fs.length) return;
+  ctx.save(); ctx.globalAlpha=0.4; ctx.strokeStyle=col; ctx.lineWidth=1.5/view.scale;
+  ctx.setLineDash([10/view.scale,7/view.scale]);
+  fs.forEach(f=>{ const off=layerOff(pieceLayer(f)), a=fobArea(f.x+off.x,f.y+off.y);
+    ctx.strokeRect(a.minx,a.miny,a.maxx-a.minx,a.maxy-a.miny); });
+  ctx.setLineDash([]); ctx.restore();
 }
 function drawMarquee(col){
   const x=Math.min(marquee.x0,marquee.x1), y=Math.min(marquee.y0,marquee.y1);
@@ -1317,7 +1339,7 @@ function lowStyle(p, baseCol, bg, counts, swSet, drawn){
   // ground it keeps the stronger "low" dim
   return {skip:false, col:mixCol(baseCol,bg, pieceLayer(p)>0 ? 0.12 : 0.5)};
 }
-const LAYER_OFF = GRID*0.34;                     // upward screen shift per floor
+const LAYER_OFF = GRID*0.44;                     // upward screen shift per floor
 function layerOff(l){ return {x:0, y:-l*LAYER_OFF}; }
 function pieceLayer(p){ return p.l||0; }
 // tall pieces reach one floor above their base: they draw at that height and
@@ -1352,6 +1374,37 @@ function canPlace(type, x, y, rot, layer){
   const sup=supportedCells(layer-1);
   return cellsOf(type,x,y,rot).every(c=>sup.has(c));
 }
+// soft pieces may clip anything (sandbags/barbed/hedgehog and short walls); hard
+// buildings may not overlap another hard building on the same floor
+const SOFT_TYPES=['sandbags','barbed','hedgehog','shortwall'];
+function isSoft(type){ return SOFT_TYPES.indexOf(type)!==-1; }
+function overlapConflict(type,x,y,rot,layer,ignoreId){
+  if(isSoft(type)) return false;
+  const set=new Set(cellsOf(type,x,y,rot));
+  return pieces.some(p=> p.id!==ignoreId && pieceLayer(p)===layer && !isSoft(p.type)
+    && cellsOf(p.type,p.x,p.y,p.rot).some(c=>set.has(c)));
+}
+// FOB build areas: every FOB owns a 40x40-cell zone; structures must sit inside a
+// zone, and FOB zones may not overlap each other
+const FOB_CELLS=40;
+function fobList(){ return pieces.filter(p=>p.type==='fob'); }
+function fobArea(cx,cy){ const half=FOB_CELLS*GRID/2; return {minx:cx-half,miny:cy-half,maxx:cx+half,maxy:cy+half}; }
+function rectContains(r,a){ return a.minx>=r.minx-0.01 && a.maxx<=r.maxx+0.01 && a.miny>=r.miny-0.01 && a.maxy<=r.maxy+0.01; }
+function rectsOverlap(a,b){ return a.minx<b.maxx-0.01 && a.maxx>b.minx+0.01 && a.miny<b.maxy-0.01 && a.maxy>b.miny+0.01; }
+// null = ok, otherwise a short reason string
+function placeError(type,x,y,rot,layer,ignoreId){
+  if(!canPlace(type,x,y,rot,layer)) return 'Needs a wall or bunker below';
+  if(overlapConflict(type,x,y,rot,layer,ignoreId)) return 'Structures cannot overlap';
+  const aabb=pieceAABB({type,x,y,rot,flip:false});
+  if(type==='fob'){
+    const na=fobArea(x,y);
+    if(fobList().some(f=> f.id!==ignoreId && rectsOverlap(fobArea(f.x,f.y), na))) return 'FOB areas cannot overlap';
+  } else {
+    if(!fobList().length) return 'Place a FOB first';
+    if(!fobList().some(f=>rectContains(fobArea(f.x,f.y), aabb))) return 'Build inside a FOB area';
+  }
+  return null;
+}
 // colour helpers for depth dimming
 function _hx(c){ c=(c||'').trim();
   if(c[0]==='#'){ if(c.length===4) c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
@@ -1360,7 +1413,7 @@ function _hx(c){ c=(c||'').trim();
 function mixCol(a,b,t){ const A=_hx(a),B=_hx(b);
   return 'rgb('+Math.round(A[0]+(B[0]-A[0])*t)+','+Math.round(A[1]+(B[1]-A[1])*t)+','+Math.round(A[2]+(B[2]-A[2])*t)+')'; }
 // colour for a piece at floor l given the tallest floor present
-function layerColor(baseCol, bg, l, maxL){ return mixCol(baseCol, bg, Math.max(0,Math.min(0.6,(maxL-l)*0.24))); }
+function layerColor(baseCol, bg, l, maxL){ return mixCol(baseCol, bg, Math.max(0,Math.min(0.7,(maxL-l)*0.42))); }
 // fill a piece's footprint solid (used so an upper floor hides the floor below)
 function maskPiece(g,p,col){
   const c=CATALOG[p.type], W=c.w*GRID, H=c.h*GRID;
@@ -1502,15 +1555,18 @@ function placeSymbolAt(w){
 }
 
 function placeStampAt(w){
-  ensureFloorLayer();
   const inst=stampInstance(activeStamp, w.x, w.y, placeRot, placeFlip);
+  // every part must be a legal placement (support + no overlap + inside a FOB area)
+  for(const ip of inst){ const err=placeError(ip.type, ip.x, ip.y, ip.rot, curLayer); if(err){ flashToast(err); return; } }
+  ensureFloorLayer();
   const gid = inst.length>1 ? groupUid++ : undefined;   // a multi-piece stamp lands as one Group
   const nn=inst.map(ip=>({id:uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:curLayer, ly:curLayerId, g:gid}));
   pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
 function placePieceAt(w){
   const c=snapCenter(tool,placeRot,w.x,w.y);
-  if(!canPlace(tool,c.x,c.y,placeRot,curLayer)){ flashLayerMsg(); return; }  // needs a base below
+  const err=placeError(tool,c.x,c.y,placeRot,curLayer);
+  if(err){ flashToast(err); return; }
   ensureFloorLayer();
   const np={id:uid++,type:tool,x:c.x,y:c.y,rot:placeRot,flip:placeFlip,l:curLayer,ly:curLayerId};
   pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
@@ -1742,6 +1798,11 @@ cv.addEventListener('dblclick', e=>{
 cv.addEventListener('contextmenu', e=>{
   e.preventDefault();
   if(drag || pinch || tpts.size) return;   // touch long-press mid-gesture: not a deselect
+  const w=evtW(e), hit=hitPiece(w.x,w.y);
+  if(hit && CATALOG[hit.type]){            // eyedropper: pick this structure to place more of it
+    placeRot=((Math.round(hit.rot||0)%360)+360)%360; placeFlip=!!hit.flip;
+    setTool(hit.type); return;
+  }
   clearSelection(); clearOverlaySel();
   if(tool!=='select') setTool('select');
   render(); updateStatus();
@@ -2298,6 +2359,10 @@ function updateStatus(){
   const rf=$('rot-fab'); if(rf){
     rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
     rf.classList.toggle('ghost', !!ghost && !anySelected());
+    const total=selected.length+selImages.length+selTexts.length+selStrokes.length;
+    const g=$('fab-group'), u=$('fab-ungroup');
+    if(g) g.style.display = total>=2 ? '' : 'none';
+    if(u) u.style.display = hasGroupInSel() ? '' : 'none';
   }
 }
 
@@ -2319,6 +2384,8 @@ $('fab-mirror').onclick=()=>{
   else if(inGhost()){ placeFlip=!placeFlip; render(); }
 };
 $('fab-copy').onclick=()=>duplicateSel();
+$('fab-group').onclick=()=>groupSel();
+$('fab-ungroup').onclick=()=>ungroupSel();
 $('fab-delete').onclick=()=>deleteSel();
 $('fab-undo').onclick=()=>undo();
 $('fab-redo').onclick=()=>redo();
