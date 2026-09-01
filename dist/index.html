@@ -512,11 +512,12 @@
        the fold - so the builder chip fits beside it on one line */
     /* the row takes the whole line so the two ends can be pushed apart */
     .ph-stage{flex:1 1 auto; min-width:172px; gap:3px; padding:0; margin:0; border-bottom:none;}
-    /* Close sits alone on the left, where a dismiss belongs and where no stray
-       thumb finds a stepper; everything that acts on the stage gathers at the
-       other end, with the whole free width between them. */
+    /* Close on the leading edge, the plan editor on the trailing one, and the
+       stage itself centred: two auto margins split the line's slack evenly, so
+       the stepper sits the same distance from each. */
     .ph-stage .ph-fold{order:-1; margin-right:auto;}
-    .ph-scount{display:inline; margin-left:1px; opacity:.85;}
+    .ph-stage .ph-edit{margin-left:auto;}
+    .ph-scount{display:inline; margin-left:0; opacity:.85;}
     .ph-scount::before{content:'\2013\00a0'; opacity:.5;}   /* name - count */
     .ph-sub{display:none;}                     /* the count rides in the bar */
     /* the chip has to stay readable: given a sliver of the line it shows a dot
@@ -539,7 +540,9 @@
     .plan-hud.sheet-open .ph-list{display:flex;}
     /* five controls plus the name is a lot for a phone's width; the name holds
        its ground and the buttons give way, rather than the name truncating */
-    .ph-stage .ph-name{font-size:12.5px; min-width:64px; flex:0 1 auto;}
+    /* no floor: the name is as wide as its text, so the count reads as part of
+       it instead of across a gap the padding invented */
+    .ph-stage .ph-name{font-size:12.5px; min-width:0; flex:0 1 auto;}
     .ph-btn{width:25px; height:25px; border-radius:6px;}
     .ph-btn svg{width:14px; height:14px;}
     .ph-sub{padding:2px 3px 3px; font-size:9.5px;}
