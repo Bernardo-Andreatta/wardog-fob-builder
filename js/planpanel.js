@@ -77,13 +77,16 @@ export function planRename(E, nameEl){
   nameEl.replaceWith(inp); inp.focus(); inp.select();
 }
 // E === null builds the "Unassigned" bucket row (filterable, not editable)
+// The modal is configuration only: it adds, renames, recolours and removes
+// tags. Which stage and builder are *active*, and which are hidden, are board
+// decisions, so they live on the board readout instead.
 export function buildPlanRow(kind, E){
-  const id = E?E.id:null, active = planActive(kind)===id;
+  const id = E?E.id:null;
   const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
   const row=document.createElement('div');
-  row.className='pl-row'+(active?' active':'')+(vis?'':' off');
+  row.className='pl-row'+(vis?'':' off');
   row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
-  row.title = E ? 'Click to make active · double-click the name to rename'
+  row.title = E ? 'Double-click the name to rename'
                 : 'Pieces with no '+kind+' tag yet';
   let dot;
   if(E){
@@ -98,13 +101,7 @@ export function buildPlanRow(kind, E){
   if(E && E.note) name.title=E.note;
   if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
   const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
-  const eye=document.createElement('button'); eye.className='pl-ic'; eye.innerHTML=vis?EYE_ON:EYE_OFF;
-  eye.title = vis?'Hide these on the board':'Show these again';
-  eye.onclick=ev=>{ ev.stopPropagation();
-    if(E) E.visible=!vis; else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
-    pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist(); };
-  row.onclick=()=>setPlanActive(kind, id);
-  row.appendChild(dot); row.appendChild(name); row.appendChild(n); row.appendChild(eye);
+  row.appendChild(dot); row.appendChild(name); row.appendChild(n);
   // a stage carries a free-text purpose, written here and carried onto its
   // export sheet - nothing is pre-filled, the crew says what the stage is for
   if(E && kind==='stage'){
@@ -169,6 +166,17 @@ const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
 const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
 const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
 let hudSig=null;
+// show / hide everything carrying one tag. The Unassigned bucket has no entry
+// of its own, so its switch lives on the plan flags instead.
+function tagVisible(kind, E){
+  return E ? E.visible!==false : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
+}
+function toggleTag(kind, E){
+  const vis=tagVisible(kind,E);
+  if(E) E.visible=!vis;
+  else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
+  pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist();
+}
 function hudBuilders(){
   return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
     .concat([{id:null, name:'Unassigned', color:null}]);
@@ -196,6 +204,8 @@ export function renderPlanHud(){
     nm.title='The stage new pieces are tagged with';
     head.appendChild(dot); head.appendChild(nm);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
+      ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     el.appendChild(head);
     const sub=document.createElement('div'); sub.className='ph-sub';
@@ -204,14 +214,17 @@ export function renderPlanHud(){
     const tot=document.createElement('span'); tot.className='ph-n ph-total';
     sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
     rows.forEach(r=>{
-      const b=document.createElement('button'); b.className='ph-row';
+      const b=document.createElement('div'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
-      b.title = 'Make '+r.name+' the active builder, and light up what they have in this stage';
+      b.title = 'Make '+r.name+' the active builder, and pick out what they have in this stage';
       const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
       const c=document.createElement('span'); c.className='ph-n';
-      b.appendChild(d); b.appendChild(t); b.appendChild(c);
+      const eye=document.createElement('button'); eye.className='ph-eye';
+      eye.onclick=ev=>{ ev.stopPropagation();
+        toggleTag('builder', r.id==null?null:builderById(r.id)); };
+      b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(eye);
       b.onclick=()=>{
         ST.hlBuilder = (ST.hlBuilder===r.id) ? undefined : r.id;
         setPlanActive('builder', r.id);
@@ -222,6 +235,15 @@ export function renderPlanHud(){
   const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
   if(prev) prev.disabled = stageAt(-1)===undefined;
   if(next) next.disabled = stageAt(1)===undefined;
+  const paintEye=(btn, vis)=>{
+    if(!btn || btn.dataset.on===String(vis)) return;
+    btn.dataset.on=String(vis); btn.innerHTML=vis?EYE_ON:EYE_OFF;
+    btn.title = vis?'Hide these on the board':'Show these again';
+  };
+  const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
+  const sVis = tagVisible('stage', curS);
+  paintEye(el.querySelector('.ph-seye'), sVis);
+  const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
   const tot=el.querySelector('.ph-total');
@@ -235,6 +257,9 @@ export function renderPlanHud(){
     if(c && c.textContent!==v) c.textContent=v;
     row.classList.toggle('on', curB===id);
     row.classList.toggle('lit', ST.hlBuilder!==undefined && ST.hlBuilder===id);
+    const bVis=tagVisible('builder', id==null?null:builderById(id));
+    paintEye(row.querySelector('.ph-eye'), bVis);
+    row.classList.toggle('off', !bVis);
   });
 }
 export function updatePlanApply(){

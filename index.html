@@ -438,8 +438,15 @@
     font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
     font-size:9px; color:var(--accent); font-weight:600; padding:1px 3px 2px;}
   .ph-row{display:flex; align-items:center; gap:6px; width:100%; padding:3px 4px;
-    border:1px solid transparent; border-radius:5px; background:none;
+    border:1px solid transparent; border-radius:5px; background:none; cursor:pointer;
     color:var(--muted); font-size:11px; text-align:left;}
+  /* a hidden tag reads the same on the board readout as it does in the editor */
+  .ph-row.off .ph-name, .ph-stage.off .ph-name{opacity:.45; text-decoration:line-through;}
+  .ph-eye{flex:none; width:16px; height:16px; padding:0; border:none; background:none;
+    color:var(--muted); display:flex; align-items:center; justify-content:center;}
+  .ph-eye:hover{color:var(--ink);}
+  .ph-eye svg{width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8;
+    stroke-linecap:round; stroke-linejoin:round;}
   .ph-row:hover{border-color:var(--line); color:var(--ink);}
   .ph-row.on{border-color:var(--accent); color:var(--accent);}
   /* lit = this builder's work in this stage is spotlit on the board */
@@ -752,9 +759,10 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
-        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage; clicking it makes that builder active and lights up their pieces in this stage (click again to drop the light)</div>
+        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage; clicking it makes that builder active and picks out their pieces in this stage, dropping the rest back (click again to undo)</div>
         <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
-        <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
+        <div class="k">Build Plan row: colour dot &middot; double-click name &middot; &times;</div><div class="d">Recolour the tag &middot; rename &middot; remove it, leaving its pieces unassigned. The modal only configures tags; what is active and what is hidden are set on the board readout</div>
+        <div class="k">Board readout: eye</div><div class="d">Hide that stage or builder's pieces from the board</div>
         <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
         <div class="k">Right-click a piece or selection</div><div class="d">Context menu: rotate &middot; mirror &middot; duplicate &middot; delete &middot; group &middot; set stage / builder &middot; move to layer, plus its layer, floor and group</div>
         <div class="k">Eyedrop tool &middot; right-click &rarr; Pick this structure</div><div class="d">Adopt a placed piece's type and rotation and carry on placing more of it</div>
@@ -799,7 +807,7 @@
           <div class="plan-list" id="builder-list"></div>
         </div>
       </div>
-      <div class="plan-hint">A build starts with no stages and no builders &mdash; <b>+</b> adds one. <b>Click a row</b> to make it active &middot; <b>double-click the name</b> to rename &middot; the <b>colour dot</b> recolours the tag &middot; the <b>eye</b> filters it off the board &middot; <b>&times;</b> removes the tag and leaves its pieces unassigned. Export image writes one PNG per stage / builder that has anything built under it.</div>
+      <div class="plan-hint">A build starts with no stages and no builders &mdash; <b>+</b> adds one. <b>Double-click a name</b> to rename it &middot; the <b>colour dot</b> recolours the tag &middot; <b>&times;</b> removes it and leaves its pieces unassigned. Choosing which stage and builder are active, and hiding a tag from the board, are done on the board readout. Export image writes one PNG per stage / builder that has anything built under it.</div>
     </div>
   </div>
 

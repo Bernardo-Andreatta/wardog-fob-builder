@@ -2,7 +2,6 @@ import { CATALOG } from './catalog.js';
 import { GRID } from './dom.js';
 import { mixCol } from './floors.js';
 import { ST } from './state.js';
-import { cssVar } from './render.js';
 
 // ---------------- build plan: stages + builders -------------------------------
 // A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
@@ -42,7 +41,12 @@ export function planVisible(p){
 export function planColorOf(p, ink, bg){
   let col=ink;
   if(ST.planColorBy==='builder'||ST.planColorBy==='both'){ const b=builderOf(p); col = b?b.color:mixCol(ink,bg,0.5); }
-  if(planSpotlight() && !planLit(p)) col=mixCol(col,bg,0.8);
+  if(planSpotlight()){
+    // lit pieces simply wear their builder's colour; the rest fall back the way
+    // an export sheet ghosts what it is not about
+    if(planLit(p)){ const b=builderOf(p); col = b?b.color:ink; }
+    else col=mixCol(col,bg,0.8);
+  }
   return col;
 }
 // Spotlight: picking a builder in the board readout lights up what that builder
@@ -55,10 +59,7 @@ export function planLit(p){
   return (p.st==null?null:p.st) === (ST.curStageId==null?null:ST.curStageId)
       && (p.bd==null?null:p.bd) === ST.hlBuilder;
 }
-export function spotlightColor(){
-  const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
-  return b ? b.color : cssVar('--accent');
-}
+
 // The fill channel. The outline says *who* (builder); this one says *when*: a
 // translucent wash plus a hatch whose angle belongs to that stage, so the two
 // dimensions read at the same time - and the hatch still separates stages in
