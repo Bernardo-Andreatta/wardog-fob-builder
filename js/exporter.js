@@ -71,12 +71,15 @@ export function exportJobs(){
       title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
       inc:p=>p.st===s.id,
       rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
+      note:(s.note||'').trim(),
       col:so, fill:'stage', badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
   });
   if(ST.expCfg.buildersAll && uB.length) jobs.push({file:'all-builders', title:'All builders', inc:all, col:'builder'});
   if(ST.expCfg.buildersEach) uB.forEach(b=>
     jobs.push({file:jobFile('builder',ST.builders.indexOf(b),b.name), title:b.name,
       inc:p=>p.bd===b.id, col:'builder', badge:{label:b.name, color:b.color}}));
+  if(ST.expCfg.structs && keyEntries().length)
+    jobs.push({file:'structure-key', title:'Structure key', kind:'key', inc:all});
   return jobs;
 }
 // bounds of everything on the board, snapped out to whole blocks (so the ruler
@@ -122,20 +125,85 @@ export function legendChips(job, focus){
   if(job.fill) add(job.fill, true);             // hatched swatch
   return chips;
 }
-// optional second legend block: every structure standing on this sheet, once,
-// with its own mini icon so the name and the shape are read together
-export function structChips(focus){
-  const seen=new Map();
-  focus.forEach(p=>{ if(CATALOG[p.type]) seen.set(p.type, (seen.get(p.type)||0)+1); });
+// ---- structure key: its own sheet, drawn at the map's scale ----------------
+// A swatch-sized icon tells a builder nothing about how much ground a structure
+// eats. Here every structure is drawn at true scale, at the same px-per-block as
+// the map, so a bunker really is four times a wall - and because it is a sheet
+// of its own, it is the one page you hand to the crew.
+const KEY_GAP=GRID*0.55, KEY_TEXT=GRID*3.6, KEY_MAXH=GRID*22;
+// A couple of drawings reach past their own footprint - the door and gate swing
+// arcs - so their row reserves the height the art really covers. The piece is
+// still drawn at true scale; only the spacing around it grows.
+const KEY_ART_H={gate:2.5, door:1.4};
+export function keyEntries(){
+  const shown=ST.pieces.filter(planVisible), seen=new Map();
+  shown.forEach(p=>{ if(CATALOG[p.type]) seen.set(p.type, (seen.get(p.type)||0)+1); });
   return Object.keys(CATALOG).filter(t=>seen.has(t))
-    .map(t=>({label:CATALOG[t].name, color:null, n:seen.get(t), icon:t}));
+    .map(t=>({type:t, n:seen.get(t), c:CATALOG[t]}));
+}
+// entries flow down a column and start a new one once the column is tall enough,
+// so one big structure does not stretch the sheet into a ribbon
+export function keyLayout(){
+  const entries=keyEntries();
+  const cols=[[]]; let h=0;
+  entries.forEach(e=>{
+    e.rh=Math.max((KEY_ART_H[e.type]||e.c.h)*GRID, EXP_ROW*1.6)+KEY_GAP;
+    if(h+e.rh>KEY_MAXH && cols[cols.length-1].length){ cols.push([]); h=0; }
+    cols[cols.length-1].push(e); h+=e.rh;
+  });
+  const cw=cols.map(col=>Math.max(0,...col.map(e=>e.c.w*GRID))+KEY_TEXT+KEY_GAP*2);
+  const ch=cols.map(col=>col.reduce((a,e)=>a+e.rh,0));
+  const head=ST.expCfg.header?EXP_HEAD:0;
+  return {cols, cw, ch, entries, head,
+    w: EXP_PAD*2 + Math.max(GRID*4, cw.reduce((a,b)=>a+b,0)),
+    h: EXP_PAD*2 + head + Math.max(GRID*2, ...ch)};
+}
+export function renderKeySheet(job){
+  const K=keyLayout(), sc=expScaleFor(K.w,K.h);
+  const cx=document.createElement('canvas');
+  cx.width=Math.round(K.w*sc); cx.height=Math.round(K.h*sc);
+  const g=cx.getContext('2d'); g.scale(sc,sc);
+  const bg=cssVar('--canvas-bg'), ink=curInk();
+  g.fillStyle=bg; g.fillRect(0,0,K.w,K.h);
+  g.textBaseline='alphabetic';
+  if(K.head){
+    const nm=(ST.expCfg.name||'').trim();
+    if(nm){ g.fillStyle=mixCol(ink,bg,0.42); g.font=F_SUB();
+      g.fillText(nm.toUpperCase(), EXP_PAD, EXP_PAD+EXP_HEAD*0.32); }
+    g.fillStyle=ink; g.font=F_TITLE();
+    g.fillText(job.title, EXP_PAD, EXP_PAD+EXP_HEAD*(nm?0.86:0.62));
+    g.font=F_SUB(); g.fillStyle=mixCol(ink,bg,0.4);
+    const sub='drawn to scale';
+    g.fillText(sub, K.w-EXP_PAD-g.measureText(sub).width, EXP_PAD+EXP_HEAD*0.86);
+  }
+  let x=EXP_PAD;
+  K.cols.forEach((col,ci)=>{
+    let y=EXP_PAD+K.head;
+    const pw=Math.max(0,...col.map(e=>e.c.w*GRID));
+    col.forEach(e=>{
+      const mid=y+(e.rh-KEY_GAP)/2;
+      // the structure at the size it really takes up on the map
+      drawPiece(g, {type:e.type, x:x+KEY_GAP+pw/2, y:mid, rot:0, flip:false}, ink, 1);
+      const tx=x+KEY_GAP*2+pw;
+      g.fillStyle=ink; g.font=F_CHIP();
+      g.fillText(e.c.name, tx, mid);
+      g.fillStyle=mixCol(ink,bg,0.45); g.font=F_TICK();
+      g.fillText(e.c.w+' x '+e.c.h+' blocks', tx, mid+GRID*0.34);
+      const cnt='x '+e.n;
+      g.fillStyle=mixCol(ink,bg,0.25); g.font=F_CHIP();
+      g.fillText(cnt, x+K.cw[ci]-KEY_GAP-g.measureText(cnt).width, mid);
+      y+=e.rh;
+    });
+    x+=K.cw[ci];
+  });
+  return cx;
 }
 export function packChips(chips, maxW){
   const ctx=measCtx(); ctx.font=F_CHIP();
   const rows=[[]]; let w=0;
   chips.forEach(c=>{
     c.w = EXP_SW + GRID*0.18 + ctx.measureText(c.label+'  '+c.n).width + GRID*0.42;
-    if((c.br || w+c.w > maxW) && rows[rows.length-1].length){ rows.push([]); w=0; }
+    if(w+c.w > maxW && rows[rows.length-1].length){ rows.push([]); w=0; }
     rows[rows.length-1].push(c); w+=c.w;
   });
   return rows[0].length ? rows : [];
@@ -152,15 +220,6 @@ export function drawSwatch(g, x, y, sz, col, hatch, ink, bg){
     g.translate(x+sz/2, y+sz/2); g.rotate(ang);
     g.beginPath(); for(let d=-sz; d<=sz; d+=sz/3.2){ g.moveTo(-sz,d); g.lineTo(sz,d); } g.stroke();
   }
-  g.restore();
-}
-// the structure legend's swatch is the piece's own top-down art, scaled to the box
-export function drawIconSwatch(g, x, y, sz, type, ink, bg){
-  const c=CATALOG[type];
-  if(!c || !DRAWERS[type]){ drawSwatch(g,x,y,sz,null,null,ink,bg); return; }
-  const s=sz/(Math.max(c.w,c.h)*GRID)*0.94;
-  g.save(); g.translate(x+sz/2, y+sz/2); g.scale(s,s);
-  drawPiece(g, {type:type, x:0, y:0, rot:0, flip:false}, ink, 1, 1.6/s);
   g.restore();
 }
 // dimension rulers along the top and left edges, ticked every block and
@@ -203,12 +262,15 @@ export function expScaleFor(w,h){
   return Math.max(0.25, Math.min(want, EXP_MAX_DIM/w, EXP_MAX_DIM/h, Math.sqrt(EXP_MAX_PX/(w*h))));
 }
 export function expSheet(job, B){
+  if(job.kind==='key'){ const K=keyLayout();
+    return {key:K, focus:[], rest:[], rows:[], head:K.head, rule:0, legH:0,
+            w:K.w, h:K.h, ox:0, oy:0}; }
   const shown=ST.pieces.filter(planVisible);
   const focus=shown.filter(job.inc);
   const chips=ST.expCfg.legend ? legendChips(job, focus) : [];
-  if(ST.expCfg.structs){ const sc=structChips(focus);
-    if(sc.length){ if(chips.length) sc[0].br=true; chips.push(...sc); } }
-  const head=ST.expCfg.header?EXP_HEAD:0, rule=ST.expCfg.ruler?EXP_RULE:0;
+  // a stage note adds a line under the title, so the header grows to hold it
+  const head=ST.expCfg.header ? (job.note?EXP_HEAD*1.42:EXP_HEAD) : 0;
+  const rule=ST.expCfg.ruler?EXP_RULE:0;
   const mapW=B.maxX-B.minX, mapH=B.maxY-B.minY;
   const rows=chips.length ? packChips(chips, mapW) : [];
   const nrows=Math.max(rows.length, ST.expLegRows);
@@ -223,6 +285,7 @@ export function expSheet(job, B){
           ox:EXP_PAD+rule-B.minX, oy:EXP_PAD+head+rule-B.minY};
 }
 export function renderExport(job, B){
+  if(job.kind==='key') return renderKeySheet(job);
   const S=expSheet(job,B), sc=expScaleFor(S.w,S.h);
   const cx=document.createElement('canvas');
   cx.width=Math.round(S.w*sc); cx.height=Math.round(S.h*sc);
@@ -285,6 +348,9 @@ export function drawExpHeader(g, job, B, S, L, T, ink, bg){
     g.fillText(nm.toUpperCase(), x, y+EXP_HEAD*0.32); }
   g.fillStyle=ink; g.font=F_TITLE();
   g.fillText(job.title, x, y+EXP_HEAD*(nm?0.86:0.62));
+  // what this stage is for, in the crew's own words
+  if(job.note){ g.fillStyle=mixCol(ink,bg,0.42); g.font=F_SUB();
+    g.fillText(job.note, x, y+EXP_HEAD*1.2); }
   // right-hand corner: the stage / builder this sheet is for, else the tally
   const size=B.bw+' x '+B.bh+' blocks', tally=S.focus.length+(S.focus.length===1?' piece':' pieces');
   g.font=F_SUB(); m.font=F_SUB();
@@ -311,14 +377,15 @@ export function drawExpLegend(g, S, B, ink, bg){
   S.rows.forEach(row=>{
     let x=B.minX;
     row.forEach(c=>{
-      const sy=y+(EXP_ROW-EXP_SW)/2-GRID*0.06;
-      if(c.icon) drawIconSwatch(g, x, sy, EXP_SW, c.icon, ink, bg);
-      else drawSwatch(g, x, sy, EXP_SW, c.color, c.hatch, ink, bg);
+      drawSwatch(g, x, y+(EXP_ROW-EXP_SW)/2-GRID*0.06, EXP_SW, c.color, c.hatch, ink, bg);
       g.fillStyle=ink; g.font=F_CHIP();
       const tx=x+EXP_SW+GRID*0.18;
       g.fillText(c.label, tx, y+EXP_ROW*0.5+GRID*0.05);
       g.fillStyle=mixCol(ink,bg,0.45);
-      g.fillText('  '+c.n, tx+measCtx().measureText(c.label).width, y+EXP_ROW*0.5+GRID*0.05);
+      // measure with g, which is already on F_CHIP - the shared measuring canvas
+      // still carries whatever font the ruler or the header left on it, and that
+      // put the count on top of the next chip's icon
+      g.fillText('  '+c.n, tx+g.measureText(c.label).width, y+EXP_ROW*0.5+GRID*0.05);
       x+=c.w;
     });
     y+=EXP_ROW;
@@ -366,7 +433,8 @@ export function zipStore(files){
 // a plain-text brief so the numbers survive outside the images
 export function buildManifest(jobs, B, files){
   const L=[], tally=(arr,f)=>arr.map(e=>{ const n=ST.pieces.filter(p=>f(p)===e.id).length;
-    return '  '+e.name+' - '+n+(n===1?' piece':' pieces'); }).join('\n');
+    const note=(e.note||'').trim();
+    return '  '+e.name+' - '+n+(n===1?' piece':' pieces')+(note?'\n      '+note:''); }).join('\n');
   L.push((ST.expCfg.name||'FOB build').trim());
   L.push('='.repeat(Math.max(8,(ST.expCfg.name||'FOB build').trim().length)));
   L.push('');
@@ -422,6 +490,45 @@ export async function runExport(){
     }
   } finally { ST.expLegRows=0; btn.disabled=false; if(lab) lab.textContent='Export'; }
 }
+// ---- live preview ----------------------------------------------------------
+// The switches above are abstract until you see what they make, so the sheet
+// they add up to is drawn here as you tick them - at a coarse px-per-block,
+// since this only has to read, not print.
+const PREV_PPB=26;
+let prevPick='';
+export function updateExpPreview(){
+  const box=$('exp-prev-box'), pick=$('exp-prev-pick'), meta=$('exp-prev-meta');
+  if(!box||!pick) return;
+  const jobs=exportJobs(), B=contentBounds();
+  const names=jobs.map(j=>j.file);
+  if(names.indexOf(prevPick)<0) prevPick=names[0]||'';   // keep the chosen sheet while it lasts
+  pick.innerHTML='';
+  jobs.forEach(j=>{ const o=document.createElement('option');
+    o.value=j.file; o.textContent=j.title; o.selected=(j.file===prevPick); pick.appendChild(o); });
+  pick.disabled=!jobs.length;
+  box.innerHTML='';
+  const job=jobs.find(j=>j.file===prevPick);
+  if(!job || (!B && job.kind!=='key')){
+    if(meta) meta.textContent='';
+    const d=document.createElement('div'); d.className='exp-prev-empty';
+    d.textContent = jobs.length ? 'Nothing on the board yet' : 'No sheets selected';
+    box.appendChild(d); return;
+  }
+  const realPpb=ST.expCfg.ppb;
+  try{
+    // reserve the same legend depth the batch would, so the preview frames match
+    ST.expLegRows=jobs.reduce((m,j)=>Math.max(m, expSheet(j,B).rows.length), 0);
+    const S=expSheet(job,B), sc=expScaleFor(S.w,S.h);
+    if(meta) meta.textContent=(jobs.indexOf(job)+1)+' of '+jobs.length+' · '
+      +Math.round(S.w*sc)+'x'+Math.round(S.h*sc)+' px';
+    ST.expCfg.ppb=PREV_PPB;
+    box.appendChild(renderExport(job, B));
+  } catch(e){
+    box.innerHTML='';
+    const d=document.createElement('div'); d.className='exp-prev-empty';
+    d.textContent='Preview unavailable'; box.appendChild(d);
+  } finally { ST.expCfg.ppb=realPpb; ST.expLegRows=0; }
+}
 export function updateExpCount(){
   const el=$('exp-count'); if(!el) return;
   const jobs=exportJobs(), B=contentBounds();
@@ -437,6 +544,7 @@ export function updateExpCount(){
   }
   if(ST.expCfg.zip && jobs.length>1) txt += ' · '+buildName()+'.zip';
   el.textContent=txt;
+  updateExpPreview();
 }
 export function openExp(){ ensurePlan(); expToForm(); $('exp-modal').hidden=false; }
 export function closeExp(){ $('exp-modal').hidden=true; }
@@ -445,4 +553,5 @@ $('exp-bg').onclick=closeExp;
 $('exp-modal').addEventListener('change', expFromForm);
 $('exp-name').addEventListener('input', expFromForm);
 $('exp-name').addEventListener('keydown', e=>e.stopPropagation());
+$('exp-prev-pick').onchange=e=>{ prevPick=e.target.value; updateExpPreview(); };
 $('exp-run').onclick=runExport;

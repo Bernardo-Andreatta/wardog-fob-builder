@@ -9,10 +9,12 @@ import { ST } from './state.js';
 // p.bd), independent of floors and layers, so they survive move / rotate /
 // duplicate and can be re-tagged long after the build is finished.
 export const PLAN_COLORS=['#e6a51e','#4aa3e0','#7ec46a','#e0574a','#b98cff','#3fd0c9','#ff8fbf','#8fb0ff'];
-export const DEFAULT_STAGES=[['Early','walls & basic structure'],['Mid','deployables'],['Late','fluff & detail']];
+// Names only: what a stage is for is the crew's call, so the note starts empty
+// and is theirs to fill in (see the Build Plan modal).
+export const DEFAULT_STAGES=['Early','Mid','Late'];
 export function ensurePlan(){
   if(!Array.isArray(ST.stages) || !ST.stages.length)
-    ST.stages=DEFAULT_STAGES.map((s,i)=>({id:ST.stageUid++, name:s[0], note:s[1], color:PLAN_COLORS[i], visible:true}));
+    ST.stages=DEFAULT_STAGES.map((s,i)=>({id:ST.stageUid++, name:s, color:PLAN_COLORS[i], visible:true}));
   if(!Array.isArray(ST.builders) || !ST.builders.length)
     ST.builders=[1,2].map(n=>({id:ST.builderUid++, name:'Builder '+n, color:PLAN_COLORS[(n+2)%PLAN_COLORS.length], visible:true}));
   ST.stages.concat(ST.builders).forEach(e=>{ if(e.visible==null) e.visible=true; });
@@ -80,7 +82,7 @@ export function pruneSelToPlan(){
 // local ids and hand back a mapper from a stored tag (index or old id) to the new id
 export function adoptPlan(o){
   const S=(o.stages||[]).map((s,i)=>({id:ST.stageUid++, name:s.name||('Stage '+(i+1)),
-    color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], visible:true, _old:s.id}));
+    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], visible:true, _old:s.id}));
   const B=(o.builders||[]).map((b,i)=>({id:ST.builderUid++, name:b.name||('Builder '+(i+1)),
     color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], visible:true, _old:b.id}));
   if(S.length) ST.stages=S;

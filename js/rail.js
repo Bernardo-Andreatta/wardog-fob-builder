@@ -68,16 +68,55 @@ export function makeGridSortable(gridId, order, key){
       clearDropCues(grid); if(btn.dataset.tool!==ST.dragCtx.type) btn.classList.add('drop-here'); });
     btn.addEventListener('dragleave', ()=>btn.classList.remove('drop-here'));
     btn.addEventListener('drop', e=>{ if(!ST.dragCtx||ST.dragCtx.gridId!==gridId) return; e.preventDefault();
-      const src=ST.dragCtx.type, tgt=btn.dataset.tool; clearDropCues(grid);
-      if(src===tgt) return;
-      const r=btn.getBoundingClientRect();
-      const after = ((e.clientY-r.top)/r.height + (e.clientX-r.left)/r.width) > 1;  // diagonal split (works for rows & columns)
-      const from=order.indexOf(src); if(from<0) return; order.splice(from,1);
-      let to=order.indexOf(tgt); if(to<0){ order.splice(from,0,src); return; }
-      order.splice(after?to+1:to, 0, src);
-      persistOrder(key, order);
-      fillPieceGrid(gridId, order, key);
+      clearDropCues(grid);
+      dropTile(order, key, gridId, ST.dragCtx.type, btn, e);
     });
+    gripDrag(grid, btn, order, key, gridId);
+  });
+}
+// where a tile lands: the drop point is split diagonally, which reads the same
+// whether the grid flows in rows (desktop rail) or columns (mobile bar)
+function dropTile(order, key, gridId, src, el, ev){
+  const tgt=el.dataset.tool;
+  if(!src || src===tgt) return;
+  const r=el.getBoundingClientRect();
+  const after = ((ev.clientY-r.top)/r.height + (ev.clientX-r.left)/r.width) > 1;
+  const from=order.indexOf(src); if(from<0) return; order.splice(from,1);
+  let to=order.indexOf(tgt); if(to<0){ order.splice(from,0,src); return; }
+  order.splice(after?to+1:to, 0, src);
+  persistOrder(key, order);
+  fillPieceGrid(gridId, order, key);
+}
+// Touch has no HTML5 drag-and-drop, so on those devices the grip stops being a
+// hint and becomes the handle: press it and slide onto another tile. Only the
+// grip starts a reorder, so tapping the tile itself still arms the piece.
+function gripDrag(grid, btn, order, key, gridId){
+  const grip=btn.querySelector('.grip'); if(!grip) return;
+  grip.addEventListener('click', e=>{ e.stopPropagation(); e.preventDefault(); });
+  grip.addEventListener('pointerdown', e=>{
+    if(e.pointerType==='mouse') return;          // mouse keeps the native drag
+    e.preventDefault(); e.stopPropagation();
+    let moved=false;
+    btn.classList.add('dragging');
+    try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+    const tileUnder=ev=>{
+      const el=document.elementFromPoint(ev.clientX, ev.clientY);
+      const t=el&&el.closest ? el.closest('.piece-tool') : null;
+      return (t && t.parentElement===grid && t!==btn) ? t : null;
+    };
+    const move=ev=>{ moved=true; clearDropCues(grid);
+      const t=tileUnder(ev); if(t) t.classList.add('drop-here'); };
+    const end=ev=>{
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', end);
+      grip.removeEventListener('pointercancel', end);
+      btn.classList.remove('dragging'); clearDropCues(grid);
+      const t=moved?tileUnder(ev):null;
+      if(t) dropTile(order, key, gridId, btn.dataset.tool, t, ev);
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
   });
 }
 export function clearDropCues(grid){ grid.querySelectorAll('.drop-here').forEach(x=>x.classList.remove('drop-here')); }

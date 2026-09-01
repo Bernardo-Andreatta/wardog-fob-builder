@@ -162,7 +162,7 @@ export function payloadV3(){
   if(S.length) obj.s=S;
   const T=(ST.texts||[]).filter(t=>t.text).map(t=>[t.text, Math.round(t.x), Math.round(t.y), Math.round(t.size), t.color, Math.round(t.rot||0)]);
   if(T.length) obj.t=T;
-  if(ST.stages.length) obj.g=ST.stages.map(t=>[t.name,t.color]);
+  if(ST.stages.length) obj.g=ST.stages.map(t=>t.note?[t.name,t.color,t.note]:[t.name,t.color]);
   if(ST.builders.length) obj.b=ST.builders.map(t=>[t.name,t.color]);
   return obj;
 }
@@ -203,7 +203,7 @@ export async function decodeBuild(code){
       return {color:a[0], width:a[1], pts}; });
     const dTexts=(o.t||[]).map(a=>({text:a[0], x:a[1], y:a[2], size:a[3]||GRID*0.6, color:a[4], rot:a[5]||0}));
     return {pieces:dPieces, strokes:dStrokes, texts:dTexts, ink:o.c||null,
-      stages:(o.g||[]).map(a=>({name:a[0], color:a[1]})),
+      stages:(o.g||[]).map(a=>({name:a[0], color:a[1], note:a[2]||undefined})),
       builders:(o.b||[]).map(a=>({name:a[0], color:a[1]}))};
   }
   if(s.startsWith('FOB2.')){

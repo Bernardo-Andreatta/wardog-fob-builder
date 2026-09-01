@@ -104,6 +104,21 @@ export function buildPlanRow(kind, E){
     pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist(); };
   row.onclick=()=>setPlanActive(kind, id);
   row.appendChild(dot); row.appendChild(name); row.appendChild(n); row.appendChild(eye);
+  // a stage carries a free-text purpose, written here and carried onto its
+  // export sheet - nothing is pre-filled, the crew says what the stage is for
+  if(E && kind==='stage'){
+    const note=document.createElement('input');
+    note.type='text'; note.className='pl-note'; note.maxLength=90;
+    note.placeholder='What happens in this stage?';
+    note.value=E.note||'';
+    note.title='Shown on this stage\'s export sheet';
+    note.onclick=ev=>ev.stopPropagation();
+    note.ondblclick=ev=>ev.stopPropagation();
+    note.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ ev.preventDefault(); note.blur(); } };
+    note.oninput=()=>{ const v=note.value.trim(); if(v) E.note=v; else delete E.note; };
+    note.onchange=()=>{ snapshot(); persist(); };
+    row.appendChild(note);
+  }
   if(E){
     const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
     x.title='Remove this tag (its pieces become unassigned)';
