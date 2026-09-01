@@ -348,8 +348,10 @@
     .piece-tool .grip{width:18px; height:18px; top:1px; left:1px; opacity:.5;
       touch-action:none; padding:3px; pointer-events:auto;}
     .piece-tool .grip:active{opacity:1; color:var(--accent);}
-    .drawopts{top:60px;}               /* clear the Done chip */
-    .tool-exit.show{display:inline-flex; position:absolute; left:50%; top:14px;
+    /* both hang off the bottom of the plan bar, whose height JS measures */
+    .drawopts{top:calc(14px + var(--hud-h,39px) + 54px);}
+    .tool-exit.show{display:inline-flex; position:absolute; left:50%;
+      top:calc(14px + var(--hud-h,39px) + 8px);
       transform:translateX(-50%); z-index:10; background:var(--panel);
       box-shadow:0 4px 16px var(--shadow); padding:9px 14px;}
     /* wrap-reverse puts the full line on the bottom and the leftovers on top,
@@ -2289,6 +2291,16 @@ function setHudOpen(on){
   const h=$('board-hud'); if(!h) return;
   h.classList.toggle('off', !on);
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
+}
+// The Done chip and the draw options hang below the plan bar, whose height is
+// not a constant: one row or two as the builder chip wraps, or just its own
+// chevron once folded. Publishing what it actually measures keeps them clear of
+// it instead of guessing a number that goes stale.
+const hudBox=$('board-hud');
+if(hudBox && window.ResizeObserver){
+  new ResizeObserver(()=>{
+    stage.style.setProperty('--hud-h', Math.round(hudBox.getBoundingClientRect().height)+'px');
+  }).observe(hudBox);
 }
 $('hud-show').onclick=()=>setHudOpen(true);
 document.addEventListener('pointerdown', e=>{

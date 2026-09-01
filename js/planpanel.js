@@ -1,4 +1,4 @@
-import { $, isCoarse } from './dom.js';
+import { $, isCoarse, stage } from './dom.js';
 import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { layerById } from './layers.js';
@@ -313,6 +313,16 @@ export function setHudOpen(on){
   const h=$('board-hud'); if(!h) return;
   h.classList.toggle('off', !on);
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
+}
+// The Done chip and the draw options hang below the plan bar, whose height is
+// not a constant: one row or two as the builder chip wraps, or just its own
+// chevron once folded. Publishing what it actually measures keeps them clear of
+// it instead of guessing a number that goes stale.
+const hudBox=$('board-hud');
+if(hudBox && window.ResizeObserver){
+  new ResizeObserver(()=>{
+    stage.style.setProperty('--hud-h', Math.round(hudBox.getBoundingClientRect().height)+'px');
+  }).observe(hudBox);
 }
 $('hud-show').onclick=()=>setHudOpen(true);
 document.addEventListener('pointerdown', e=>{
