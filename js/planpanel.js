@@ -124,6 +124,64 @@ export function renderPlanPanel(){
 }
 // runs from updateStatus, so the tallies keep up with placing / deleting without
 // rebuilding the rows (which would kill an in-progress rename)
+// ---- board HUD: what is being built right now, and who is on it ------------
+// The rail says which structure is armed; this says which stage and builder it
+// will be stamped with, and how the work already in that stage divides between
+// builders. It sits on the board so neither answer needs the panel open, and a
+// builder row is a shortcut to making that builder active.
+let hudSig=null;
+function hudBuilders(){
+  return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
+    .concat([{id:null, name:'Unassigned', color:null}]);
+}
+export function renderPlanHud(){
+  const el=$('plan-hud'); if(!el) return;
+  ensurePlan();
+  const S = ST.curStageId==null ? null : stageById(ST.curStageId);
+  const rows=hudBuilders();
+  // the rows only get rebuilt when the tags themselves change, so the counts
+  // below can refresh on every status tick without churning the DOM
+  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
+  if(sig!==hudSig){
+    hudSig=sig; el.innerHTML='';
+    const head=document.createElement('div'); head.className='ph-stage';
+    head.title='The stage new pieces are tagged with';
+    const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
+    if(S) dot.style.background=S.color;
+    const nm=document.createElement('span'); nm.className='ph-name';
+    nm.textContent = S?S.name:'Unassigned';
+    const tot=document.createElement('span'); tot.className='ph-n ph-total';
+    head.appendChild(dot); head.appendChild(nm); head.appendChild(tot);
+    el.appendChild(head);
+    const sub=document.createElement('div'); sub.className='ph-sub';
+    sub.textContent='Builders in this stage'; el.appendChild(sub);
+    rows.forEach(r=>{
+      const b=document.createElement('button'); b.className='ph-row';
+      b.dataset.id = r.id==null ? '' : String(r.id);
+      b.title = 'Make '+r.name+' the active builder';
+      const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
+      if(r.color) d.style.background=r.color;
+      const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
+      const c=document.createElement('span'); c.className='ph-n';
+      b.appendChild(d); b.appendChild(t); b.appendChild(c);
+      b.onclick=()=>setPlanActive('builder', r.id);
+      el.appendChild(b);
+    });
+  }
+  const cur = ST.curStageId==null ? null : ST.curStageId;
+  const inStage = ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
+  const tot=el.querySelector('.ph-total');
+  if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
+    if(tot.textContent!==v) tot.textContent=v; }
+  const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
+  el.querySelectorAll('.ph-row').forEach(row=>{
+    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    const v = String(inStage.filter(p=>(p.bd==null?null:p.bd)===id).length);
+    const c = row.querySelector('.ph-n');
+    if(c && c.textContent!==v) c.textContent=v;
+    row.classList.toggle('on', curB===id);
+  });
+}
 export function updatePlanApply(){
   document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
     const n=row.querySelector('.pl-n'); if(!n) return;
@@ -131,6 +189,7 @@ export function updatePlanApply(){
     const v=String(planCount(row.dataset.kind, id));
     if(n.textContent!==v) n.textContent=v;
   });
+  renderPlanHud();
 }
 $('plan-addstage').onclick=()=>addPlanEntry('stage');
 $('plan-addbuilder').onclick=()=>addPlanEntry('builder');
