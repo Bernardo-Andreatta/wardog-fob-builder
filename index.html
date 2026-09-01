@@ -444,7 +444,7 @@
      readout starts below it. This has to come after the rule above: same
      specificity, and the later one wins. */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
-    .board-hud{left:14px; top:70px;}
+    .board-hud{left:14px; right:14px; top:70px; align-items:stretch;}
   }
 
   /* Board HUD: the stage being built, and how its work splits between builders.
@@ -486,17 +486,36 @@
   .ph-btn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
     stroke-linecap:round; stroke-linejoin:round;}
   .ph-total{margin-left:auto;}
+  .ph-list{display:flex; flex-direction:column; gap:2px;}
+  .ph-bchip, .ph-scount{display:none;}
   /* Phone sizing comes after every .ph- rule above: same specificity, later wins. */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
     /* A phone needs targets a thumb can hit, and a card that does not swallow
        the board. Rows get taller, the buttons get real hit areas, and the
        chrome around them tightens to pay for it. (These have to live after the
        base rules - same specificity, later wins.) */
-    /* five 25px controls, the dot and a name that holds 64px do not fit the
-       210px the desktop card is capped at - the fold button was being clipped
-       off the right edge. The phone card is allowed to be wider. */
-    .plan-hud{min-width:0; max-width:min(78vw,252px); padding:5px 5px 6px; gap:1px;}
-    .ph-stage{gap:3px; padding:1px 1px 5px; margin-bottom:2px;}
+    /* A phone gets a different shape, not a smaller copy of the desktop card:
+       one bar whose height never changes, and the builders behind a chip. A
+       crew of ten used to push the card down most of the board. */
+    .plan-hud{min-width:0; max-width:none; width:100%; padding:5px 6px; gap:0;
+      flex-direction:row; align-items:center; position:relative;}
+    .ph-stage{flex:1; min-width:0; gap:3px; padding:0; margin:0; border-bottom:none;}
+    .ph-scount{display:inline; margin-left:1px; opacity:.85;}
+    .ph-sub{display:none;}                     /* the count rides in the bar */
+    .ph-bchip{display:flex; align-items:center; gap:5px; flex:0 1 auto; min-width:0;
+      max-width:44%; margin-left:6px; padding:5px 7px; font-size:11.5px;
+      border:1px solid var(--line); border-radius:7px; background:var(--panel-2);
+      color:var(--muted);}
+    .ph-bchip.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+    .ph-bchip .ph-name{font-size:11.5px;}
+    .ph-bchip svg{width:12px; height:12px; flex:none; fill:none; stroke:currentColor;
+      stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+    /* the list drops out of the bar as a sheet, and scrolls rather than growing */
+    .ph-list{display:none; position:absolute; left:0; right:0; top:calc(100% + 6px);
+      max-height:44vh; overflow-y:auto; padding:4px; gap:2px;
+      background:var(--panel); border:1px solid var(--line); border-radius:10px;
+      box-shadow:0 10px 26px var(--shadow);}
+    .plan-hud.sheet-open .ph-list{display:flex;}
     /* five controls plus the name is a lot for a phone's width; the name holds
        its ground and the buttons give way, rather than the name truncating */
     .ph-stage .ph-name{font-size:12.5px; min-width:64px;}

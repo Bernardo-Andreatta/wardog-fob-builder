@@ -444,7 +444,7 @@
      readout starts below it. This has to come after the rule above: same
      specificity, and the later one wins. */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
-    .board-hud{left:14px; top:70px;}
+    .board-hud{left:14px; right:14px; top:70px; align-items:stretch;}
   }
 
   /* Board HUD: the stage being built, and how its work splits between builders.
@@ -486,17 +486,36 @@
   .ph-btn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
     stroke-linecap:round; stroke-linejoin:round;}
   .ph-total{margin-left:auto;}
+  .ph-list{display:flex; flex-direction:column; gap:2px;}
+  .ph-bchip, .ph-scount{display:none;}
   /* Phone sizing comes after every .ph- rule above: same specificity, later wins. */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
     /* A phone needs targets a thumb can hit, and a card that does not swallow
        the board. Rows get taller, the buttons get real hit areas, and the
        chrome around them tightens to pay for it. (These have to live after the
        base rules - same specificity, later wins.) */
-    /* five 25px controls, the dot and a name that holds 64px do not fit the
-       210px the desktop card is capped at - the fold button was being clipped
-       off the right edge. The phone card is allowed to be wider. */
-    .plan-hud{min-width:0; max-width:min(78vw,252px); padding:5px 5px 6px; gap:1px;}
-    .ph-stage{gap:3px; padding:1px 1px 5px; margin-bottom:2px;}
+    /* A phone gets a different shape, not a smaller copy of the desktop card:
+       one bar whose height never changes, and the builders behind a chip. A
+       crew of ten used to push the card down most of the board. */
+    .plan-hud{min-width:0; max-width:none; width:100%; padding:5px 6px; gap:0;
+      flex-direction:row; align-items:center; position:relative;}
+    .ph-stage{flex:1; min-width:0; gap:3px; padding:0; margin:0; border-bottom:none;}
+    .ph-scount{display:inline; margin-left:1px; opacity:.85;}
+    .ph-sub{display:none;}                     /* the count rides in the bar */
+    .ph-bchip{display:flex; align-items:center; gap:5px; flex:0 1 auto; min-width:0;
+      max-width:44%; margin-left:6px; padding:5px 7px; font-size:11.5px;
+      border:1px solid var(--line); border-radius:7px; background:var(--panel-2);
+      color:var(--muted);}
+    .ph-bchip.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+    .ph-bchip .ph-name{font-size:11.5px;}
+    .ph-bchip svg{width:12px; height:12px; flex:none; fill:none; stroke:currentColor;
+      stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+    /* the list drops out of the bar as a sheet, and scrolls rather than growing */
+    .ph-list{display:none; position:absolute; left:0; right:0; top:calc(100% + 6px);
+      max-height:44vh; overflow-y:auto; padding:4px; gap:2px;
+      background:var(--panel); border:1px solid var(--line); border-radius:10px;
+      box-shadow:0 10px 26px var(--shadow);}
+    .plan-hud.sheet-open .ph-list{display:flex;}
     /* five controls plus the name is a lot for a phone's width; the name holds
        its ground and the buttons give way, rather than the name truncating */
     .ph-stage .ph-name{font-size:12.5px; min-width:64px;}
@@ -2097,13 +2116,22 @@ function renderPlanHud(){
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    head.appendChild(dot); head.appendChild(nm);
+    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
+    head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
     head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
       ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
     el.appendChild(head);
+    // A phone shows the builders behind this chip instead of listing them all:
+    // the bar's height then does not grow with the crew.
+    const chip=document.createElement('button'); chip.className='ph-bchip';
+    chip.title='Choose the builder in view';
+    chip.innerHTML='<span class="ph-dot plain"></span><span class="ph-name"></span>'
+      +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+    chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
+    el.appendChild(chip);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -2111,6 +2139,8 @@ function renderPlanHud(){
     lab.textContent = S ? 'In this stage' : 'On the board';
     const tot=document.createElement('span'); tot.className='ph-n ph-total';
     sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
+    const list=document.createElement('div'); list.className='ph-list';
+    el.appendChild(list);
     rows.forEach(r=>{
       const b=document.createElement('div'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
@@ -2127,9 +2157,10 @@ function renderPlanHud(){
         // General is the "every hand" row, so picking it drops the filter
         // rather than narrowing the board down to untagged work
         ST.hlBuilder = (r.id==null || ST.hlBuilder===r.id) ? undefined : r.id;
+        el.classList.remove('sheet-open');      // picking closes the phone sheet
         setPlanActive('builder', r.id);
       };
-      el.appendChild(b);
+      list.appendChild(b);
     });
   }
   const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
@@ -2150,6 +2181,18 @@ function renderPlanHud(){
   const tot=el.querySelector('.ph-total');
   if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
     if(tot.textContent!==v) tot.textContent=v; }
+  const sc=el.querySelector('.ph-scount');
+  if(sc && sc.textContent!==String(inStage.length)) sc.textContent=String(inStage.length);
+  const chip=el.querySelector('.ph-bchip');
+  if(chip){
+    const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
+    const nm = ST.hlBuilder===undefined ? 'All builders' : (b?b.name:'General');
+    const d=chip.querySelector('.ph-dot'), t=chip.querySelector('.ph-name');
+    if(t.textContent!==nm) t.textContent=nm;
+    d.className='ph-dot'+((b&&b.color)?'':' plain');
+    d.style.background=(b&&b.color)?b.color:'';
+    chip.classList.toggle('on', ST.hlBuilder!==undefined);
+  }
   const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
   el.querySelectorAll('.ph-row').forEach(row=>{
     const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
@@ -2179,6 +2222,10 @@ function setHudOpen(on){
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
 }
 $('hud-show').onclick=()=>setHudOpen(true);
+document.addEventListener('pointerdown', e=>{
+  const el=$('plan-hud');
+  if(el && el.classList.contains('sheet-open') && !el.contains(e.target)) el.classList.remove('sheet-open');
+}, true);
 $('plan-close').onclick=closePlanModal;
 $('plan-bg').onclick=closePlanModal;
 $('plan-addstage').onclick=()=>addPlanEntry('stage');

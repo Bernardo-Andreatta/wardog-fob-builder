@@ -202,13 +202,22 @@ export function renderPlanHud(){
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    head.appendChild(dot); head.appendChild(nm);
+    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
+    head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
     head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
       ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
     el.appendChild(head);
+    // A phone shows the builders behind this chip instead of listing them all:
+    // the bar's height then does not grow with the crew.
+    const chip=document.createElement('button'); chip.className='ph-bchip';
+    chip.title='Choose the builder in view';
+    chip.innerHTML='<span class="ph-dot plain"></span><span class="ph-name"></span>'
+      +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+    chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
+    el.appendChild(chip);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -216,6 +225,8 @@ export function renderPlanHud(){
     lab.textContent = S ? 'In this stage' : 'On the board';
     const tot=document.createElement('span'); tot.className='ph-n ph-total';
     sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
+    const list=document.createElement('div'); list.className='ph-list';
+    el.appendChild(list);
     rows.forEach(r=>{
       const b=document.createElement('div'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
@@ -232,9 +243,10 @@ export function renderPlanHud(){
         // General is the "every hand" row, so picking it drops the filter
         // rather than narrowing the board down to untagged work
         ST.hlBuilder = (r.id==null || ST.hlBuilder===r.id) ? undefined : r.id;
+        el.classList.remove('sheet-open');      // picking closes the phone sheet
         setPlanActive('builder', r.id);
       };
-      el.appendChild(b);
+      list.appendChild(b);
     });
   }
   const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
@@ -255,6 +267,18 @@ export function renderPlanHud(){
   const tot=el.querySelector('.ph-total');
   if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
     if(tot.textContent!==v) tot.textContent=v; }
+  const sc=el.querySelector('.ph-scount');
+  if(sc && sc.textContent!==String(inStage.length)) sc.textContent=String(inStage.length);
+  const chip=el.querySelector('.ph-bchip');
+  if(chip){
+    const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
+    const nm = ST.hlBuilder===undefined ? 'All builders' : (b?b.name:'General');
+    const d=chip.querySelector('.ph-dot'), t=chip.querySelector('.ph-name');
+    if(t.textContent!==nm) t.textContent=nm;
+    d.className='ph-dot'+((b&&b.color)?'':' plain');
+    d.style.background=(b&&b.color)?b.color:'';
+    chip.classList.toggle('on', ST.hlBuilder!==undefined);
+  }
   const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
   el.querySelectorAll('.ph-row').forEach(row=>{
     const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
@@ -284,6 +308,10 @@ export function setHudOpen(on){
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
 }
 $('hud-show').onclick=()=>setHudOpen(true);
+document.addEventListener('pointerdown', e=>{
+  const el=$('plan-hud');
+  if(el && el.classList.contains('sheet-open') && !el.contains(e.target)) el.classList.remove('sheet-open');
+}, true);
 $('plan-close').onclick=closePlanModal;
 $('plan-bg').onclick=closePlanModal;
 $('plan-addstage').onclick=()=>addPlanEntry('stage');
