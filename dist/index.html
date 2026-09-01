@@ -366,8 +366,6 @@
     .brand .mark{font-size:17px; white-space:nowrap;}
     .cmd{flex-wrap:nowrap;}
     .cmd .btn span{display:none;}      /* icon-only commands */
-    .plan-hud{min-width:150px; padding:5px 6px;}
-    .ph-sublab{display:none;}                   /* the board is short on a phone */
     .cmd .btn{padding:9px 10px;}
     .rail{height:158px; flex-direction:row; align-items:stretch; gap:12px;
       overflow-x:auto; overflow-y:hidden; padding:8px 10px;
@@ -379,6 +377,13 @@
       grid-auto-flow:column; grid-template-rows:1fr 1fr; grid-auto-columns:64px; gap:6px;}
     .tool, .ebtn{padding:5px 3px;}
     .tool svg, .ebtn svg{width:20px; height:20px;}
+    /* Tools is pinned over the bar, so every pixel it takes is a pixel the
+       structures never get to scroll into view - and it has grown by one tile
+       since the eyedropper arrived. It runs narrower than the piece tiles. */
+    .sec-tools .tools{grid-auto-columns:50px; gap:5px;}
+    .sec-tools .tool{padding:4px 2px;}
+    .sec-tools .tool svg{width:17px; height:17px;}
+    .sec-tools .tool .cap{font-size:9px; transform:none;}
     .piece-tool{padding:5px 3px; gap:3px;}
     .piece-tool img{width:24px; height:24px;}
     .rail-resize{display:none;}        /* no side rail to resize */
@@ -474,6 +479,30 @@
   .ph-btn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
     stroke-linecap:round; stroke-linejoin:round;}
   .ph-total{margin-left:auto;}
+  /* Phone sizing comes after every .ph- rule above: same specificity, later wins. */
+  @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
+    /* A phone needs targets a thumb can hit, and a card that does not swallow
+       the board. Rows get taller, the buttons get real hit areas, and the
+       chrome around them tightens to pay for it. (These have to live after the
+       base rules - same specificity, later wins.) */
+    .plan-hud{min-width:0; padding:5px 5px 6px; gap:1px;}
+    .ph-stage{gap:3px; padding:1px 1px 5px; margin-bottom:2px;}
+    /* five controls plus the name is a lot for a phone's width; the name holds
+       its ground and the buttons give way, rather than the name truncating */
+    .ph-stage .ph-name{font-size:12.5px; min-width:64px;}
+    .ph-btn{width:25px; height:25px; border-radius:6px;}
+    .ph-btn svg{width:14px; height:14px;}
+    .ph-sub{padding:2px 3px 3px; font-size:9.5px;}
+    .ph-sublab{display:none;}                  /* the count carries the row */
+    .ph-total{margin-left:0;}
+    .ph-row{padding:6px 4px; gap:7px; font-size:12px;}
+    .ph-eye{width:26px; height:26px;}
+    .ph-eye svg{width:15px; height:15px;}
+    .ph-dot{width:9px; height:9px;}
+    .ph-n{font-size:11px;}
+    .hud-chip{width:38px; height:38px;}
+    .hud-chip svg{width:16px; height:16px;}
+  }
 
   /* ---- right-click context menu ---- */
   .ctx{position:absolute; z-index:60; min-width:214px; max-width:264px; padding:6px;
