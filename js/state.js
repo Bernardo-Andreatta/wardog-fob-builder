@@ -35,7 +35,6 @@ export const ST = {
   curBuilderId: undefined,
   showNoStage: true,                        // filter rows for untagged pieces
   showNoBuilder: true,
-  planColorBy: 'none',                      // 'none' | 'stage' | 'builder' | 'both'
   hlBuilder: undefined,                     // spotlit builder (null = Unassigned, undefined = off)
   layers: [],                               // {id,name,visible,opacity,locked}
   curLayerId: 0,                            // primary active layer new items land on
@@ -60,7 +59,7 @@ export const ST = {
   clearTimer: null,
   toastTimer: null,
   dragLayerId: null,
-  expCfg: {name:'', whole:true, stagesAll:true, stagesEach:true, stagesCum:false, buildersAll:true, buildersEach:true, fillBuilder:true, ghost:true, grid:true, notes:true, header:true, ruler:true, legend:true, structs:false, zip:true, ppb:80},
+  expCfg: {name:'', whole:true, stagesAll:true, stagesEach:true, stagesCum:false, buildersAll:true, buildersEach:true, pairsEach:false, fillBuilder:true, ghost:true, grid:true, notes:true, header:true, ruler:true, legend:true, structs:false, zip:true, ppb:80},
   _meas: null,
   expLegRows: 0,                            // legend depth reserved for the whole batch (see runExport)
 };

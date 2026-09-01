@@ -4,7 +4,7 @@ import { $, GRID, ctx } from './dom.js';
 import { DRAWERS, drawPiece, roundRect } from './drawers.js';
 import { LAYER_OFF, drawLayer, layerColor, layerOff, lowCounts, lowStyle, maskPiece, masksBelow, maxLayer, mixCol, pieceLayer, shortwallCells, swRank } from './floors.js';
 import { drawText, textBox } from './overlays.js';
-import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, planVisible, stageIndex, stageOf } from './plan.js';
+import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, planVisible, stageIndex, stageOf, tagInk } from './plan.js';
 import { cssVar } from './render.js';
 import { ST } from './state.js';
 import { flashToast, saveFile } from './topbar.js';
@@ -17,6 +17,7 @@ import { flashToast, saveFile } from './topbar.js';
 export const EXP_FIELDS=[['whole','exp-whole'],['stagesAll','exp-stages-all'],['stagesEach','exp-stages-each'],
   ['stagesCum','exp-stages-cum'],['buildersAll','exp-builders-all'],['buildersEach','exp-builders-each'],
   ['fillBuilder','exp-fill-builder'],['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
+  ['pairsEach','exp-pairs'],
   ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['structs','exp-structs'],
   ['zip','exp-zip']];
 export function loadExpCfg(){
@@ -78,6 +79,21 @@ export function exportJobs(){
   if(ST.expCfg.buildersEach) uB.forEach(b=>
     jobs.push({file:jobFile('builder',ST.builders.indexOf(b),b.name), title:b.name,
       inc:p=>p.bd===b.id, col:'builder', badge:{label:b.name, color:b.color}}));
+  // One page per hand-off: "Stage 1 - Builder 2" is what a single builder is
+  // asked to put down in a single stage, so only pairs with work get a sheet.
+  if(ST.expCfg.pairsEach){
+    const seen=ST.pieces.filter(planVisible);
+    uS.forEach(s=>{ const i=ST.stages.indexOf(s);
+      ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
+        if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
+        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1),
+          title:s.name+' · '+b.name,
+          inc:p=>p.st===s.id && p.bd===b.id,
+          note:(s.note||'').trim(), col:'builder', fill:'stage',
+          badge:{label:b.name, color:b.color}});
+      });
+    });
+  }
   if(ST.expCfg.structs && keyEntries().length)
     jobs.push({file:'structure-key', title:'Structure key', kind:'key', inc:all});
   return jobs;
@@ -209,6 +225,7 @@ export function packChips(chips, maxW){
   return rows[0].length ? rows : [];
 }
 export function drawSwatch(g, x, y, sz, col, hatch, ink, bg){
+  if(col!=null) col=tagInk(col, bg);      // the same lift the pieces get
   g.save();
   if(col==null){ g.strokeStyle=mixCol(ink,bg,0.45); g.lineWidth=1.4; g.strokeRect(x,y,sz,sz); g.restore(); return; }
   if(hatch==null){ g.strokeStyle=col; g.lineWidth=2.2; g.strokeRect(x+1,y+1,sz-2,sz-2); }
@@ -319,8 +336,8 @@ export function renderExport(job, B){
       .map(o=>o.p).forEach(p=>{
         const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
         let base=ink;
-        if(job.col==='stage'){ const s=stageOf(p); base = s?s.color:mixCol(ink,bg,0.5); }
-        else if(job.col==='builder'){ const b=builderOf(p); base = b?b.color:mixCol(ink,bg,0.5); }
+        if(job.col==='stage'){ const s=stageOf(p); base = s?tagInk(s.color,bg):mixCol(ink,bg,0.5); }
+        else if(job.col==='builder'){ const b=builderOf(p); base = b?tagInk(b.color,bg):mixCol(ink,bg,0.5); }
         if(ghost) base=mixCol(base,bg,0.8);
         const st=lowStyle(p, layerColor(base,bg,dl,mxl), bg, lc, swSet, drawn);
         if(st.skip) return;
@@ -329,7 +346,7 @@ export function renderExport(job, B){
         if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); if(!ghost) maskPiece(g,p,bg); }
         if(!ghost && job.fill){ const arr = job.fill==='stage'?ST.stages:ST.builders;
           const e = job.fill==='stage'?stageOf(p):builderOf(p);
-          if(e) drawPlanFill(g,p,e.color,arr.indexOf(e)); }
+          if(e) drawPlanFill(g,p,tagInk(e.color,bg),arr.indexOf(e)); }
         drawPiece(g,p, st.col, 1); g.restore();
       });
   };

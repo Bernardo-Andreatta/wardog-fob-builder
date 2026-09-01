@@ -1,6 +1,6 @@
 import { CATALOG } from './catalog.js';
 import { GRID } from './dom.js';
-import { mixCol } from './floors.js';
+import { _hx, mixCol } from './floors.js';
 import { ST } from './state.js';
 
 // ---------------- build plan: stages + builders -------------------------------
@@ -8,7 +8,30 @@ import { ST } from './state.js';
 // a builder answers *who* puts it there. Both are plain tags on a piece (p.st /
 // p.bd), independent of floors and layers, so they survive move / rotate /
 // duplicate and can be re-tagged long after the build is finished.
-export const PLAN_COLORS=['#e6a51e','#4aa3e0','#7ec46a','#e0574a','#b98cff','#3fd0c9','#ff8fbf','#8fb0ff'];
+// Mid-tone hues on purpose: a pale tag vanishes on the sand-coloured board and
+// a dark one vanishes on the near-black one. tagInk() then nudges whichever is
+// drawn away from the canvas it lands on.
+export const PLAN_COLORS=['#c8871a','#2f7fc4','#4e9b3f','#c8402f','#8a5cd6','#149c92','#cc4f86','#4a6fc4'];
+// Stages and builders share the one palette, and a new tag takes the first
+// colour nobody is using - starting from an offset picked per session, so two
+// builds do not both open with the same yellow, then the same blue.
+let colSeed = Math.floor(Math.random()*PLAN_COLORS.length);
+export function nextPlanColor(){
+  const used=new Set(ST.stages.concat(ST.builders).map(e=>(e.color||'').toLowerCase()));
+  for(let i=0;i<PLAN_COLORS.length;i++){
+    const c=PLAN_COLORS[(colSeed+i)%PLAN_COLORS.length];
+    if(!used.has(c.toLowerCase())){ colSeed=(colSeed+i+1)%PLAN_COLORS.length; return c; }
+  }
+  const c=PLAN_COLORS[colSeed%PLAN_COLORS.length];
+  colSeed=(colSeed+1)%PLAN_COLORS.length; return c;
+}
+// A tag's stored colour is its identity and never changes; what gets *drawn* is
+// pushed away from the board underneath it, so the same tag stays legible in
+// both themes instead of washing out on one of them.
+function lightBg(bg){ const c=_hx(bg); return (c[0]*0.299+c[1]*0.587+c[2]*0.114) > 140; }
+export function tagInk(col, bg){
+  return lightBg(bg) ? mixCol(col,'#241d10',0.28) : mixCol(col,'#fbf7ea',0.22);
+}
 // A build starts with no plan at all - no stages, no builders. Naming them is
 // the crew's call, and pieces stay Unassigned until someone does, so nothing on
 // the board is ever tagged with a name nobody chose.
@@ -39,25 +62,19 @@ export function planVisible(p){
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
 export function planColorOf(p, ink, bg){
-  let col=ink;
-  if(ST.planColorBy==='builder'||ST.planColorBy==='both'){ const b=builderOf(p); col = b?b.color:mixCol(ink,bg,0.5); }
-  if(planSpotlight()){
-    // lit pieces simply wear their builder's colour; the rest fall back the way
-    // an export sheet ghosts what it is not about
-    if(planLit(p)){ const b=builderOf(p); col = b?b.color:ink; }
-    else col=mixCol(col,bg,0.8);
-  }
+  const b=builderOf(p);
+  let col = b ? tagInk(b.color, bg) : ink;
+  if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
   return col;
 }
-// Spotlight: picking a builder in the board readout lights up what that builder
-// has in the stage being built, and drops everything else back. It answers "what
-// is mine on this stage?" without filtering anything off the board, so the rest
-// of the base still reads as context.
-export function planSpotlight(){ return ST.hlBuilder!==undefined; }
+// The board shows one stage at a time. Everything tagged with the stage being
+// built reads normally - each piece in its builder's colour - and every other
+// stage drops back without leaving the board, so the rest still gives context.
+// Pick a builder inside the stage and only their work stays up.
 export function planLit(p){
-  if(ST.hlBuilder===undefined) return true;
-  return (p.st==null?null:p.st) === (ST.curStageId==null?null:ST.curStageId)
-      && (p.bd==null?null:p.bd) === ST.hlBuilder;
+  if((p.st==null?null:p.st) !== (ST.curStageId==null?null:ST.curStageId)) return false;
+  if(ST.hlBuilder===undefined) return true;     // the whole stage, all builders
+  return (p.bd==null?null:p.bd) === ST.hlBuilder;
 }
 
 // The fill channel. The outline says *who* (builder); this one says *when*: a
@@ -82,11 +99,10 @@ export function drawPlanFill(g, p, col, idx){
   g.restore();
 }
 // the board's own fill pass (export builds its own from the job's fill channel)
-export function planFill(g, p){
-  if(planSpotlight() && !planLit(p)) return;   // an unlit piece keeps its hatch off
-  if(ST.planColorBy!=='stage' && ST.planColorBy!=='both') return;
+export function planFill(g, p, bg){
+  if(!planLit(p)) return;                       // a ghosted piece carries no hatch
   const s=stageOf(p); if(!s) return;
-  drawPlanFill(g, p, s.color, ST.stages.indexOf(s));
+  drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
 }
 export function planCount(kind, id){
   return ST.pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;

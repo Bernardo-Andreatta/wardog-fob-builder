@@ -100,7 +100,7 @@ export function drawLayerContent(g, L, colInk, bg, maxL){
     g.save(); g.translate(off.x,off.y);
     if(masksBelow(p)) maskPiece(g,p,bg);
     if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,bg); }
-    planFill(g,p);
+    planFill(g,p,bg);
     drawPiece(g,p, st.col, 1); g.restore(); }
   for(const t of ST.texts){ if(itemLayerId(t)!==lid) continue; drawText(g,t,colInk); }
 }

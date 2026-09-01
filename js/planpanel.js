@@ -3,7 +3,7 @@ import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { layerById } from './layers.js';
 import { EYE_OFF, EYE_ON, renderLayerPanel } from './layerspanel.js';
-import { PLAN_COLORS, builderById, ensurePlan, planCount, pruneSelToPlan, stageById } from './plan.js';
+import { builderById, ensurePlan, nextPlanColor, planCount, pruneSelToPlan, stageById } from './plan.js';
 import { render } from './render.js';
 import { selectedPieces } from './selection.js';
 import { ST } from './state.js';
@@ -22,7 +22,7 @@ export function setPlanActive(kind, id){
   render(); renderPlanPanel(); persist();
 }
 export function addPlanEntry(kind){
-  const arr=planEntries(kind), col=PLAN_COLORS[arr.length%PLAN_COLORS.length];
+  const arr=planEntries(kind), col=nextPlanColor();
   const E = kind==='stage'
     ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
     : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
@@ -132,7 +132,6 @@ export function renderPlanPanel(){
   sl.appendChild(buildPlanRow('stage',null));
   bl.innerHTML=''; ST.builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
   bl.appendChild(buildPlanRow('builder',null));
-  document.querySelectorAll('#plan-colorby button').forEach(b=>b.classList.toggle('on', b.dataset.mode===ST.planColorBy));
   updatePlanApply();
 }
 // runs from updateStatus, so the tallies keep up with placing / deleting without
@@ -165,6 +164,7 @@ function stepStage(dir){
 const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
 const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
 const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
+const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
 let hudSig=null;
 // show / hide everything carrying one tag. The Unassigned bucket has no entry
 // of its own, so its switch lives on the plan flags instead.
@@ -207,6 +207,7 @@ export function renderPlanHud(){
     head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
       ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
+    head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
     el.appendChild(head);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
@@ -275,15 +276,10 @@ export function updatePlanApply(){
 export function setHudOpen(on){
   const h=$('board-hud'); if(!h) return;
   h.classList.toggle('off', !on);
-  const t=$('hud-toggle');
-  if(t) t.title = on ? 'Hide the board readout' : 'Show the board readout';
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
 }
-$('hud-toggle').onclick=()=>setHudOpen($('board-hud').classList.contains('off'));
+$('hud-show').onclick=()=>setHudOpen(true);
 $('plan-close').onclick=closePlanModal;
 $('plan-bg').onclick=closePlanModal;
 $('plan-addstage').onclick=()=>addPlanEntry('stage');
 $('plan-addbuilder').onclick=()=>addPlanEntry('builder');
-document.querySelectorAll('#plan-colorby button').forEach(b=>{
-  b.onclick=()=>{ ST.planColorBy=b.dataset.mode; render(); renderPlanPanel(); persist(); };
-});

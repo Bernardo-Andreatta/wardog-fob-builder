@@ -361,10 +361,8 @@
     .cmd{flex-wrap:nowrap;}
     .cmd .btn span{display:none;}      /* icon-only commands */
     .board-hud{left:14px; top:60px;}            /* under the undo / redo FAB */
-    .hl{padding:5px 7px;}
     .plan-hud{min-width:150px; padding:5px 6px;}
     .ph-sublab{display:none;}                   /* the board is short on a phone */
-    .hl-lab{display:none;}
     .hl .plan-seg button{padding:5px 7px; font-size:10px;}
     .cmd .btn{padding:9px 10px;}
     .rail{height:158px; flex-direction:row; align-items:stretch; gap:12px;
@@ -409,9 +407,6 @@
     #rail-toggle svg{transform:rotate(-90deg);}
     .app.rail-off #rail-toggle svg{transform:rotate(90deg);}
   }
-  /* The highlight filter changes what the board shows, so it floats over the
-     board itself - not in the header, and not behind a panel that has to be
-     open first. */
   /* The column is only a layout box: it is wider and taller than the panels it
      holds (the gap between them, and the strip beside the narrower one), and it
      used to eat the drags that started there, so a marquee near it never began.
@@ -420,29 +415,18 @@
     display:flex; flex-direction:column; align-items:flex-start; gap:8px;
     pointer-events:none;}
   .board-hud > *{pointer-events:auto;}
-  /* collapsed, the whole readout is just its own toggle */
-  .board-hud.off .plan-hud, .board-hud.off .hl-lab, .board-hud.off .plan-seg{display:none;}
-  .board-hud.off .hl{padding:5px;}
-  .board-hud.off .hl-toggle svg{transform:rotate(180deg);}
-  .hl-toggle{flex:none; width:20px; height:20px; padding:0; display:flex; align-items:center;
-    justify-content:center; border:1px solid var(--line); border-radius:5px;
-    background:var(--panel-2); color:var(--muted);}
-  .hl-toggle:hover{border-color:var(--accent); color:var(--accent);}
-  .hl-toggle svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
+  /* collapsed, the whole readout is just the chip that brings it back */
+  .board-hud.off .plan-hud{display:none;}
+  .hud-chip{display:none; width:32px; height:32px; padding:0; align-items:center;
+    justify-content:center; background:var(--panel); border:1px solid var(--line);
+    border-radius:9px; box-shadow:0 4px 16px var(--shadow); color:var(--muted);}
+  .hud-chip:hover{border-color:var(--accent); color:var(--accent);}
+  .hud-chip svg{width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2;
     stroke-linecap:round; stroke-linejoin:round;}
-  .hl{display:flex; align-items:center; gap:8px; padding:6px 9px;
-    background:var(--panel); border:1px solid var(--line); border-radius:9px;
-    box-shadow:0 4px 16px var(--shadow);}
-  .hl-lab{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
-    font-size:10.5px; color:var(--muted); font-weight:600; white-space:nowrap;}
-  .hl .plan-seg{display:flex; gap:4px;}
-  .hl .plan-seg button{padding:5px 10px; white-space:nowrap;}
-  /* drop the word before the control can reach the Layers panel on a narrow board */
-  @media (max-width:1100px){ .hl-lab{display:none;} }
+  .board-hud.off .hud-chip{display:flex;}
 
-  /* Board HUD: the stage new pieces are being tagged with, and how the work
-     already in that stage is split between builders. Sits with the highlight
-     control so both live on the board rather than behind a panel. */
+  /* Board HUD: the stage being built, and how its work splits between builders.
+     It is also the view control - the board shows the stage it names. */
   .plan-hud{padding:7px 8px; min-width:174px; max-width:210px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
     box-shadow:0 4px 16px var(--shadow); display:flex; flex-direction:column; gap:2px;}
@@ -678,16 +662,7 @@
     <canvas id="board"></canvas>
 
     <div class="board-hud" id="board-hud">
-      <div class="hl" title="Colour the board by its build-plan tags &middot; outline = builder, fill + hatch = stage">
-        <span class="hl-lab">Highlight</span>
-        <div class="plan-seg" id="plan-colorby">
-          <button data-mode="none" class="on">Off</button>
-          <button data-mode="stage">Stage</button>
-          <button data-mode="builder">Builder</button>
-          <button data-mode="both">Both</button>
-        </div>
-        <button class="hl-toggle" id="hud-toggle" title="Hide the board readout"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
-      </div>
+      <button class="hud-chip" id="hud-show" title="Show the board readout"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="plan-hud" id="plan-hud"></div>
     </div>
 
@@ -798,10 +773,11 @@
         <div class="k">Build Plan row: colour dot &middot; double-click name &middot; &times;</div><div class="d">Recolour the tag &middot; rename &middot; remove it, leaving its pieces unassigned. The modal only configures tags; what is active and what is hidden are set on the board readout</div>
         <div class="k">Board readout: chevron (top right)</div><div class="d">Collapse the whole readout to a single chip, and back</div>
         <div class="k">Board readout: eye</div><div class="d">Hide that stage or builder's pieces from the board</div>
-        <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
+        <div class="k">The board shows one stage</div><div class="d">Whatever carries the stage on the readout draws normally &mdash; each piece in its builder's colour, washed in its stage's colour and hatch. Every other stage drops back without leaving the board</div>
+        <div class="k">Pick a builder on the readout</div><div class="d">Only their work in that stage stays up; pick it again to see the whole stage</div>
         <div class="k">Right-click a piece or selection</div><div class="d">Context menu: rotate &middot; mirror &middot; duplicate &middot; delete &middot; group, plus its layer, floor and group. Stage, builder and layer each show what the selection carries now &mdash; the pencil turns that line into a picker</div>
         <div class="k">Eyedrop tool &middot; right-click &rarr; Pick this structure</div><div class="d">Adopt a placed piece's type and rotation and carry on placing more of it</div>
-        <div class="k">Export / Import &rarr; Export image</div><div class="d">One sheet per stage / builder, every PNG the same size and frame</div>
+        <div class="k">Export / Import &rarr; Export image</div><div class="d">One sheet per stage / builder / stage&amp;builder pair, every PNG the same size and frame</div>
         <div class="k">Each sheet carries</div><div class="d">Build name &amp; view &middot; a stage/builder badge &middot; the size in blocks &middot; a ruler ticked per block &middot; a legend with counts</div>
         <div class="k">Quality &middot; .zip</div><div class="d">Pick px-per-block so big bases stay zoomable &middot; several sheets download as one named folder with a build-info.txt</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
@@ -865,6 +841,7 @@
           <label class="exp-opt sub"><input type="checkbox" id="exp-stages-cum"><span>Cumulative (stage 1&hellip;N)</span></label>
           <label class="exp-opt"><input type="checkbox" id="exp-builders-all"><span>All builders, colour-coded</span></label>
           <label class="exp-opt"><input type="checkbox" id="exp-builders-each"><span>One sheet per builder</span></label>
+          <label class="exp-opt" title="One page per hand-off: what a single builder puts down in a single stage. Only pairs that have work get a sheet"><input type="checkbox" id="exp-pairs"><span>One sheet per stage &amp; builder</span></label>
           <label class="exp-opt" title="A page of its own: every structure used, drawn at the same scale as the map, named and counted"><input type="checkbox" id="exp-structs"><span>Structure key sheet</span></label>
           <label class="exp-opt" title="One .zip holding every sheet in a named folder, plus a build-info.txt"><input type="checkbox" id="exp-zip"><span>Package as a .zip folder</span></label>
         </div>
