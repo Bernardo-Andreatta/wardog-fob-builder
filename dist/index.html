@@ -357,7 +357,7 @@
     .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
-    .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete{display:none;}
+    .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete, .rot-fab.ghost #fab-more{display:none;}
     /* The board's top edge is what you look at while building, so only the
        stage stepper and the builder chip stay up there. The occasional controls
        - the stage eye and the plan editor - come down here with undo / redo,
@@ -594,6 +594,36 @@
   .ctx-opt.on{color:var(--accent); background:var(--accent-soft);
     box-shadow:inset 2px 0 0 var(--accent);}
   .ctx-optname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* The phone's answer to the right-click menu. Not a card at a touch point: a
+     sheet on the bottom edge, full width, with rows sized for a thumb. It only
+     exists where there is no right-click. */
+  .sel-sheet{display:none;}
+  @media (pointer:coarse){
+    .sel-sheet{display:flex; flex-direction:column; position:absolute;
+      left:8px; right:8px; bottom:8px; z-index:30; max-width:420px;
+      max-height:66%; padding:8px;
+      background:var(--panel); border:1px solid var(--line); border-radius:14px;
+      box-shadow:0 -8px 34px var(--shadow);}
+    .sel-sheet[hidden]{display:none;}
+    .sel-sheet .sheet-body{overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;}
+    .sel-sheet .ctx-head{padding:4px 8px 10px;}
+    .sel-sheet .ctx-title{font-size:14px;}
+    .sel-sheet .ctx-meta{font-size:11px;}
+    .sel-sheet .ctx-row{padding:11px 10px; font-size:14px; border-radius:8px;}
+    .sel-sheet .ctx-row svg{width:18px; height:18px;}
+    .sel-sheet .ctx-grid{gap:4px;}
+    .sel-sheet .ctx-sub{font-size:10.5px; padding:10px 10px 4px;}
+    .sel-sheet .ctx-pick{padding:2px 10px 8px; gap:7px;}
+    .sel-sheet .ctx-cur-row{min-height:34px;}
+    .sel-sheet .ctx-cur{font-size:14px;}
+    .sel-sheet .ctx-pen{width:34px; height:34px; border-radius:8px;}
+    .sel-sheet .ctx-pen svg{width:16px; height:16px;}
+    .sel-sheet .ctx-opt{padding:11px 10px; font-size:14px;}
+    .sel-sheet .ctx-dot{width:11px; height:11px;}
+    .sheet-done{flex:0 0 auto; width:100%; margin-top:8px; height:40px;
+      border:1px solid var(--line); border-radius:9px; background:var(--panel-2);
+      color:var(--ink); font:inherit; font-size:14px; font-weight:600; cursor:pointer;}
+  }
   .ctx-dot{width:8px; height:8px; border-radius:50%; flex:none; border:1px solid var(--line)}
   .ctx-dot.plain{background:var(--muted); opacity:.4;}
 
@@ -839,6 +869,7 @@
       </div>
     </div>
     <div class="ctx" id="ctx" hidden></div>
+    <div class="sel-sheet" id="sel-sheet" hidden></div>
     <div class="toast" id="toast" hidden></div>
 
     <div class="drawopts" id="drawopts">
@@ -864,6 +895,7 @@
       <button class="btn" id="fab-group" title="Group"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg></button>
       <button class="btn" id="fab-ungroup" title="Ungroup"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg></button>
       <button class="btn danger" id="fab-delete" title="Delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+      <button class="btn" id="fab-more" title="Tag, move and inspect this selection"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
     </div>
 
     <div class="zoombar">
@@ -2304,6 +2336,31 @@ function eyedropPiece(p){
   return true;
 }
 function ctxClose(){ const el=$('ctx'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; } }
+// the card and the sheet share every action, so an action closes whichever one
+// is currently presenting it
+let closeSurface = ctxClose;
+function closeSelSheet(){
+  const el=$('sel-sheet'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; }
+}
+// A phone has no right-click, and a card floating at a touch point is not the
+// answer either: the selection's actions belong in a sheet on the bottom edge,
+// full width, with rows a thumb can hit.
+function openSelSheet(){
+  const el=$('sel-sheet'); if(!el) return;
+  el.hidden=false; el.innerHTML='';
+  // the edit bar already owns rotate/mirror/duplicate/delete/group/ungroup, so
+  // the sheet carries what a phone had no way to reach: what this selection is,
+  // and its stage, builder and layer
+  const body=document.createElement('div'); body.className='sheet-body';
+  el.appendChild(body);
+  ctxBody(body, null, closeSelSheet, {compact:true});
+  // Done stays pinned below the scroll: the way out of a sheet must not be the
+  // thing you have to scroll to find
+  const bar=document.createElement('button'); bar.className='sheet-done';
+  bar.textContent='Done'; bar.onclick=closeSelSheet;
+  el.appendChild(bar);
+  body.scrollTop=0;
+}
 function ctxSub(host, label){
   const d=document.createElement('div'); d.className='ctx-sub'; d.textContent=label;
   host.appendChild(d); return d;
@@ -2315,7 +2372,7 @@ function ctxRow(label, icon, fn, opts){
   b.innerHTML=(icon||'')+'<span>'+label+'</span>';
   if(opts.title) b.title=opts.title;
   b.disabled=!!opts.off;
-  b.onclick=()=>{ ctxClose(); fn(); };
+  b.onclick=()=>{ closeSurface(); fn(); };
   return b;
 }
 // a tag row: one chip per option, the current one lit. A mixed selection lights
@@ -2356,7 +2413,7 @@ function ctxPick(host, label, items, cur, onPick){
       if(o.color) d.style.background=o.color;
       const s=document.createElement('span'); s.className='ctx-optname'; s.textContent=o.name;
       b.appendChild(d); b.appendChild(s);
-      b.onclick=ev=>{ ev.stopPropagation(); ctxClose(); onPick(o.id); };
+      b.onclick=ev=>{ ev.stopPropagation(); closeSurface(); onPick(o.id); };
       list.appendChild(b);
     });
     wrap.appendChild(list);
@@ -2373,6 +2430,7 @@ function ctxSelLabel(ps, ims, ts, ss){
 }
 function openCtx(e){
   const el=$('ctx'); if(!el) return;
+  const touch=isCoarse();
   const w=evtW(e), hit=hitPiece(w.x,w.y);
   // right-clicking outside the selection retargets it to what is under the
   // cursor; inside it, the whole selection stays the subject
@@ -2380,8 +2438,24 @@ function openCtx(e){
     clearSelection(); clearOverlaySel(); ST.selected=[hit.id]; expandGroups();
     render(); updateStatus();
   }
+  // a card pinned under the finger is the wrong shape on a phone; the same
+  // actions belong in the sheet on the bottom edge
+  if(touch){ openSelSheet(); return; }
+  el.hidden=false;
+  ctxBody(el, hit, ctxClose);
+  const rc=stage.getBoundingClientRect();
+  el.style.left=(e.clientX-rc.left)+'px';
+  el.style.top=(e.clientY-rc.top)+'px';
+  ctxFit();
+}
+// Everything the menu offers, rendered into whichever surface is asking: the
+// desktop's floating card, or the phone's selection sheet. `close` is how that
+// surface dismisses itself once an action runs.
+function ctxBody(el, hit, close, opts){
+  closeSurface = close || ctxClose;
+  const compact = !!(opts && opts.compact);
   const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
-  el.innerHTML=''; el.hidden=false;
+  el.innerHTML='';
   if(all.length){
     const head=document.createElement('div'); head.className='ctx-head';
     const t=document.createElement('div'); t.className='ctx-title';
@@ -2406,14 +2480,16 @@ function openCtx(e){
         {off:!pick, title: pick ? 'Place more of these, at this rotation'
                                 : 'Selection mixes '+types.length+' structure types - duplicate it instead'}));
     }
-    const grid=document.createElement('div'); grid.className='ctx-grid';
-    grid.appendChild(ctxRow('Rotate', CTX_IC.rotate, ()=>rotateGroup(rotStep()), {off:!hasRotSel()}));
-    grid.appendChild(ctxRow('Mirror', CTX_IC.mirror, mirrorGroup, {off:!hasRotSel()}));
-    grid.appendChild(ctxRow('Duplicate', CTX_IC.copy, duplicateSel, {off:!ps.length}));
-    grid.appendChild(ctxRow('Delete', CTX_IC.del, deleteSel, {danger:true}));
-    grid.appendChild(ctxRow('Group', CTX_IC.group, groupSel, {off:all.length<2}));
-    grid.appendChild(ctxRow('Ungroup', CTX_IC.ungroup, ungroupSel, {off:!gids.length}));
-    el.appendChild(grid);
+    if(!compact){
+      const grid=document.createElement('div'); grid.className='ctx-grid';
+      grid.appendChild(ctxRow('Rotate', CTX_IC.rotate, ()=>rotateGroup(rotStep()), {off:!hasRotSel()}));
+      grid.appendChild(ctxRow('Mirror', CTX_IC.mirror, mirrorGroup, {off:!hasRotSel()}));
+      grid.appendChild(ctxRow('Duplicate', CTX_IC.copy, duplicateSel, {off:!ps.length}));
+      grid.appendChild(ctxRow('Delete', CTX_IC.del, deleteSel, {danger:true}));
+      grid.appendChild(ctxRow('Group', CTX_IC.group, groupSel, {off:all.length<2}));
+      grid.appendChild(ctxRow('Ungroup', CTX_IC.ungroup, ungroupSel, {off:!gids.length}));
+      el.appendChild(grid);
+    }
 
     if(ps.length){
       ensurePlan();
@@ -2438,10 +2514,6 @@ function openCtx(e){
     el.appendChild(ctxRow('Deselect everything', CTX_IC.none, ()=>{
       clearSelection(); clearOverlaySel(); render(); updateStatus(); }, {off:!anySelected()}));
   }
-  const rc=stage.getBoundingClientRect();
-  el.style.left=(e.clientX-rc.left)+'px';
-  el.style.top=(e.clientY-rc.top)+'px';
-  ctxFit();
 }
 // Keep the card on screen - on open, and again whenever a picker expands it,
 // since a list unfolding downwards would otherwise run off the bottom edge.
@@ -2455,8 +2527,14 @@ function ctxFit(){
 // any click outside, any Escape, any zoom closes it
 document.addEventListener('pointerdown', e=>{
   const el=$('ctx'); if(el && !el.hidden && !el.contains(e.target)) ctxClose();
+  const sh=$('sel-sheet');
+  if(sh && !sh.hidden && !sh.contains(e.target) && !e.target.closest('#fab-more')) closeSelSheet();
 }, true);
-window.addEventListener('keydown', e=>{ if(e.key==='Escape') ctxClose(); }, true);
+window.addEventListener('keydown', e=>{ if(e.key==='Escape'){ ctxClose(); closeSelSheet(); } }, true);
+$('fab-more').onclick=ev=>{ ev.stopPropagation();
+  const el=$('sel-sheet');
+  if(el && !el.hidden) closeSelSheet(); else openSelSheet();
+};
 cv.addEventListener('wheel', ctxClose, {passive:true});
 
 /* ===== touch.js ===== */
@@ -2808,7 +2886,17 @@ cv.addEventListener('dblclick', e=>{
 // under the cursor - see openCtx
 cv.addEventListener('contextmenu', e=>{
   e.preventDefault();
-  if(ST.drag || ST.pinch || tpts.size) return;   // mid-gesture: not a menu
+  if(ST.pinch || tpts.size>1) return;            // mid-gesture: not a menu
+  if(isCoarse()){
+    // A long-press is the phone's right-click, but the press that raised it has
+    // already started a drag - every pointerdown does. Only a press that never
+    // went anywhere is a long-press, and that press is now spent.
+    const still = !ST.drag
+      || (ST.drag.mode==='marquee' && !ST.marquee)
+      || (ST.drag.mode==='gmove' && !ST.drag.moved);
+    if(!still) return;
+    ST.drag=null; ST.marquee=null;
+  } else if(ST.drag || tpts.size) return;
   openCtx(e);
 });
 // Trackpads send a pinch as ctrl+wheel, and a two-finger swipe as a plain wheel

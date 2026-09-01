@@ -1,6 +1,6 @@
 import { deleteSel, duplicateSel, mirrorGroup, rotStep, rotateGroup } from './actions.js';
 import { CATALOG } from './catalog.js';
-import { $, cv, stage } from './dom.js';
+import { $, cv, isCoarse, stage } from './dom.js';
 import { pieceLayer } from './floors.js';
 import { hitPiece } from './geometry.js';
 import { expandGroups, groupSel, selItemObjs, ungroupSel } from './groups.js';
@@ -42,6 +42,31 @@ export function eyedropPiece(p){
   return true;
 }
 export function ctxClose(){ const el=$('ctx'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; } }
+// the card and the sheet share every action, so an action closes whichever one
+// is currently presenting it
+let closeSurface = ctxClose;
+export function closeSelSheet(){
+  const el=$('sel-sheet'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; }
+}
+// A phone has no right-click, and a card floating at a touch point is not the
+// answer either: the selection's actions belong in a sheet on the bottom edge,
+// full width, with rows a thumb can hit.
+export function openSelSheet(){
+  const el=$('sel-sheet'); if(!el) return;
+  el.hidden=false; el.innerHTML='';
+  // the edit bar already owns rotate/mirror/duplicate/delete/group/ungroup, so
+  // the sheet carries what a phone had no way to reach: what this selection is,
+  // and its stage, builder and layer
+  const body=document.createElement('div'); body.className='sheet-body';
+  el.appendChild(body);
+  ctxBody(body, null, closeSelSheet, {compact:true});
+  // Done stays pinned below the scroll: the way out of a sheet must not be the
+  // thing you have to scroll to find
+  const bar=document.createElement('button'); bar.className='sheet-done';
+  bar.textContent='Done'; bar.onclick=closeSelSheet;
+  el.appendChild(bar);
+  body.scrollTop=0;
+}
 export function ctxSub(host, label){
   const d=document.createElement('div'); d.className='ctx-sub'; d.textContent=label;
   host.appendChild(d); return d;
@@ -53,7 +78,7 @@ export function ctxRow(label, icon, fn, opts){
   b.innerHTML=(icon||'')+'<span>'+label+'</span>';
   if(opts.title) b.title=opts.title;
   b.disabled=!!opts.off;
-  b.onclick=()=>{ ctxClose(); fn(); };
+  b.onclick=()=>{ closeSurface(); fn(); };
   return b;
 }
 // a tag row: one chip per option, the current one lit. A mixed selection lights
@@ -94,7 +119,7 @@ export function ctxPick(host, label, items, cur, onPick){
       if(o.color) d.style.background=o.color;
       const s=document.createElement('span'); s.className='ctx-optname'; s.textContent=o.name;
       b.appendChild(d); b.appendChild(s);
-      b.onclick=ev=>{ ev.stopPropagation(); ctxClose(); onPick(o.id); };
+      b.onclick=ev=>{ ev.stopPropagation(); closeSurface(); onPick(o.id); };
       list.appendChild(b);
     });
     wrap.appendChild(list);
@@ -111,6 +136,7 @@ export function ctxSelLabel(ps, ims, ts, ss){
 }
 export function openCtx(e){
   const el=$('ctx'); if(!el) return;
+  const touch=isCoarse();
   const w=evtW(e), hit=hitPiece(w.x,w.y);
   // right-clicking outside the selection retargets it to what is under the
   // cursor; inside it, the whole selection stays the subject
@@ -118,8 +144,24 @@ export function openCtx(e){
     clearSelection(); clearOverlaySel(); ST.selected=[hit.id]; expandGroups();
     render(); updateStatus();
   }
+  // a card pinned under the finger is the wrong shape on a phone; the same
+  // actions belong in the sheet on the bottom edge
+  if(touch){ openSelSheet(); return; }
+  el.hidden=false;
+  ctxBody(el, hit, ctxClose);
+  const rc=stage.getBoundingClientRect();
+  el.style.left=(e.clientX-rc.left)+'px';
+  el.style.top=(e.clientY-rc.top)+'px';
+  ctxFit();
+}
+// Everything the menu offers, rendered into whichever surface is asking: the
+// desktop's floating card, or the phone's selection sheet. `close` is how that
+// surface dismisses itself once an action runs.
+export function ctxBody(el, hit, close, opts){
+  closeSurface = close || ctxClose;
+  const compact = !!(opts && opts.compact);
   const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
-  el.innerHTML=''; el.hidden=false;
+  el.innerHTML='';
   if(all.length){
     const head=document.createElement('div'); head.className='ctx-head';
     const t=document.createElement('div'); t.className='ctx-title';
@@ -144,14 +186,16 @@ export function openCtx(e){
         {off:!pick, title: pick ? 'Place more of these, at this rotation'
                                 : 'Selection mixes '+types.length+' structure types - duplicate it instead'}));
     }
-    const grid=document.createElement('div'); grid.className='ctx-grid';
-    grid.appendChild(ctxRow('Rotate', CTX_IC.rotate, ()=>rotateGroup(rotStep()), {off:!hasRotSel()}));
-    grid.appendChild(ctxRow('Mirror', CTX_IC.mirror, mirrorGroup, {off:!hasRotSel()}));
-    grid.appendChild(ctxRow('Duplicate', CTX_IC.copy, duplicateSel, {off:!ps.length}));
-    grid.appendChild(ctxRow('Delete', CTX_IC.del, deleteSel, {danger:true}));
-    grid.appendChild(ctxRow('Group', CTX_IC.group, groupSel, {off:all.length<2}));
-    grid.appendChild(ctxRow('Ungroup', CTX_IC.ungroup, ungroupSel, {off:!gids.length}));
-    el.appendChild(grid);
+    if(!compact){
+      const grid=document.createElement('div'); grid.className='ctx-grid';
+      grid.appendChild(ctxRow('Rotate', CTX_IC.rotate, ()=>rotateGroup(rotStep()), {off:!hasRotSel()}));
+      grid.appendChild(ctxRow('Mirror', CTX_IC.mirror, mirrorGroup, {off:!hasRotSel()}));
+      grid.appendChild(ctxRow('Duplicate', CTX_IC.copy, duplicateSel, {off:!ps.length}));
+      grid.appendChild(ctxRow('Delete', CTX_IC.del, deleteSel, {danger:true}));
+      grid.appendChild(ctxRow('Group', CTX_IC.group, groupSel, {off:all.length<2}));
+      grid.appendChild(ctxRow('Ungroup', CTX_IC.ungroup, ungroupSel, {off:!gids.length}));
+      el.appendChild(grid);
+    }
 
     if(ps.length){
       ensurePlan();
@@ -176,10 +220,6 @@ export function openCtx(e){
     el.appendChild(ctxRow('Deselect everything', CTX_IC.none, ()=>{
       clearSelection(); clearOverlaySel(); render(); updateStatus(); }, {off:!anySelected()}));
   }
-  const rc=stage.getBoundingClientRect();
-  el.style.left=(e.clientX-rc.left)+'px';
-  el.style.top=(e.clientY-rc.top)+'px';
-  ctxFit();
 }
 // Keep the card on screen - on open, and again whenever a picker expands it,
 // since a list unfolding downwards would otherwise run off the bottom edge.
@@ -193,6 +233,12 @@ export function ctxFit(){
 // any click outside, any Escape, any zoom closes it
 document.addEventListener('pointerdown', e=>{
   const el=$('ctx'); if(el && !el.hidden && !el.contains(e.target)) ctxClose();
+  const sh=$('sel-sheet');
+  if(sh && !sh.hidden && !sh.contains(e.target) && !e.target.closest('#fab-more')) closeSelSheet();
 }, true);
-window.addEventListener('keydown', e=>{ if(e.key==='Escape') ctxClose(); }, true);
+window.addEventListener('keydown', e=>{ if(e.key==='Escape'){ ctxClose(); closeSelSheet(); } }, true);
+$('fab-more').onclick=ev=>{ ev.stopPropagation();
+  const el=$('sel-sheet');
+  if(el && !el.hidden) closeSelSheet(); else openSelSheet();
+};
 cv.addEventListener('wheel', ctxClose, {passive:true});

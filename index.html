@@ -357,7 +357,7 @@
     .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
-    .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete{display:none;}
+    .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete, .rot-fab.ghost #fab-more{display:none;}
     /* The board's top edge is what you look at while building, so only the
        stage stepper and the builder chip stay up there. The occasional controls
        - the stage eye and the plan editor - come down here with undo / redo,
@@ -594,6 +594,36 @@
   .ctx-opt.on{color:var(--accent); background:var(--accent-soft);
     box-shadow:inset 2px 0 0 var(--accent);}
   .ctx-optname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* The phone's answer to the right-click menu. Not a card at a touch point: a
+     sheet on the bottom edge, full width, with rows sized for a thumb. It only
+     exists where there is no right-click. */
+  .sel-sheet{display:none;}
+  @media (pointer:coarse){
+    .sel-sheet{display:flex; flex-direction:column; position:absolute;
+      left:8px; right:8px; bottom:8px; z-index:30; max-width:420px;
+      max-height:66%; padding:8px;
+      background:var(--panel); border:1px solid var(--line); border-radius:14px;
+      box-shadow:0 -8px 34px var(--shadow);}
+    .sel-sheet[hidden]{display:none;}
+    .sel-sheet .sheet-body{overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;}
+    .sel-sheet .ctx-head{padding:4px 8px 10px;}
+    .sel-sheet .ctx-title{font-size:14px;}
+    .sel-sheet .ctx-meta{font-size:11px;}
+    .sel-sheet .ctx-row{padding:11px 10px; font-size:14px; border-radius:8px;}
+    .sel-sheet .ctx-row svg{width:18px; height:18px;}
+    .sel-sheet .ctx-grid{gap:4px;}
+    .sel-sheet .ctx-sub{font-size:10.5px; padding:10px 10px 4px;}
+    .sel-sheet .ctx-pick{padding:2px 10px 8px; gap:7px;}
+    .sel-sheet .ctx-cur-row{min-height:34px;}
+    .sel-sheet .ctx-cur{font-size:14px;}
+    .sel-sheet .ctx-pen{width:34px; height:34px; border-radius:8px;}
+    .sel-sheet .ctx-pen svg{width:16px; height:16px;}
+    .sel-sheet .ctx-opt{padding:11px 10px; font-size:14px;}
+    .sel-sheet .ctx-dot{width:11px; height:11px;}
+    .sheet-done{flex:0 0 auto; width:100%; margin-top:8px; height:40px;
+      border:1px solid var(--line); border-radius:9px; background:var(--panel-2);
+      color:var(--ink); font:inherit; font-size:14px; font-weight:600; cursor:pointer;}
+  }
   .ctx-dot{width:8px; height:8px; border-radius:50%; flex:none; border:1px solid var(--line)}
   .ctx-dot.plain{background:var(--muted); opacity:.4;}
 
@@ -839,6 +869,7 @@
       </div>
     </div>
     <div class="ctx" id="ctx" hidden></div>
+    <div class="sel-sheet" id="sel-sheet" hidden></div>
     <div class="toast" id="toast" hidden></div>
 
     <div class="drawopts" id="drawopts">
@@ -864,6 +895,7 @@
       <button class="btn" id="fab-group" title="Group"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg></button>
       <button class="btn" id="fab-ungroup" title="Ungroup"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg></button>
       <button class="btn danger" id="fab-delete" title="Delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+      <button class="btn" id="fab-more" title="Tag, move and inspect this selection"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
     </div>
 
     <div class="zoombar">

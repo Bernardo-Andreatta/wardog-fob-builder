@@ -1,7 +1,7 @@
 import { CATALOG, SYMBOLS } from './catalog.js';
 import { editNewOverlay } from './tools.js';
 import { eyedropPiece, openCtx } from './ctxmenu.js';
-import { GRID, cv, stage } from './dom.js';
+import { GRID, cv, isCoarse, stage } from './dom.js';
 import { pieceLayer, placeError } from './floors.js';
 import { handleXY, hitPiece, screenToWorld, snapCenter, worldToScreen } from './geometry.js';
 import { expandGroups } from './groups.js';
@@ -311,7 +311,17 @@ cv.addEventListener('dblclick', e=>{
 // under the cursor - see openCtx
 cv.addEventListener('contextmenu', e=>{
   e.preventDefault();
-  if(ST.drag || ST.pinch || tpts.size) return;   // mid-gesture: not a menu
+  if(ST.pinch || tpts.size>1) return;            // mid-gesture: not a menu
+  if(isCoarse()){
+    // A long-press is the phone's right-click, but the press that raised it has
+    // already started a drag - every pointerdown does. Only a press that never
+    // went anywhere is a long-press, and that press is now spent.
+    const still = !ST.drag
+      || (ST.drag.mode==='marquee' && !ST.marquee)
+      || (ST.drag.mode==='gmove' && !ST.drag.moved);
+    if(!still) return;
+    ST.drag=null; ST.marquee=null;
+  } else if(ST.drag || tpts.size) return;
   openCtx(e);
 });
 // Trackpads send a pinch as ctrl+wheel, and a two-finger swipe as a plain wheel
