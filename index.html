@@ -358,7 +358,8 @@
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
     .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete{display:none;}
-    .undo-fab{position:absolute; left:14px; top:14px; display:flex; gap:8px; z-index:9;}
+    .undo-fab{position:absolute; left:auto; right:14px; top:auto; bottom:14px;
+      display:flex; gap:8px; z-index:9;}
     .undo-fab .btn{width:44px; height:44px; padding:0; justify-content:center;
       background:var(--panel); box-shadow:0 4px 16px var(--shadow);}
     .undo-fab .btn svg{width:18px; height:18px;}
@@ -418,7 +419,7 @@
       padding:3px 20px;}
     /* edit buttons take priority over the collapse tab: fab owns the bottom
        edge, the toggle steps aside while the fab is up */
-    .rot-fab.show{bottom:14px;}
+    .rot-fab.show{bottom:14px; right:122px;}   /* clear of undo / redo */
     .stage:has(.rot-fab.show) #rail-toggle{display:none;}
     #rail-toggle svg{transform:rotate(-90deg);}
     .app.rail-off #rail-toggle svg{transform:rotate(90deg);}
@@ -444,7 +445,7 @@
      readout starts below it. This has to come after the rule above: same
      specificity, and the later one wins. */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
-    .board-hud{left:14px; right:14px; top:70px; align-items:stretch;}
+    .board-hud{left:14px; right:62px; top:14px; align-items:stretch;}
   }
 
   /* Board HUD: the stage being built, and how its work splits between builders.
@@ -497,13 +498,17 @@
     /* A phone gets a different shape, not a smaller copy of the desktop card:
        one bar whose height never changes, and the builders behind a chip. A
        crew of ten used to push the card down most of the board. */
-    .plan-hud{min-width:0; max-width:none; width:100%; padding:5px 6px; gap:0;
-      flex-direction:row; align-items:center; position:relative;}
-    .ph-stage{flex:1; min-width:0; gap:3px; padding:0; margin:0; border-bottom:none;}
+    /* The bar shares the board's top edge with the Layers button, so it cannot
+       always hold the stage controls and the builder chip on one line. It wraps
+       instead of clipping: the chip drops to a second line only when the stage
+       row genuinely needs the width, and takes the full width when it does. */
+    .plan-hud{min-width:0; max-width:none; width:100%; padding:5px 6px; gap:5px 6px;
+      flex-direction:row; flex-wrap:wrap; align-items:center; position:relative;}
+    .ph-stage{flex:1 1 auto; min-width:228px; gap:3px; padding:0; margin:0; border-bottom:none;}
     .ph-scount{display:inline; margin-left:1px; opacity:.85;}
     .ph-sub{display:none;}                     /* the count rides in the bar */
-    .ph-bchip{display:flex; align-items:center; gap:5px; flex:0 1 auto; min-width:0;
-      max-width:44%; margin-left:6px; padding:5px 7px; font-size:11.5px;
+    .ph-bchip{display:flex; align-items:center; gap:5px; flex:1 1 auto; min-width:0;
+      justify-content:flex-start; padding:5px 8px; font-size:11.5px;
       border:1px solid var(--line); border-radius:7px; background:var(--panel-2);
       color:var(--muted);}
     .ph-bchip.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
