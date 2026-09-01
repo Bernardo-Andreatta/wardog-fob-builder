@@ -31,6 +31,7 @@ export const CTX_IC={
   group:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg>',
   ungroup:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg>',
   snap:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>',
+  pen:'<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>',
   none:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>',
 };
 // pick a piece's type + orientation and go straight into placing more of it
@@ -57,18 +58,44 @@ export function ctxRow(label, icon, fn, opts){
 }
 // a tag row: one chip per option, the current one lit. A mixed selection lights
 // nothing, so picking a chip is always an unambiguous "make it this".
-export function ctxChips(host, items, cur, onPick){
-  const wrap=document.createElement('div'); wrap.className='ctx-chips';
-  items.forEach(it=>{
-    const b=document.createElement('button');
-    b.className='ctx-chip'+(cur!==undefined && it.id===cur ? ' on' : '');
-    if(it.color){ const d=document.createElement('span'); d.className='ctx-dot';
-      d.style.background=it.color; b.appendChild(d); }
-    const s=document.createElement('span'); s.textContent=it.name; b.appendChild(s);
-    b.onclick=()=>{ ctxClose(); onPick(it.id); };
-    wrap.appendChild(b);
-  });
-  host.appendChild(wrap);
+// A tag reads as one line: what the selection carries now, and a pencil that
+// turns that line into a picker. Laying every stage, builder and layer out as
+// chips made the menu as tall as the whole plan and buried the one fact you
+// opened it for. A mixed selection says so, and picking still applies to all.
+export function ctxPick(host, label, items, cur, onPick){
+  ctxSub(host, label);
+  const wrap=document.createElement('div'); wrap.className='ctx-pick';
+  const show=()=>{
+    wrap.innerHTML='';
+    const it = cur===undefined ? null : items.find(x=>x.id===cur);
+    const dot=document.createElement('span');
+    dot.className='ctx-dot'+((it&&it.color)?'':' plain');
+    if(it&&it.color) dot.style.background=it.color;
+    const nm=document.createElement('span'); nm.className='ctx-cur';
+    nm.textContent = cur===undefined ? 'Mixed' : (it?it.name:'Unassigned');
+    nm.title=nm.textContent;
+    const pen=document.createElement('button'); pen.className='ctx-pen';
+    pen.innerHTML=CTX_IC.pen; pen.title='Change '+label.toLowerCase();
+    pen.onclick=ev=>{ ev.stopPropagation(); edit(); };
+    wrap.appendChild(dot); wrap.appendChild(nm); wrap.appendChild(pen);
+  };
+  const edit=()=>{
+    wrap.innerHTML='';
+    const sel=document.createElement('select'); sel.className='ctx-sel';
+    if(cur===undefined){ const o=document.createElement('option');
+      o.value='-'; o.textContent='Mixed'; o.selected=true; sel.appendChild(o); }
+    items.forEach(it=>{ const o=document.createElement('option');
+      o.value = it.id==null ? '' : String(it.id); o.textContent=it.name;
+      if(cur!==undefined && it.id===cur) o.selected=true; sel.appendChild(o); });
+    sel.onclick=ev=>ev.stopPropagation();
+    sel.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Escape'){ ev.preventDefault(); show(); } };
+    sel.onchange=()=>{
+      if(sel.value==='-') return;                       // still "Mixed": nothing chosen
+      ctxClose(); onPick(sel.value===''?null:parseInt(sel.value,10));
+    };
+    wrap.appendChild(sel); sel.focus();
+  };
+  show(); host.appendChild(wrap);
 }
 export function ctxSelLabel(ps, ims, ts, ss){
   const n=ps.length+ims.length+ts.length+ss.length;
@@ -123,16 +150,13 @@ export function openCtx(e){
     if(ps.length){
       ensurePlan();
       const un=[{id:null, name:'Unassigned'}];
-      ctxSub(el,'Stage');
-      ctxChips(el, un.concat(ST.stages.map(s=>({id:s.id,name:s.name,color:s.color}))),
+      ctxPick(el, 'Stage', un.concat(ST.stages.map(s=>({id:s.id,name:s.name,color:s.color}))),
         commonVal(ps,'st'), id=>setPlanOnSel('stage',id));
-      ctxSub(el,'Builder');
-      ctxChips(el, un.concat(ST.builders.map(b=>({id:b.id,name:b.name,color:b.color}))),
+      ctxPick(el, 'Builder', un.concat(ST.builders.map(b=>({id:b.id,name:b.name,color:b.color}))),
         commonVal(ps,'bd'), id=>setPlanOnSel('builder',id));
     }
-    ctxSub(el,'Move to layer');
     const curLy = all.every(it=>itemLayerId(it)===itemLayerId(all[0])) ? itemLayerId(all[0]) : undefined;
-    ctxChips(el, zOrder().slice().reverse().map(l=>({id:l.id, name:l.name+' · '+floorName(l.floor||0)})),
+    ctxPick(el, 'Layer', zOrder().slice().reverse().map(l=>({id:l.id, name:l.name+' · '+floorName(l.floor||0)})),
       curLy, moveSelToLayer);
   } else {
     ctxSub(el,'Tools');
