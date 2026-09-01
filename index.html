@@ -150,9 +150,9 @@
     box-shadow:0 18px 60px var(--shadow);}
   .modal-card h3{margin:0 0 16px; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
     font-size:16.5px; color:var(--ink);}
-  .modal-card .x{position:absolute; top:12px; right:14px; cursor:pointer; color:var(--muted); font-size:22px;
+  .modal-card > .x{position:absolute; top:12px; right:14px; cursor:pointer; color:var(--muted); font-size:22px;
     background:none; border:none; line-height:1;}
-  .modal-card .x:hover{color:var(--ink);}
+  .modal-card > .x:hover{color:var(--ink);}
   .modal-grid{display:grid; grid-template-columns:auto 1fr; align-items:stretch;
     font-family:var(--font-mono); font-size:13px; border-top:1px solid var(--line);}
   .modal-grid .k{color:var(--ink); white-space:nowrap; padding:8px 16px 8px 2px;
@@ -537,7 +537,8 @@
   .plan-apply button:disabled b{color:var(--muted)}
   .plan-apply button:hover:not(:disabled){border-color:var(--accent)}
   .plan-apply button:disabled{opacity:.38; cursor:default;}
-  .plan-hint{font-size:10.5px; color:var(--muted); line-height:1.35;}
+  .plan-hint{font-size:10.5px; color:var(--muted); line-height:1.45;}
+  .modal-card .plan-hint{margin-top:18px; padding-top:13px; border-top:1px solid var(--line);}
 
   /* ---- multi-image export ---- */
   .modal-card.wide{width:min(640px,92vw);}
@@ -798,7 +799,7 @@
           <div class="plan-list" id="builder-list"></div>
         </div>
       </div>
-      <div class="plan-hint"><b>Click a row</b> to make it active &middot; <b>double-click the name</b> to rename &middot; the <b>colour dot</b> recolours the tag &middot; the <b>eye</b> filters it off the board &middot; <b>&times;</b> removes the tag and leaves its pieces unassigned. Export image writes one PNG per stage / builder that has anything built under it.</div>
+      <div class="plan-hint">A build starts with no stages and no builders &mdash; <b>+</b> adds one. <b>Click a row</b> to make it active &middot; <b>double-click the name</b> to rename &middot; the <b>colour dot</b> recolours the tag &middot; the <b>eye</b> filters it off the board &middot; <b>&times;</b> removes the tag and leaves its pieces unassigned. Export image writes one PNG per stage / builder that has anything built under it.</div>
     </div>
   </div>
 

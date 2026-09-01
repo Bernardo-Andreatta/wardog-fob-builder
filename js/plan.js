@@ -10,14 +10,12 @@ import { cssVar } from './render.js';
 // p.bd), independent of floors and layers, so they survive move / rotate /
 // duplicate and can be re-tagged long after the build is finished.
 export const PLAN_COLORS=['#e6a51e','#4aa3e0','#7ec46a','#e0574a','#b98cff','#3fd0c9','#ff8fbf','#8fb0ff'];
-// Names only: what a stage is for is the crew's call, so the note starts empty
-// and is theirs to fill in (see the Build Plan modal).
-export const DEFAULT_STAGES=['Early','Mid','Late'];
+// A build starts with no plan at all - no stages, no builders. Naming them is
+// the crew's call, and pieces stay Unassigned until someone does, so nothing on
+// the board is ever tagged with a name nobody chose.
 export function ensurePlan(){
-  if(!Array.isArray(ST.stages) || !ST.stages.length)
-    ST.stages=DEFAULT_STAGES.map((s,i)=>({id:ST.stageUid++, name:s, color:PLAN_COLORS[i], visible:true}));
-  if(!Array.isArray(ST.builders) || !ST.builders.length)
-    ST.builders=[1,2].map(n=>({id:ST.builderUid++, name:'Builder '+n, color:PLAN_COLORS[(n+2)%PLAN_COLORS.length], visible:true}));
+  if(!Array.isArray(ST.stages)) ST.stages=[];
+  if(!Array.isArray(ST.builders)) ST.builders=[];
   ST.stages.concat(ST.builders).forEach(e=>{ if(e.visible==null) e.visible=true; });
   ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
   ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
