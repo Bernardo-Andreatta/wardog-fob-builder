@@ -7,6 +7,7 @@ import { drawText, textBox } from './overlays.js';
 import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, planVisible, stageIndex, stageOf, tagInk } from './plan.js';
 import { cssVar } from './render.js';
 import { ST } from './state.js';
+import { buildPdf } from './pdf.js';
 import { flashToast, saveFile } from './topbar.js';
 
 // ---------------- image export (schematics the builders actually work from) --
@@ -32,9 +33,11 @@ export function expToForm(){
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) el.checked=!!ST.expCfg[k]; });
   $('exp-name').value=ST.expCfg.name||'';
   $('exp-ppb').value=String(ST.expCfg.ppb);
+  if($('exp-format')) $('exp-format').value = ST.expCfg.format||'png';
   updateExpCount();
 }
 export function expFromForm(){
+  ST.expCfg.format = $('exp-format') ? $('exp-format').value : 'png';
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) ST.expCfg[k]=el.checked; });
   ST.expCfg.name=$('exp-name').value.slice(0,48);
   ST.expCfg.ppb=parseInt($('exp-ppb').value,10)||80;
@@ -70,7 +73,7 @@ export function exportCandidates(){
     // stages sits behind it as a ghost - which is what makes the new work on
     // this sheet readable at a glance. (Drawing them solid too, as it used to,
     // made stage 1 and stage 2 indistinguishable on the stage 2 sheet.)
-    jobs.push({file:jobFile('stage',i,s.name), group:'stage',
+    jobs.push({file:jobFile('stage',i,s.name), group:'stage', stageIdx:i,
       title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
       inc:p=>p.st===s.id,
       rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
@@ -88,7 +91,7 @@ export function exportCandidates(){
     uS.forEach(s=>{ const i=ST.stages.indexOf(s);
       ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
         if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
-        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair',
+        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair', stageIdx:i,
           title:s.name+' · '+b.name,
           inc:p=>p.st===s.id && p.bd===b.id,
           note:(s.note||'').trim(), col:'builder', fill:'stage',
@@ -292,6 +295,12 @@ export function expScaleFor(w,h){
   const want=ST.expCfg.ppb/GRID;
   return Math.max(0.25, Math.min(want, EXP_MAX_DIM/w, EXP_MAX_DIM/h, Math.sqrt(EXP_MAX_PX/(w*h))));
 }
+// a piece belongs to a stage that comes after the one this sheet is for
+function aheadOf(job, p){
+  if(job.stageIdx==null) return false;
+  const k=stageIndex(p);
+  return k>job.stageIdx;
+}
 export function expSheet(job, B){
   if(job.kind==='key'){ const K=keyLayout();
     return {key:K, focus:[], rest:[], rows:[], head:K.head, rule:0, legH:0,
@@ -309,9 +318,15 @@ export function expSheet(job, B){
   const w=EXP_PAD*2+rule+mapW, h=EXP_PAD*2+head+rule+mapH+legH;
   // a job may name its own ghost set (the cumulative build-up); otherwise the
   // "Ghost the pieces left out" switch decides whether the rest shows at all
-  const rest = job.rest ? shown.filter(job.rest)
-                        : (ST.expCfg.ghost ? shown.filter(p=>!job.inc(p)) : []);
-  return {focus:focus, rest:rest,
+  // Two depths of ghost, so a stage sheet reads as a moment in a sequence:
+  // what is already standing when the crew arrives sits behind the work, and
+  // what comes after them sits fainter still behind that. Without the second
+  // set a cumulative sheet simply hid the later stages, which is the one
+  // direction the reader could not see.
+  const behind = job.rest ? shown.filter(job.rest)
+                          : (ST.expCfg.ghost ? shown.filter(p=>!job.inc(p) && !aheadOf(job,p)) : []);
+  const ahead = ST.expCfg.ghost ? shown.filter(p=>!job.inc(p) && aheadOf(job,p)) : [];
+  return {focus:focus, rest:behind, ahead:ahead,
           rows:rows, head:head, rule:rule, legH:legH, w:w, h:h,
           ox:EXP_PAD+rule-B.minX, oy:EXP_PAD+head+rule-B.minY};
 }
@@ -343,7 +358,7 @@ export function renderExport(job, B){
   }
   const mxl=maxLayer();
   // out-of-focus pieces go down first as a faint ghost, the focused set on top
-  const paint=(arr, ghost)=>{
+  const paint=(arr, ghost)=>{        // ghost: 0 solid, else how far toward the paper
     const lc=lowCounts(arr), swSet=shortwallCells(arr), drawn=new Set();
     arr.map((p,i)=>({p:p,i:i}))
       .sort((x,y)=> (drawLayer(x.p)-drawLayer(y.p)) || (swRank(x.p)-swRank(y.p)) || (x.i-y.i))
@@ -352,7 +367,7 @@ export function renderExport(job, B){
         let base=ink;
         if(job.col==='stage'){ const s=stageOf(p); base = s?tagInk(s.color,bg):mixCol(ink,bg,0.5); }
         else if(job.col==='builder'){ const b=builderOf(p); base = b?tagInk(b.color,bg):mixCol(ink,bg,0.5); }
-        if(ghost) base=mixCol(base,bg,0.8);
+        if(ghost) base=mixCol(base,bg,ghost);
         const st=lowStyle(p, layerColor(base,bg,dl,mxl), bg, lc, swSet, drawn);
         if(st.skip) return;
         g.save(); g.translate(off.x,off.y);
@@ -364,7 +379,9 @@ export function renderExport(job, B){
         drawPiece(g,p, st.col, 1); g.restore();
       });
   };
-  paint(S.rest, true); paint(S.focus, false);
+  paint(S.ahead||[], 0.9);           // still to come
+  paint(S.rest, 0.78);               // already standing
+  paint(S.focus, 0);                 // this sheet's work
   if(ST.expCfg.notes) ST.texts.forEach(t=>drawText(g,t,ink));
   if(ST.expCfg.ruler) drawRuler(g, B, ink, bg);
   if(ST.expCfg.header) drawExpHeader(g, job, B, S, L, T, ink, bg);
@@ -494,13 +511,25 @@ export async function runExport(){
   const name=buildName();
   ST.expLegRows=jobs.reduce((m,j)=>Math.max(m, expSheet(j,B).rows.length), 0);
   try{
-    const blobs=[];
+    const pdf = ST.expCfg.format==='pdf';
+    const blobs=[], sheets=[];
     for(let i=0;i<jobs.length;i++){
       if(lab) lab.textContent='Rendering '+(i+1)+'/'+jobs.length;
       await new Promise(r=>requestAnimationFrame(r));      // let the label paint
       const cv2=renderExport(jobs[i], B);
+      if(pdf){ sheets.push({canvas:cv2, title:jobs[i].title}); continue; }
       const blob=await new Promise(res=>cv2.toBlob(res,'image/png'));
       if(blob) blobs.push({job:jobs[i], blob:blob, n:i+1});
+    }
+    if(pdf){
+      if(!sheets.length){ flashToast('Nothing rendered'); return; }
+      if(lab) lab.textContent='Building PDF';
+      await new Promise(r=>requestAnimationFrame(r));
+      const doc=await buildPdf(sheets, (ST.expCfg.name||'').trim());
+      closeExp();
+      await saveFile(name+'.pdf', doc);
+      flashToast(sheets.length+' sheets in '+name+'.pdf');
+      return;
     }
     if(!blobs.length){ flashToast('Nothing rendered'); return; }
     closeExp();
@@ -618,7 +647,8 @@ export function updateExpCount(){
     if(sc < ST.expCfg.ppb/GRID - 0.001) txt += ' (capped)';
     txt += ' · '+B.bw+'x'+B.bh+' blocks';
   }
-  if(ST.expCfg.zip && jobs.length>1) txt += ' · '+buildName()+'.zip';
+  if(ST.expCfg.format==='pdf') txt += ' · '+buildName()+'.pdf';
+  else if(ST.expCfg.zip && jobs.length>1) txt += ' · '+buildName()+'.zip';
   el.textContent=txt;
   renderSheetList();
   updateExpPreview();

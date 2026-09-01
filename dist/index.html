@@ -631,6 +631,12 @@
   .exp-prev-empty{font-family:var(--font-mono); font-size:11.5px; color:var(--muted);}
   .exp-foot{display:flex; align-items:center; gap:10px; margin-top:18px;}
   .exp-count{font-family:var(--font-mono); font-size:12px; color:var(--muted)}
+  .exp-fmt{display:flex; align-items:center; gap:7px; order:2;}
+  .exp-fmt label{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
+    font-size:10px; color:var(--muted); font-weight:600;}
+  .exp-fmt select{background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:6px; padding:5px 8px; font-size:12px; font-family:var(--font-ui);}
+  .exp-foot .exp-count{order:3; margin-left:auto;}
   @media (max-width:860px){
     .exp-body{grid-template-columns:1fr; overflow-y:auto;}
     .exp-side{overflow:visible;}
@@ -816,7 +822,9 @@
         <div class="k">Eyedrop tool &middot; right-click &rarr; Pick this structure</div><div class="d">Adopt a placed piece's type and rotation and carry on placing more of it</div>
         <div class="k">Export / Import &rarr; Export image</div><div class="d">One sheet per stage / builder / stage&amp;builder pair, every PNG the same size and frame</div>
         <div class="k">Each sheet carries</div><div class="d">Build name &amp; view &middot; a stage/builder badge &middot; the size in blocks &middot; a ruler ticked per block &middot; a legend with counts</div>
-        <div class="k">Quality &middot; .zip</div><div class="d">Pick px-per-block so big bases stay zoomable &middot; several sheets download as one named folder with a build-info.txt</div>
+        <div class="k">A stage sheet reads as a moment</div><div class="d">Its own work solid &middot; what is already standing behind it &middot; what comes after, fainter still</div>
+        <div class="k">Format: PNG files or PDF</div><div class="d">PNG gives one file per sheet (or a .zip folder with a build-info.txt) &middot; PDF puts every sheet in one document, a page each, fitted to A4 with a footer</div>
+        <div class="k">Quality</div><div class="d">Pick px-per-block so big bases stay zoomable</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
         <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
         <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid (Edit &rarr; Snap)</div>
@@ -907,6 +915,13 @@
         </div>
       </div>
       <div class="exp-foot">
+        <div class="exp-fmt">
+          <label for="exp-format">Format</label>
+          <select id="exp-format" title="PNG files, or one PDF holding every sheet">
+            <option value="png">PNG files</option>
+            <option value="pdf">PDF document</option>
+          </select>
+        </div>
         <button class="btn" id="exp-run"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>Export</span></button>
         <span class="exp-count" id="exp-count"></span>
       </div>
@@ -1354,7 +1369,7 @@ const ST = {
   toastTimer: null,
   dragLayerId: null,
   expCfg: {name:'', sheets:{}, stagesCum:false, fillBuilder:true, ghost:true, grid:true,
-           notes:true, header:true, ruler:true, legend:true, zip:true, ppb:80},
+           notes:true, header:true, ruler:true, legend:true, zip:true, ppb:80, format:'png'},
   _meas: null,
   expLegRows: 0,                            // legend depth reserved for the whole batch (see runExport)
 };
@@ -1833,6 +1848,101 @@ function duplicateSel(){ const items=selectedPieces(); if(!items.length)return;
   startPlacing(st);
 }
 
+/* ===== pdf.js ===== */
+// Minimal PDF writer, just enough to be a real document: a catalog, a page
+// tree, one page per schematic sheet and an xref table. Each sheet goes in
+// losslessly as a Flate-compressed RGB image, because these are line drawings
+// and JPEG ringing shows on every wall - JPEG is only the fallback for browsers
+// without CompressionStream.
+const A4=[595.28, 841.89], MARGIN=26, FOOT=20;
+
+function enc(str){
+  const a=new Uint8Array(str.length);
+  for(let i=0;i<str.length;i++) a[i]=str.charCodeAt(i)&0xff;
+  return a;
+}
+function pdfStr(s){ return '('+String(s).replace(/[\\()]/g,'\\<script type="module" src="js/main.js"></script>')+')'; }
+function rgbBytes(cv){
+  const d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;
+  const out=new Uint8Array(cv.width*cv.height*3);
+  for(let i=0,j=0;i<d.length;i+=4){ out[j++]=d[i]; out[j++]=d[i+1]; out[j++]=d[i+2]; }
+  return out;
+}
+async function deflate(bytes){
+  if(typeof CompressionStream!=='function') return null;
+  try{
+    const cs=new CompressionStream('deflate');
+    const buf=await new Response(new Blob([bytes]).stream().pipeThrough(cs)).arrayBuffer();
+    return new Uint8Array(buf);
+  }catch(e){ return null; }
+}
+function jpegBytes(cv){
+  const b64=cv.toDataURL('image/jpeg',0.94).split(',')[1];
+  const bin=atob(b64), out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+// one sheet -> the image stream the page will draw
+async function sheetImage(cv){
+  const flat=await deflate(rgbBytes(cv));
+  return flat ? {data:flat, filter:'/FlateDecode'} : {data:jpegBytes(cv), filter:'/DCTDecode'};
+}
+// the page follows the sheet: a tall sheet gets a portrait page, a wide one
+// landscape, and the drawing is centred with room for a footer line
+function pageBox(cv){
+  const portrait = cv.height >= cv.width;
+  const W = portrait?A4[0]:A4[1], H = portrait?A4[1]:A4[0];
+  const availW = W-MARGIN*2, availH = H-MARGIN*2-FOOT;
+  const s = Math.min(availW/cv.width, availH/cv.height);
+  const w = cv.width*s, h = cv.height*s;
+  return {W, H, w, h, x:(W-w)/2, y:MARGIN+FOOT+(availH-h)/2};
+}
+async function buildPdf(sheets, name){
+  const chunks=[], offsets=[]; let len=0;
+  const put=u8=>{ chunks.push(u8); len+=u8.length; };
+  const putStr=s=>put(enc(s));
+  const obj=(n, body, stream)=>{
+    offsets[n]=len;
+    putStr(n+' 0 obj\n'+body+'\n');
+    if(stream){ putStr('stream\n'); put(stream); putStr('\nendstream\n'); }
+    putStr('endobj\n');
+  };
+  const imgs=[];
+  for(const s of sheets) imgs.push(await sheetImage(s.canvas));
+
+  // 1 catalog, 2 pages, 3 font, then three objects per sheet
+  const first=4, total=3+sheets.length*3;
+  const pageIds=sheets.map((_,i)=>first+i*3);
+  putStr('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, '<< /Type /Pages /Kids ['+pageIds.map(id=>id+' 0 R').join(' ')+'] /Count '+sheets.length+' >>');
+  obj(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+
+  sheets.forEach((s,i)=>{
+    const pid=first+i*3, iid=pid+1, cid=pid+2;
+    const cv=s.canvas, box=pageBox(cv), im=imgs[i];
+    obj(pid, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+box.W.toFixed(2)+' '+box.H.toFixed(2)+']'
+      +' /Resources << /XObject << /Im0 '+iid+' 0 R >> /Font << /F1 3 0 R >> >>'
+      +' /Contents '+cid+' 0 R >>');
+    obj(iid, '<< /Type /XObject /Subtype /Image /Width '+cv.width+' /Height '+cv.height
+      +' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter '+im.filter
+      +' /Length '+im.data.length+' >>', im.data);
+    const foot=(name?name+'  ·  ':'')+s.title+'  ·  '+(i+1)+' / '+sheets.length;
+    const content=enc('q\n'+box.w.toFixed(2)+' 0 0 '+box.h.toFixed(2)+' '
+      +box.x.toFixed(2)+' '+box.y.toFixed(2)+' cm\n/Im0 Do\nQ\n'
+      +'BT /F1 8 Tf 0.45 0.44 0.40 rg '+MARGIN.toFixed(2)+' '+(MARGIN+6).toFixed(2)+' Td '
+      +pdfStr(foot)+' Tj ET\n');
+    obj(cid, '<< /Length '+content.length+' >>', content);
+  });
+
+  const xref=len;
+  let tbl='xref\n0 '+(total+1)+'\n0000000000 65535 f \n';
+  for(let n=1;n<=total;n++) tbl+=String(offsets[n]||0).padStart(10,'0')+' 00000 n \n';
+  putStr(tbl);
+  putStr('trailer\n<< /Size '+(total+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');
+  return new Blob(chunks, {type:'application/pdf'});
+}
+
 /* ===== exporter.js ===== */
 // ---------------- image export (schematics the builders actually work from) --
 // Every view is rendered into the whole build's frame - snapped out to whole
@@ -1857,9 +1967,11 @@ function expToForm(){
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) el.checked=!!ST.expCfg[k]; });
   $('exp-name').value=ST.expCfg.name||'';
   $('exp-ppb').value=String(ST.expCfg.ppb);
+  if($('exp-format')) $('exp-format').value = ST.expCfg.format||'png';
   updateExpCount();
 }
 function expFromForm(){
+  ST.expCfg.format = $('exp-format') ? $('exp-format').value : 'png';
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) ST.expCfg[k]=el.checked; });
   ST.expCfg.name=$('exp-name').value.slice(0,48);
   ST.expCfg.ppb=parseInt($('exp-ppb').value,10)||80;
@@ -1895,7 +2007,7 @@ function exportCandidates(){
     // stages sits behind it as a ghost - which is what makes the new work on
     // this sheet readable at a glance. (Drawing them solid too, as it used to,
     // made stage 1 and stage 2 indistinguishable on the stage 2 sheet.)
-    jobs.push({file:jobFile('stage',i,s.name), group:'stage',
+    jobs.push({file:jobFile('stage',i,s.name), group:'stage', stageIdx:i,
       title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
       inc:p=>p.st===s.id,
       rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
@@ -1913,7 +2025,7 @@ function exportCandidates(){
     uS.forEach(s=>{ const i=ST.stages.indexOf(s);
       ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
         if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
-        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair',
+        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair', stageIdx:i,
           title:s.name+' · '+b.name,
           inc:p=>p.st===s.id && p.bd===b.id,
           note:(s.note||'').trim(), col:'builder', fill:'stage',
@@ -2117,6 +2229,12 @@ function expScaleFor(w,h){
   const want=ST.expCfg.ppb/GRID;
   return Math.max(0.25, Math.min(want, EXP_MAX_DIM/w, EXP_MAX_DIM/h, Math.sqrt(EXP_MAX_PX/(w*h))));
 }
+// a piece belongs to a stage that comes after the one this sheet is for
+function aheadOf(job, p){
+  if(job.stageIdx==null) return false;
+  const k=stageIndex(p);
+  return k>job.stageIdx;
+}
 function expSheet(job, B){
   if(job.kind==='key'){ const K=keyLayout();
     return {key:K, focus:[], rest:[], rows:[], head:K.head, rule:0, legH:0,
@@ -2134,9 +2252,15 @@ function expSheet(job, B){
   const w=EXP_PAD*2+rule+mapW, h=EXP_PAD*2+head+rule+mapH+legH;
   // a job may name its own ghost set (the cumulative build-up); otherwise the
   // "Ghost the pieces left out" switch decides whether the rest shows at all
-  const rest = job.rest ? shown.filter(job.rest)
-                        : (ST.expCfg.ghost ? shown.filter(p=>!job.inc(p)) : []);
-  return {focus:focus, rest:rest,
+  // Two depths of ghost, so a stage sheet reads as a moment in a sequence:
+  // what is already standing when the crew arrives sits behind the work, and
+  // what comes after them sits fainter still behind that. Without the second
+  // set a cumulative sheet simply hid the later stages, which is the one
+  // direction the reader could not see.
+  const behind = job.rest ? shown.filter(job.rest)
+                          : (ST.expCfg.ghost ? shown.filter(p=>!job.inc(p) && !aheadOf(job,p)) : []);
+  const ahead = ST.expCfg.ghost ? shown.filter(p=>!job.inc(p) && aheadOf(job,p)) : [];
+  return {focus:focus, rest:behind, ahead:ahead,
           rows:rows, head:head, rule:rule, legH:legH, w:w, h:h,
           ox:EXP_PAD+rule-B.minX, oy:EXP_PAD+head+rule-B.minY};
 }
@@ -2168,7 +2292,7 @@ function renderExport(job, B){
   }
   const mxl=maxLayer();
   // out-of-focus pieces go down first as a faint ghost, the focused set on top
-  const paint=(arr, ghost)=>{
+  const paint=(arr, ghost)=>{        // ghost: 0 solid, else how far toward the paper
     const lc=lowCounts(arr), swSet=shortwallCells(arr), drawn=new Set();
     arr.map((p,i)=>({p:p,i:i}))
       .sort((x,y)=> (drawLayer(x.p)-drawLayer(y.p)) || (swRank(x.p)-swRank(y.p)) || (x.i-y.i))
@@ -2177,7 +2301,7 @@ function renderExport(job, B){
         let base=ink;
         if(job.col==='stage'){ const s=stageOf(p); base = s?tagInk(s.color,bg):mixCol(ink,bg,0.5); }
         else if(job.col==='builder'){ const b=builderOf(p); base = b?tagInk(b.color,bg):mixCol(ink,bg,0.5); }
-        if(ghost) base=mixCol(base,bg,0.8);
+        if(ghost) base=mixCol(base,bg,ghost);
         const st=lowStyle(p, layerColor(base,bg,dl,mxl), bg, lc, swSet, drawn);
         if(st.skip) return;
         g.save(); g.translate(off.x,off.y);
@@ -2189,7 +2313,9 @@ function renderExport(job, B){
         drawPiece(g,p, st.col, 1); g.restore();
       });
   };
-  paint(S.rest, true); paint(S.focus, false);
+  paint(S.ahead||[], 0.9);           // still to come
+  paint(S.rest, 0.78);               // already standing
+  paint(S.focus, 0);                 // this sheet's work
   if(ST.expCfg.notes) ST.texts.forEach(t=>drawText(g,t,ink));
   if(ST.expCfg.ruler) drawRuler(g, B, ink, bg);
   if(ST.expCfg.header) drawExpHeader(g, job, B, S, L, T, ink, bg);
@@ -2319,13 +2445,25 @@ async function runExport(){
   const name=buildName();
   ST.expLegRows=jobs.reduce((m,j)=>Math.max(m, expSheet(j,B).rows.length), 0);
   try{
-    const blobs=[];
+    const pdf = ST.expCfg.format==='pdf';
+    const blobs=[], sheets=[];
     for(let i=0;i<jobs.length;i++){
       if(lab) lab.textContent='Rendering '+(i+1)+'/'+jobs.length;
       await new Promise(r=>requestAnimationFrame(r));      // let the label paint
       const cv2=renderExport(jobs[i], B);
+      if(pdf){ sheets.push({canvas:cv2, title:jobs[i].title}); continue; }
       const blob=await new Promise(res=>cv2.toBlob(res,'image/png'));
       if(blob) blobs.push({job:jobs[i], blob:blob, n:i+1});
+    }
+    if(pdf){
+      if(!sheets.length){ flashToast('Nothing rendered'); return; }
+      if(lab) lab.textContent='Building PDF';
+      await new Promise(r=>requestAnimationFrame(r));
+      const doc=await buildPdf(sheets, (ST.expCfg.name||'').trim());
+      closeExp();
+      await saveFile(name+'.pdf', doc);
+      flashToast(sheets.length+' sheets in '+name+'.pdf');
+      return;
     }
     if(!blobs.length){ flashToast('Nothing rendered'); return; }
     closeExp();
@@ -2443,7 +2581,8 @@ function updateExpCount(){
     if(sc < ST.expCfg.ppb/GRID - 0.001) txt += ' (capped)';
     txt += ' · '+B.bw+'x'+B.bh+' blocks';
   }
-  if(ST.expCfg.zip && jobs.length>1) txt += ' · '+buildName()+'.zip';
+  if(ST.expCfg.format==='pdf') txt += ' · '+buildName()+'.pdf';
+  else if(ST.expCfg.zip && jobs.length>1) txt += ' · '+buildName()+'.zip';
   el.textContent=txt;
   renderSheetList();
   updateExpPreview();
