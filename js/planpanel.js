@@ -1,3 +1,4 @@
+import { supplySum, tallyText } from './catalog.js';
 import { $, isCoarse, stage } from './dom.js';
 import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
@@ -194,8 +195,7 @@ export function renderPlanHud(){
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
-    head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
+    head.appendChild(dot); head.appendChild(nm);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
@@ -209,6 +209,11 @@ export function renderPlanHud(){
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
+    // The tally rides on the chip's line, not the stage's. Beside the name it
+    // left the name four pixels short of "General" and truncated the one word
+    // the bar exists to show; here it has the room to spell "supplies" out.
+    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
+    el.appendChild(scount);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -226,7 +231,9 @@ export function renderPlanHud(){
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
       const c=document.createElement('span'); c.className='ph-n';
-      b.appendChild(d); b.appendChild(t); b.appendChild(c);
+      const s=document.createElement('span'); s.className='ph-n ph-sup';
+      s.title='Build supplies this hand spends here';
+      b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(s);
       b.onclick=()=>{
         // General is the "every hand" row, so picking it drops the filter
         // rather than narrowing the board down to untagged work
@@ -243,13 +250,15 @@ export function renderPlanHud(){
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
                              : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
+  // On General this is the whole build's bill; on a stage it is that stage's
+  // share, which is the number a crew is actually handed.
   const tot=el.querySelector('.ph-total');
-  if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
+  if(tot){ const v=tallyText(inStage);
     if(tot.textContent!==v) tot.textContent=v; }
   // a bare number beside the stage name reads as an id; the noun says what it
   // counts, and agrees with it the way the folded-out readout already does
   const sc=el.querySelector('.ph-scount');
-  if(sc){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
+  if(sc){ const v=tallyText(inStage);
     if(sc.textContent!==v) sc.textContent=v; }
   const chip=el.querySelector('.ph-bchip');
   if(chip){
@@ -264,9 +273,12 @@ export function renderPlanHud(){
   const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
   el.querySelectorAll('.ph-row').forEach(row=>{
     const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
-    const v = String(inStage.filter(p=>(p.bd==null?null:p.bd)===id).length);
-    const c = row.querySelector('.ph-n');
+    const mine = inStage.filter(p=>(p.bd==null?null:p.bd)===id);
+    const v = String(mine.length);
+    const c = row.querySelector('.ph-n:not(.ph-sup)');
     if(c && c.textContent!==v) c.textContent=v;
+    const s = row.querySelector('.ph-sup'), sv = supplySum(mine)+'s';
+    if(s && s.textContent!==sv) s.textContent=sv;
     row.classList.toggle('on', curB===id);
     row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
   });

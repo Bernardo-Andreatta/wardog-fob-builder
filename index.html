@@ -491,6 +491,9 @@
   .ph-btn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
     stroke-linecap:round; stroke-linejoin:round;}
   .ph-total{margin-left:auto;}
+  /* the supply figure trails its own count, dimmer: the piece tally is what you
+     scan, the bill is what you check */
+  .ph-sup{min-width:34px; text-align:right; opacity:.6;}
   .ph-list{display:flex; flex-direction:column; gap:2px;}
   .ph-bchip, .ph-scount{display:none;}
   /* Phone sizing comes after every .ph- rule above: same specificity, later wins. */
@@ -517,8 +520,9 @@
        the stepper sits the same distance from each. */
     .ph-stage .ph-fold{order:-1; margin-right:auto;}
     .ph-stage .ph-edit{margin-left:auto;}
-    .ph-scount{display:inline; margin-left:0; opacity:.85;}
-    .ph-scount::before{content:'\2013\00a0'; opacity:.5;}   /* name - count */
+    /* shares line two with the builder chip, hard against the trailing edge */
+    .ph-scount{display:inline; flex:none; margin-left:auto; opacity:.85;
+      white-space:nowrap; padding-right:2px;}
     .ph-sub{display:none;}                     /* the count rides in the bar */
     /* the chip has to stay readable: given a sliver of the line it shows a dot
        and a caret and no name at all, so it asks for a width it can actually

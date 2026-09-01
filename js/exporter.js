@@ -1,4 +1,4 @@
-import { CATALOG } from './catalog.js';
+import { CATALOG, supplySum, tallyText } from './catalog.js';
 import { curInk } from './core.js';
 import { $, GRID, ctx } from './dom.js';
 import { DRAWERS, drawPiece, roundRect } from './drawers.js';
@@ -164,7 +164,7 @@ export function legendChips(job, focus){
 // eats. Here every structure is drawn at true scale, at the same px-per-block as
 // the map, so a bunker really is four times a wall - and because it is a sheet
 // of its own, it is the one page you hand to the crew.
-const KEY_GAP=GRID*0.55, KEY_TEXT=GRID*3.6, KEY_MAXH=GRID*22;
+const KEY_GAP=GRID*0.55, KEY_TEXT=GRID*5.2, KEY_MAXH=GRID*22;
 // A couple of drawings reach past their own footprint - the door and gate swing
 // arcs - so their row reserves the height the art really covers. The piece is
 // still drawn at true scale; only the spacing around it grows.
@@ -221,8 +221,12 @@ export function renderKeySheet(job){
       const tx=x+KEY_GAP*2+pw;
       g.fillStyle=ink; g.font=F_CHIP();
       g.fillText(e.c.name, tx, mid);
+      // size and price share one line: the count is the only thing on the right,
+      // and two right-aligned figures over one left-aligned one ran into it
+      const meta=e.c.w+' x '+e.c.h+' blocks'
+        + (e.c.cost ? ' \u00b7 '+e.c.cost+' ea \u00b7 '+(e.c.cost*e.n)+' supplies' : '');
       g.fillStyle=mixCol(ink,bg,0.45); g.font=F_TICK();
-      g.fillText(e.c.w+' x '+e.c.h+' blocks', tx, mid+GRID*0.34);
+      g.fillText(meta, tx, mid+GRID*0.34);
       const cnt='x '+e.n;
       g.fillStyle=mixCol(ink,bg,0.25); g.font=F_CHIP();
       g.fillText(cnt, x+K.cw[ci]-KEY_GAP-g.measureText(cnt).width, mid);
@@ -401,7 +405,7 @@ export function drawExpHeader(g, job, B, S, L, T, ink, bg){
   if(job.note){ g.fillStyle=mixCol(ink,bg,0.42); g.font=F_SUB();
     g.fillText(job.note, x, y+EXP_HEAD*1.2); }
   // right-hand corner: the stage / builder this sheet is for, else the tally
-  const size=B.bw+' x '+B.bh+' blocks', tally=S.focus.length+(S.focus.length===1?' piece':' pieces');
+  const size=B.bw+' x '+B.bh+' blocks', tally=tallyText(S.focus);
   g.font=F_SUB(); m.font=F_SUB();
   g.fillStyle=mixCol(ink,bg,0.4);
   g.fillText(size, right-m.measureText(size).width, y+EXP_HEAD*(job.badge?0.86:0.32));
@@ -414,6 +418,9 @@ export function drawExpHeader(g, job, B, S, L, T, ink, bg){
     drawSwatch(g, bx+GRID*0.17, by+(bh-EXP_SW)/2, EXP_SW, job.badge.color, job.badge.hatch, ink, bg);
     g.fillStyle=ink; g.font=F_CHIP();
     g.fillText(lab, bx+GRID*0.17+EXP_SW+GRID*0.18, by+bh*0.5+GRID*0.11);
+    // the chip took the corner, so this sheet's bill rides under the footprint
+    g.fillStyle=mixCol(ink,bg,0.4); g.font=F_SUB();
+    g.fillText(tally, right-m.measureText(tally).width, y+EXP_HEAD*1.2);
   } else {
     g.fillStyle=mixCol(ink,bg,0.4); g.font=F_SUB();
     g.fillText(tally, right-m.measureText(tally).width, y+EXP_HEAD*0.86);
@@ -481,21 +488,22 @@ export function zipStore(files){
 }
 // a plain-text brief so the numbers survive outside the images
 export function buildManifest(jobs, B, files){
-  const L=[], tally=(arr,f)=>arr.map(e=>{ const n=ST.pieces.filter(p=>f(p)===e.id).length;
+  const L=[], tally=(arr,f)=>arr.map(e=>{ const mine=ST.pieces.filter(p=>f(p)===e.id);
     const note=(e.note||'').trim();
-    return '  '+e.name+' - '+n+(n===1?' piece':' pieces')+(note?'\n      '+note:''); }).join('\n');
+    return '  '+e.name+' - '+tallyText(mine)+(note?'\n      '+note:''); }).join('\n');
   L.push((ST.expCfg.name||'FOB build').trim());
   L.push('='.repeat(Math.max(8,(ST.expCfg.name||'FOB build').trim().length)));
   L.push('');
   L.push('Footprint : '+B.bw+' x '+B.bh+' blocks');
   L.push('Pieces    : '+ST.pieces.length);
+  L.push('Supplies  : '+supplySum(ST.pieces));
   L.push('Rendered  : '+ST.expCfg.ppb+' px per block');
   L.push('');
   L.push('STAGES'); L.push(tally(ST.stages, p=>p.st)||'  (none)');
-  const us=ST.pieces.filter(p=>p.st==null).length; if(us) L.push('  General - '+us+(us===1?' piece':' pieces'));
+  const us=ST.pieces.filter(p=>p.st==null); if(us.length) L.push('  General - '+tallyText(us));
   L.push('');
   L.push('BUILDERS'); L.push(tally(ST.builders, p=>p.bd)||'  (none)');
-  const ub=ST.pieces.filter(p=>p.bd==null).length; if(ub) L.push('  General - '+ub+(ub===1?' piece':' pieces'));
+  const ub=ST.pieces.filter(p=>p.bd==null); if(ub.length) L.push('  General - '+tallyText(ub));
   L.push('');
   L.push('SHEETS');
   files.forEach(f=>L.push('  '+f));
