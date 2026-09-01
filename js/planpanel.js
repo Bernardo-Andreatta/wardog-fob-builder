@@ -1,4 +1,4 @@
-import { $ } from './dom.js';
+import { $, isCoarse } from './dom.js';
 import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { layerById } from './layers.js';
@@ -165,6 +165,10 @@ const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
 const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
 const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
 const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
+// On a phone the bar is a panel you dismiss, not a section you collapse into
+// the one above it, so it closes on an X. The chevron still reads right on the
+// desktop card, where the readout folds up into its own header.
+const PH_CLOSE='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 let hudSig=null;
 // show / hide everything carrying one tag. The General bucket has no entry
 // of its own, so its switch lives on the plan flags instead.
@@ -188,7 +192,9 @@ export function renderPlanHud(){
   const rows=hudBuilders();
   // the rows only get rebuilt when the tags themselves change, so the counts
   // below can refresh on every status tick without churning the DOM
-  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
+  // the fold button's icon differs by pointer type, so a switch has to rebuild
+  const touch=isCoarse();
+  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(','), touch].join('#');
   if(sig!==hudSig){
     hudSig=sig; el.innerHTML='';
     const head=document.createElement('div'); head.className='ph-stage';
@@ -208,7 +214,8 @@ export function renderPlanHud(){
     head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
       ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
-    head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
+    head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
+      touch?'Close the board readout':'Hide the board readout', ()=>setHudOpen(false)));
     el.appendChild(head);
     // A phone shows the builders behind this chip instead of listing them all:
     // the bar's height then does not grow with the crew.

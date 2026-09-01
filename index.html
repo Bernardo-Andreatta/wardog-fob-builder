@@ -352,8 +352,13 @@
     .tool-exit.show{display:inline-flex; position:absolute; left:50%; top:14px;
       transform:translateX(-50%); z-index:10; background:var(--panel);
       box-shadow:0 4px 16px var(--shadow); padding:9px 14px;}
+    /* wrap-reverse puts the full line on the bottom and the leftovers on top,
+       so the row that reaches furthest up the board is the short one and the
+       strip beside it stays board. The order it produces also earns its keep:
+       what you reach for most sits nearest the thumb, and Delete moves away
+       from it. */
     .rot-fab.show{position:absolute; left:14px; bottom:14px; right:14px; display:flex;
-      gap:8px; z-index:10; flex-wrap:wrap;}
+      gap:8px; z-index:10; flex-wrap:wrap-reverse;}
     .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}

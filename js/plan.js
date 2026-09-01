@@ -62,7 +62,10 @@ export function planVisible(p){
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
 export function planColorOf(p, ink, bg){
-  const b=builderOf(p);
+  // General is nobody in particular: with no builder in view there is no crew
+  // to pick out, so the outlines drop back to plain ink instead of showing the
+  // whole roster's colours at once
+  const b = ST.hlBuilder===undefined ? null : builderOf(p);
   let col = b ? tagInk(b.color, bg) : ink;
   if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
   return col;
@@ -108,6 +111,7 @@ export function drawPlanFill(g, p, col, idx){
 // the board's own fill pass (export builds its own from the job's fill channel)
 export function planFill(g, p, bg){
   if(!planLit(p)) return;                       // a ghosted piece carries no hatch
+  if(ST.curStageId==null) return;               // General: no stage in view, no wash
   const s=stageOf(p); if(!s) return;
   drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
 }

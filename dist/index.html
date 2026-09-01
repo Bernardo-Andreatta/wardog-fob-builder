@@ -352,8 +352,13 @@
     .tool-exit.show{display:inline-flex; position:absolute; left:50%; top:14px;
       transform:translateX(-50%); z-index:10; background:var(--panel);
       box-shadow:0 4px 16px var(--shadow); padding:9px 14px;}
+    /* wrap-reverse puts the full line on the bottom and the leftovers on top,
+       so the row that reaches furthest up the board is the short one and the
+       strip beside it stays board. The order it produces also earns its keep:
+       what you reach for most sits nearest the thumb, and Delete moves away
+       from it. */
     .rot-fab.show{position:absolute; left:14px; bottom:14px; right:14px; display:flex;
-      gap:8px; z-index:10; flex-wrap:wrap;}
+      gap:8px; z-index:10; flex-wrap:wrap-reverse;}
     .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
@@ -1714,7 +1719,10 @@ function planVisible(p){
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
 function planColorOf(p, ink, bg){
-  const b=builderOf(p);
+  // General is nobody in particular: with no builder in view there is no crew
+  // to pick out, so the outlines drop back to plain ink instead of showing the
+  // whole roster's colours at once
+  const b = ST.hlBuilder===undefined ? null : builderOf(p);
   let col = b ? tagInk(b.color, bg) : ink;
   if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
   return col;
@@ -1760,6 +1768,7 @@ function drawPlanFill(g, p, col, idx){
 // the board's own fill pass (export builds its own from the job's fill channel)
 function planFill(g, p, bg){
   if(!planLit(p)) return;                       // a ghosted piece carries no hatch
+  if(ST.curStageId==null) return;               // General: no stage in view, no wash
   const s=stageOf(p); if(!s) return;
   drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
 }
@@ -2126,6 +2135,10 @@ const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
 const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
 const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
 const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
+// On a phone the bar is a panel you dismiss, not a section you collapse into
+// the one above it, so it closes on an X. The chevron still reads right on the
+// desktop card, where the readout folds up into its own header.
+const PH_CLOSE='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 let hudSig=null;
 // show / hide everything carrying one tag. The General bucket has no entry
 // of its own, so its switch lives on the plan flags instead.
@@ -2149,7 +2162,9 @@ function renderPlanHud(){
   const rows=hudBuilders();
   // the rows only get rebuilt when the tags themselves change, so the counts
   // below can refresh on every status tick without churning the DOM
-  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
+  // the fold button's icon differs by pointer type, so a switch has to rebuild
+  const touch=isCoarse();
+  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(','), touch].join('#');
   if(sig!==hudSig){
     hudSig=sig; el.innerHTML='';
     const head=document.createElement('div'); head.className='ph-stage';
@@ -2169,7 +2184,8 @@ function renderPlanHud(){
     head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
       ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
-    head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
+    head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
+      touch?'Close the board readout':'Hide the board readout', ()=>setHudOpen(false)));
     el.appendChild(head);
     // A phone shows the builders behind this chip instead of listing them all:
     // the bar's height then does not grow with the crew.
