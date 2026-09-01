@@ -2,7 +2,7 @@ import { CATALOG } from './catalog.js';
 import { curInk } from './core.js';
 import { $, GRID, ctx } from './dom.js';
 import { DRAWERS, drawPiece, roundRect } from './drawers.js';
-import { LAYER_OFF, drawLayer, layerColor, layerOff, lowCounts, lowStyle, maskPiece, masksBelow, maxLayer, mixCol, pieceLayer, shortwallCells, swRank } from './floors.js';
+import { LAYER_OFF, _hx, drawLayer, layerColor, layerOff, lowCounts, lowStyle, maskPiece, masksBelow, maxLayer, mixCol, pieceLayer, shortwallCells, swRank } from './floors.js';
 import { drawText, textBox } from './overlays.js';
 import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, planVisible, stageIndex, stageOf, tagInk } from './plan.js';
 import { cssVar } from './render.js';
@@ -526,7 +526,9 @@ export async function runExport(){
       if(!sheets.length){ flashToast('Nothing rendered'); return; }
       if(lab) lab.textContent='Building PDF';
       await new Promise(r=>requestAnimationFrame(r));
-      const doc=await buildPdf(sheets, (ST.expCfg.name||'').trim());
+      // the document is printed on the theme the board is drawn in
+      const doc=await buildPdf(sheets, (ST.expCfg.name||'').trim(), {
+        bg:_hx(cssVar('--canvas-bg')), line:_hx(cssVar('--line')), muted:_hx(cssVar('--muted')) });
       closeExp();
       await saveFile(name+'.pdf', doc);
       flashToast(sheets.length+' sheets in '+name+'.pdf');

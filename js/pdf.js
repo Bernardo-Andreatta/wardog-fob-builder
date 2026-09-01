@@ -46,7 +46,12 @@ function pageBox(cv){
   const w = cv.width*s, h = cv.height*s;
   return {W, H, w, h, x:(W-w)/2, y:MARGIN+FOOT+(availH-h)/2};
 }
-export async function buildPdf(sheets, name){
+// PDF colours are 0..1 triples; the app hands over the theme it is drawing in
+function pdfRgb(c){ return (c||[0,0,0]).map(v=>(v/255).toFixed(3)).join(' '); }
+export async function buildPdf(sheets, name, theme){
+  const paper = pdfRgb((theme&&theme.bg)||[255,255,255]);
+  const rule  = pdfRgb((theme&&theme.line)||[128,128,128]);
+  const type  = pdfRgb((theme&&theme.muted)||[110,110,110]);
   const chunks=[], offsets=[]; let len=0;
   const put=u8=>{ chunks.push(u8); len+=u8.length; };
   const putStr=s=>put(enc(s));
@@ -77,9 +82,18 @@ export async function buildPdf(sheets, name){
       +' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter '+im.filter
       +' /Length '+im.data.length+' >>', im.data);
     const foot=(name?name+'  ·  ':'')+s.title+'  ·  '+(i+1)+' / '+sheets.length;
-    const content=enc('q\n'+box.w.toFixed(2)+' 0 0 '+box.h.toFixed(2)+' '
+    // The page is the board's own paper, not white: the sheet sits on the ground
+    // it was drawn on, inside a hairline frame, with a rule above the footer -
+    // a blueprint rather than a screenshot pasted onto a white page.
+    const fx=box.x-6, fy=box.y-6, fw=box.w+12, fh=box.h+12;
+    const content=enc(
+      paper+' rg 0 0 '+box.W.toFixed(2)+' '+box.H.toFixed(2)+' re f\n'
+      +'q\n'+box.w.toFixed(2)+' 0 0 '+box.h.toFixed(2)+' '
       +box.x.toFixed(2)+' '+box.y.toFixed(2)+' cm\n/Im0 Do\nQ\n'
-      +'BT /F1 8 Tf 0.45 0.44 0.40 rg '+MARGIN.toFixed(2)+' '+(MARGIN+6).toFixed(2)+' Td '
+      +rule+' RG 0.7 w '+fx.toFixed(2)+' '+fy.toFixed(2)+' '+fw.toFixed(2)+' '+fh.toFixed(2)+' re S\n'
+      +rule+' RG 0.5 w '+MARGIN.toFixed(2)+' '+(MARGIN+FOOT-4).toFixed(2)+' m '
+      +(box.W-MARGIN).toFixed(2)+' '+(MARGIN+FOOT-4).toFixed(2)+' l S\n'
+      +'BT /F1 8 Tf '+type+' rg '+MARGIN.toFixed(2)+' '+(MARGIN+4).toFixed(2)+' Td '
       +pdfStr(foot)+' Tj ET\n');
     obj(cid, '<< /Length '+content.length+' >>', content);
   });
