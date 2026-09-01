@@ -366,10 +366,8 @@
     .brand .mark{font-size:17px; white-space:nowrap;}
     .cmd{flex-wrap:nowrap;}
     .cmd .btn span{display:none;}      /* icon-only commands */
-    .board-hud{left:14px; top:60px;}            /* under the undo / redo FAB */
     .plan-hud{min-width:150px; padding:5px 6px;}
     .ph-sublab{display:none;}                   /* the board is short on a phone */
-    .hl .plan-seg button{padding:5px 7px; font-size:10px;}
     .cmd .btn{padding:9px 10px;}
     .rail{height:158px; flex-direction:row; align-items:stretch; gap:12px;
       overflow-x:auto; overflow-y:hidden; padding:8px 10px;
@@ -430,6 +428,12 @@
   .hud-chip svg{width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2;
     stroke-linecap:round; stroke-linejoin:round;}
   .board-hud.off .hud-chip{display:flex;}
+  /* On a phone the undo / redo FAB owns the board's top-left corner, so the
+     readout starts below it. This has to come after the rule above: same
+     specificity, and the later one wins. */
+  @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
+    .board-hud{left:14px; top:70px;}
+  }
 
   /* Board HUD: the stage being built, and how its work splits between builders.
      It is also the view control - the board shows the stage it names. */
