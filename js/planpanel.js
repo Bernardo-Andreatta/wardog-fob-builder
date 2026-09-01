@@ -218,15 +218,6 @@ export function renderPlanHud(){
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
-    // A phone shows these two down with undo / redo instead of on the bar; the
-    // bar's own copies are hidden there, so only one set is ever on screen.
-    const aux=$('hud-aux');
-    if(aux){
-      aux.innerHTML='';
-      aux.appendChild(mkBtn('ph-eye ph-auxeye', EYE_ON, 'Hide this stage on the board',
-        ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
-      aux.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
-    }
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -269,7 +260,6 @@ export function renderPlanHud(){
   const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
   const sVis = tagVisible('stage', curS);
   paintEye(el.querySelector('.ph-seye'), sVis);
-  paintEye(document.querySelector('.ph-auxeye'), sVis);
   const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
