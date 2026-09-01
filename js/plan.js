@@ -2,6 +2,7 @@ import { CATALOG } from './catalog.js';
 import { GRID } from './dom.js';
 import { mixCol } from './floors.js';
 import { ST } from './state.js';
+import { cssVar } from './render.js';
 
 // ---------------- build plan: stages + builders -------------------------------
 // A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
@@ -41,8 +42,24 @@ export function planVisible(p){
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
 export function planColorOf(p, ink, bg){
-  if(ST.planColorBy==='builder'||ST.planColorBy==='both'){ const b=builderOf(p); return b?b.color:mixCol(ink,bg,0.5); }
-  return ink;
+  let col=ink;
+  if(ST.planColorBy==='builder'||ST.planColorBy==='both'){ const b=builderOf(p); col = b?b.color:mixCol(ink,bg,0.5); }
+  if(planSpotlight() && !planLit(p)) col=mixCol(col,bg,0.8);
+  return col;
+}
+// Spotlight: picking a builder in the board readout lights up what that builder
+// has in the stage being built, and drops everything else back. It answers "what
+// is mine on this stage?" without filtering anything off the board, so the rest
+// of the base still reads as context.
+export function planSpotlight(){ return ST.hlBuilder!==undefined; }
+export function planLit(p){
+  if(ST.hlBuilder===undefined) return true;
+  return (p.st==null?null:p.st) === (ST.curStageId==null?null:ST.curStageId)
+      && (p.bd==null?null:p.bd) === ST.hlBuilder;
+}
+export function spotlightColor(){
+  const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
+  return b ? b.color : cssVar('--accent');
 }
 // The fill channel. The outline says *who* (builder); this one says *when*: a
 // translucent wash plus a hatch whose angle belongs to that stage, so the two
@@ -67,6 +84,7 @@ export function drawPlanFill(g, p, col, idx){
 }
 // the board's own fill pass (export builds its own from the job's fill channel)
 export function planFill(g, p){
+  if(planSpotlight() && !planLit(p)) return;   // an unlit piece keeps its hatch off
   if(ST.planColorBy!=='stage' && ST.planColorBy!=='both') return;
   const s=stageOf(p); if(!s) return;
   drawPlanFill(g, p, s.color, ST.stages.indexOf(s));

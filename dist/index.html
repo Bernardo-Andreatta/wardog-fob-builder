@@ -441,7 +441,9 @@
     border:1px solid transparent; border-radius:5px; background:none;
     color:var(--muted); font-size:11px; text-align:left;}
   .ph-row:hover{border-color:var(--line); color:var(--ink);}
-  .ph-row.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .ph-row.on{border-color:var(--accent); color:var(--accent);}
+  /* lit = this builder's work in this stage is spotlit on the board */
+  .ph-row.lit{background:var(--accent-soft); box-shadow:inset 2px 0 0 var(--accent);}
   .ph-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .ph-n{font-family:var(--font-mono); font-size:10px; opacity:.72;}
   .ph-dot{width:8px; height:8px; border-radius:50%; flex:none;}
@@ -749,7 +751,7 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
-        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage, and clicking it makes that builder active</div>
+        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage; clicking it makes that builder active and lights up their pieces in this stage (click again to drop the light)</div>
         <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
         <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
         <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
@@ -1272,6 +1274,7 @@ const ST = {
   showNoStage: true,                        // filter rows for untagged pieces
   showNoBuilder: true,
   planColorBy: 'none',                      // 'none' | 'stage' | 'builder' | 'both'
+  hlBuilder: undefined,                     // spotlit builder (null = Unassigned, undefined = off)
   layers: [],                               // {id,name,visible,opacity,locked}
   curLayerId: 0,                            // primary active layer new items land on
   selLayers: [],                            // active layer set (panel multi-select); canvas Select only touches these
@@ -1497,8 +1500,24 @@ function planVisible(p){
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
 function planColorOf(p, ink, bg){
-  if(ST.planColorBy==='builder'||ST.planColorBy==='both'){ const b=builderOf(p); return b?b.color:mixCol(ink,bg,0.5); }
-  return ink;
+  let col=ink;
+  if(ST.planColorBy==='builder'||ST.planColorBy==='both'){ const b=builderOf(p); col = b?b.color:mixCol(ink,bg,0.5); }
+  if(planSpotlight() && !planLit(p)) col=mixCol(col,bg,0.8);
+  return col;
+}
+// Spotlight: picking a builder in the board readout lights up what that builder
+// has in the stage being built, and drops everything else back. It answers "what
+// is mine on this stage?" without filtering anything off the board, so the rest
+// of the base still reads as context.
+function planSpotlight(){ return ST.hlBuilder!==undefined; }
+function planLit(p){
+  if(ST.hlBuilder===undefined) return true;
+  return (p.st==null?null:p.st) === (ST.curStageId==null?null:ST.curStageId)
+      && (p.bd==null?null:p.bd) === ST.hlBuilder;
+}
+function spotlightColor(){
+  const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
+  return b ? b.color : cssVar('--accent');
 }
 // The fill channel. The outline says *who* (builder); this one says *when*: a
 // translucent wash plus a hatch whose angle belongs to that stage, so the two
@@ -1523,6 +1542,7 @@ function drawPlanFill(g, p, col, idx){
 }
 // the board's own fill pass (export builds its own from the job's fill channel)
 function planFill(g, p){
+  if(planSpotlight() && !planLit(p)) return;   // an unlit piece keeps its hatch off
   if(ST.planColorBy!=='stage' && ST.planColorBy!=='both') return;
   const s=stageOf(p); if(!s) return;
   drawPlanFill(g, p, s.color, ST.stages.indexOf(s));
@@ -2290,7 +2310,8 @@ function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; 
 function setPlanActive(kind, id){
   const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
   if(E) E.visible=true;                 // never leave the active tag filtered out
-  if(kind==='stage') ST.curStageId=id; else ST.curBuilderId=id;
+  if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
+  else ST.curBuilderId=id;
   render(); renderPlanPanel(); persist();
 }
 function addPlanEntry(kind){
@@ -2478,13 +2499,16 @@ function renderPlanHud(){
     rows.forEach(r=>{
       const b=document.createElement('button'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
-      b.title = 'Make '+r.name+' the active builder';
+      b.title = 'Make '+r.name+' the active builder, and light up what they have in this stage';
       const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
       const c=document.createElement('span'); c.className='ph-n';
       b.appendChild(d); b.appendChild(t); b.appendChild(c);
-      b.onclick=()=>setPlanActive('builder', r.id);
+      b.onclick=()=>{
+        ST.hlBuilder = (ST.hlBuilder===r.id) ? undefined : r.id;
+        setPlanActive('builder', r.id);
+      };
       el.appendChild(b);
     });
   }
@@ -2503,6 +2527,7 @@ function renderPlanHud(){
     const c = row.querySelector('.ph-n');
     if(c && c.textContent!==v) c.textContent=v;
     row.classList.toggle('on', curB===id);
+    row.classList.toggle('lit', ST.hlBuilder!==undefined && ST.hlBuilder===id);
   });
 }
 function updatePlanApply(){
@@ -4118,6 +4143,8 @@ function drawLayerContent(g, L, colInk, bg, maxL){
     if(masksBelow(p)) maskPiece(g,p,bg);
     if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,bg); }
     planFill(g,p);
+    // the spotlight reads as a halo, so a lit piece keeps its own colour
+    if(planSpotlight() && planLit(p)) drawPiece(g,p, spotlightColor(), 0.34, 7);
     drawPiece(g,p, st.col, 1); g.restore(); }
   for(const t of ST.texts){ if(itemLayerId(t)!==lid) continue; drawText(g,t,colInk); }
 }
@@ -4211,7 +4238,7 @@ window.addEventListener('keydown', e=>{
     else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)){ stepPlaceRot(dir); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } if(!$('plan-modal').hidden){ closePlanModal(); return; } clearSelection(); clearOverlaySel(); ST.marquee=null; if(CATALOG[ST.tool]||ST.tool==='draw'||ST.tool==='stamp'||ST.tool==='text'||SYMBOLS[ST.tool]) setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } if(!$('plan-modal').hidden){ closePlanModal(); return; } ST.hlBuilder=undefined; clearSelection(); clearOverlaySel(); ST.marquee=null; if(CATALOG[ST.tool]||ST.tool==='draw'||ST.tool==='stamp'||ST.tool==='text'||SYMBOLS[ST.tool]) setTool('select'); render(); updateStatus(); }
   if(e.key==='f'||e.key==='F'){
     if(hasRotSel()) mirrorGroup();
     else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)){ ST.placeFlip=!ST.placeFlip; render(); }

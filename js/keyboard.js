@@ -40,7 +40,7 @@ window.addEventListener('keydown', e=>{
     else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)){ stepPlaceRot(dir); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } if(!$('plan-modal').hidden){ closePlanModal(); return; } clearSelection(); clearOverlaySel(); ST.marquee=null; if(CATALOG[ST.tool]||ST.tool==='draw'||ST.tool==='stamp'||ST.tool==='text'||SYMBOLS[ST.tool]) setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } if(!$('plan-modal').hidden){ closePlanModal(); return; } ST.hlBuilder=undefined; clearSelection(); clearOverlaySel(); ST.marquee=null; if(CATALOG[ST.tool]||ST.tool==='draw'||ST.tool==='stamp'||ST.tool==='text'||SYMBOLS[ST.tool]) setTool('select'); render(); updateStatus(); }
   if(e.key==='f'||e.key==='F'){
     if(hasRotSel()) mirrorGroup();
     else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)){ ST.placeFlip=!ST.placeFlip; render(); }

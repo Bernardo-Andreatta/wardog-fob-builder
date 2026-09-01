@@ -6,7 +6,7 @@ import { LAYER_OFF, drawLayer, fobArea, fobList, layerColor, layerOff, lowCounts
 import { screenToWorld, snapCenter } from './geometry.js';
 import { ensureLayers, itemLayerId, zOrder } from './layers.js';
 import { drawImageSel, drawStrokeSel, drawText, drawTextSel } from './overlays.js';
-import { planColorOf, planFill, planVisible } from './plan.js';
+import { planColorOf, planFill, planLit, planSpotlight, planVisible, spotlightColor } from './plan.js';
 import { selectedPieces } from './selection.js';
 import { stampInstance } from './stamps.js';
 import { ST } from './state.js';
@@ -101,6 +101,8 @@ export function drawLayerContent(g, L, colInk, bg, maxL){
     if(masksBelow(p)) maskPiece(g,p,bg);
     if(dl>l){ drawPiece(g,p, mixCol(st.col,bg,0.55), 1); g.translate(0,-LAYER_OFF); maskPiece(g,p,bg); }
     planFill(g,p);
+    // the spotlight reads as a halo, so a lit piece keeps its own colour
+    if(planSpotlight() && planLit(p)) drawPiece(g,p, spotlightColor(), 0.34, 7);
     drawPiece(g,p, st.col, 1); g.restore(); }
   for(const t of ST.texts){ if(itemLayerId(t)!==lid) continue; drawText(g,t,colInk); }
 }

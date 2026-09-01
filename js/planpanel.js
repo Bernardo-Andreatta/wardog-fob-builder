@@ -17,7 +17,8 @@ export function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuil
 export function setPlanActive(kind, id){
   const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
   if(E) E.visible=true;                 // never leave the active tag filtered out
-  if(kind==='stage') ST.curStageId=id; else ST.curBuilderId=id;
+  if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
+  else ST.curBuilderId=id;
   render(); renderPlanPanel(); persist();
 }
 export function addPlanEntry(kind){
@@ -205,13 +206,16 @@ export function renderPlanHud(){
     rows.forEach(r=>{
       const b=document.createElement('button'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
-      b.title = 'Make '+r.name+' the active builder';
+      b.title = 'Make '+r.name+' the active builder, and light up what they have in this stage';
       const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
       const c=document.createElement('span'); c.className='ph-n';
       b.appendChild(d); b.appendChild(t); b.appendChild(c);
-      b.onclick=()=>setPlanActive('builder', r.id);
+      b.onclick=()=>{
+        ST.hlBuilder = (ST.hlBuilder===r.id) ? undefined : r.id;
+        setPlanActive('builder', r.id);
+      };
       el.appendChild(b);
     });
   }
@@ -230,6 +234,7 @@ export function renderPlanHud(){
     const c = row.querySelector('.ph-n');
     if(c && c.textContent!==v) c.textContent=v;
     row.classList.toggle('on', curB===id);
+    row.classList.toggle('lit', ST.hlBuilder!==undefined && ST.hlBuilder===id);
   });
 }
 export function updatePlanApply(){

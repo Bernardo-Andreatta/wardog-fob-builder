@@ -441,7 +441,9 @@
     border:1px solid transparent; border-radius:5px; background:none;
     color:var(--muted); font-size:11px; text-align:left;}
   .ph-row:hover{border-color:var(--line); color:var(--ink);}
-  .ph-row.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .ph-row.on{border-color:var(--accent); color:var(--accent);}
+  /* lit = this builder's work in this stage is spotlit on the board */
+  .ph-row.lit{background:var(--accent-soft); box-shadow:inset 2px 0 0 var(--accent);}
   .ph-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .ph-n{font-family:var(--font-mono); font-size:10px; opacity:.72;}
   .ph-dot{width:8px; height:8px; border-radius:50%; flex:none;}
@@ -749,7 +751,7 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
-        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage, and clicking it makes that builder active</div>
+        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage; clicking it makes that builder active and lights up their pieces in this stage (click again to drop the light)</div>
         <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
         <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
         <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
