@@ -213,12 +213,11 @@
   .floorrow .lval{font-family:var(--font-mono); font-size:15.5px; color:var(--ink); min-width:22px; text-align:center; font-weight:500;}
   .floorhint{flex-basis:100%; font-size:11px; color:var(--muted); font-family:var(--font-mono); line-height:1.4;}
   .lp-head{display:flex; align-items:center; justify-content:space-between; padding:7px 8px; border-bottom:1px solid var(--line);}
-  .sp-tabs{display:flex; gap:4px; min-width:0;}
-  .sp-tabs button{padding:4px 9px; border:1px solid transparent; border-radius:6px; background:none;
-    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:11.5px;
-    color:var(--muted); font-weight:600; cursor:pointer; white-space:nowrap;}
-  .sp-tabs button:hover{color:var(--ink)}
-  .sp-tabs button.on{color:var(--accent); border-color:var(--line); background:var(--panel-2);}
+  .sp-title{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
+    font-size:11.5px; color:var(--accent); font-weight:600; white-space:nowrap;}
+  .plan-cols{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;}
+  @media (max-width:620px){ .plan-cols{grid-template-columns:1fr; gap:14px;} }
+  .plan-cols .plan-list{max-height:46vh; overflow-y:auto;}
   .sp-body{display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;}
   .sp-body[hidden]{display:none}
   .sp-sec.sp-scroll{overflow-y:auto; padding-bottom:10px;}
@@ -360,7 +359,7 @@
     .board-hud{left:14px; top:60px;}            /* under the undo / redo FAB */
     .hl{padding:5px 7px;}
     .plan-hud{min-width:150px; padding:5px 6px;}
-    .ph-sub{display:none;}                      /* the board is short on a phone */
+    .ph-sublab{display:none;}                   /* the board is short on a phone */
     .hl-lab{display:none;}
     .hl .plan-seg button{padding:5px 7px; font-size:10px;}
     .cmd .btn{padding:9px 10px;}
@@ -427,11 +426,12 @@
   .plan-hud{padding:7px 8px; min-width:174px; max-width:210px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
     box-shadow:0 4px 16px var(--shadow); display:flex; flex-direction:column; gap:2px;}
-  .ph-stage{display:flex; align-items:center; gap:6px; padding:1px 3px 6px;
+  .ph-stage{display:flex; align-items:center; gap:5px; padding:1px 3px 6px;
     border-bottom:1px solid var(--line); margin-bottom:3px;}
   .ph-stage .ph-name{font-family:var(--font-disp); text-transform:uppercase;
     letter-spacing:.06em; font-size:11.5px; font-weight:600; color:var(--ink);}
-  .ph-sub{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
+  .ph-sub{display:flex; align-items:center; gap:6px;
+    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
     font-size:9px; color:var(--accent); font-weight:600; padding:1px 3px 2px;}
   .ph-row{display:flex; align-items:center; gap:6px; width:100%; padding:3px 4px;
     border:1px solid transparent; border-radius:5px; background:none;
@@ -442,6 +442,15 @@
   .ph-n{font-family:var(--font-mono); font-size:10px; opacity:.72;}
   .ph-dot{width:8px; height:8px; border-radius:50%; flex:none;}
   .ph-dot.plain{border:1px solid var(--line);}
+  /* stage stepper + the way into the Build Plan editor */
+  .ph-btn{flex:none; width:19px; height:19px; padding:0; display:flex; align-items:center;
+    justify-content:center; border:1px solid var(--line); border-radius:5px;
+    background:var(--panel-2); color:var(--muted);}
+  .ph-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  .ph-btn:disabled{opacity:.3;}
+  .ph-btn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
+    stroke-linecap:round; stroke-linejoin:round;}
+  .ph-total{margin-left:auto;}
 
   /* ---- right-click context menu ---- */
   .ctx{position:absolute; z-index:60; min-width:214px; max-width:264px; padding:6px;
@@ -618,10 +627,7 @@
     <button id="panel-toggle" title="Floors &amp; Layers"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
     <div class="side-panel" id="layers-panel">
       <div class="lp-head">
-        <div class="sp-tabs" id="sp-tabs">
-          <button data-tab="layers" class="on" title="Floors, layers, z-order">Layers</button>
-          <button data-tab="plan" title="Stages &amp; builders">Build Plan</button>
-        </div>
+        <div class="sp-title">Layers</div>
         <button class="lp-x" id="lp-close" title="Close">&times;</button>
       </div>
       <div class="sp-body" id="tab-layers">
@@ -649,17 +655,6 @@
           </div>
         </div>
       </div>
-      </div>
-      <div class="sp-body" id="tab-plan" hidden>
-        <div class="sp-sec sp-grow sp-scroll">
-          <div class="plan">
-            <div class="plan-sub">Stage<em>when it goes down</em><span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
-            <div class="plan-list" id="stage-list"></div>
-            <div class="plan-sub">Builder<em>who puts it there</em><span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
-            <div class="plan-list" id="builder-list"></div>
-            <div class="plan-hint">New pieces take the active stage &amp; builder &mdash; both start Unassigned until you pick one here. To re-tag pieces already on the board, right-click them. The eye filters the board; Export image writes one PNG per stage / builder that has anything built under it.</div>
-          </div>
-        </div>
       </div>
     </div>
     <div class="ctx" id="ctx" hidden></div>
@@ -729,7 +724,8 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
-        <div class="k">Layers button &rarr; Build Plan tab</div><div class="d">Tag pieces with a stage (early &middot; mid &middot; late) and a builder as you place them</div>
+        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage, and clicking it makes that builder active</div>
+        <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
         <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
         <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
         <div class="k">Right-click a piece or selection</div><div class="d">Context menu: rotate &middot; mirror &middot; duplicate &middot; delete &middot; group &middot; set stage / builder &middot; move to layer, plus its layer, floor and group</div>
@@ -756,6 +752,26 @@
       <label class="code-lab">Load a code</label>
       <textarea id="code-in" class="code-area" spellcheck="false" placeholder="Paste a build code here&hellip;"></textarea>
       <div class="code-row"><button class="btn" id="code-load"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v5h16v-5"/></svg><span>Load build</span></button><span class="code-msg" id="code-loadmsg"></span></div>
+    </div>
+  </div>
+
+  <div class="modal" id="plan-modal" hidden>
+    <div class="modal-bg" id="plan-bg"></div>
+    <div class="modal-card wide" role="dialog" aria-label="Build plan">
+      <button class="x" id="plan-close" title="Close">&times;</button>
+      <h3>Build Plan</h3>
+      <p class="code-lead">A <b>stage</b> says when a piece goes down, a <b>builder</b> says who puts it there. New pieces take whichever of each is active; to re-tag pieces already on the board, right-click them.</p>
+      <div class="plan-cols">
+        <div class="plan">
+          <div class="plan-sub">Stage<em>when it goes down</em><span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
+          <div class="plan-list" id="stage-list"></div>
+        </div>
+        <div class="plan">
+          <div class="plan-sub">Builder<em>who puts it there</em><span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
+          <div class="plan-list" id="builder-list"></div>
+        </div>
+      </div>
+      <div class="plan-hint"><b>Click a row</b> to make it active &middot; <b>double-click the name</b> to rename &middot; the <b>colour dot</b> recolours the tag &middot; the <b>eye</b> filters it off the board &middot; <b>&times;</b> removes the tag and leaves its pieces unassigned. Export image writes one PNG per stage / builder that has anything built under it.</div>
     </div>
   </div>
 

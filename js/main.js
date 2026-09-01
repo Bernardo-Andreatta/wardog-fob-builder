@@ -17,7 +17,7 @@ import { loadExpCfg } from './exporter.js';
 import { persist } from './history.js';
 import { buildRecent } from './icons.js';
 import { ensureLayers, layerById, migrateLayers } from './layers.js';
-import { renderLayerPanel, setSpTab } from './layerspanel.js';
+import { renderLayerPanel } from './layerspanel.js';
 import { adoptPlan, cleanPlan, ensurePlan } from './plan.js';
 import { renderPlanPanel } from './planpanel.js';
 import { commitPendingMove } from './pointer.js';
@@ -80,8 +80,7 @@ export function init(){
   (function(){ let pref=null; try{ pref=localStorage.getItem('wardog-fob-panel'); }catch(e){}
     const hide = pref==='off' || (pref==null && isCoarse());
     document.querySelector('.app').classList.toggle('panel-off', hide);
-    let tab=null; try{ tab=localStorage.getItem('wardog-fob-sptab'); }catch(e){}
-    setSpTab(tab==='plan'?'plan':'layers'); })();
+    renderLayerPanel(); })();
   if(!ST.view.ox && !ST.view.oy){ ST.view.ox=stage.clientWidth/2; ST.view.oy=stage.clientHeight/2; }
   setTool('select');
   applyTouchDefault();

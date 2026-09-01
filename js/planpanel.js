@@ -124,11 +124,34 @@ export function renderPlanPanel(){
 }
 // runs from updateStatus, so the tallies keep up with placing / deleting without
 // rebuilding the rows (which would kill an in-progress rename)
+// The Build Plan editor is a modal of its own now: it is a place you go to set
+// the plan up, not something to keep parked in the side panel next to Layers.
+export function openPlanModal(){
+  const m=$('plan-modal'); if(!m) return;
+  m.hidden=false; renderPlanPanel();
+}
+export function closePlanModal(){ const m=$('plan-modal'); if(m) m.hidden=true; }
+// stage stepper: Unassigned sits at the head of the cycle, since it is a real
+// bucket pieces can be in, and the ends clamp so the order stays readable
+function stageCycle(){ return [null].concat(ST.stages.map(s=>s.id)); }
+function stageAt(dir){
+  const cyc=stageCycle(), i=cyc.indexOf(ST.curStageId==null?null:ST.curStageId);
+  const j=(i<0?0:i)+dir;
+  return (j<0 || j>=cyc.length) ? undefined : cyc[j];
+}
+function stepStage(dir){
+  const id=stageAt(dir);
+  if(id!==undefined) setPlanActive('stage', id);
+}
+
 // ---- board HUD: what is being built right now, and who is on it ------------
 // The rail says which structure is armed; this says which stage and builder it
 // will be stamped with, and how the work already in that stage divides between
 // builders. It sits on the board so neither answer needs the panel open, and a
 // builder row is a shortcut to making that builder active.
+const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
+const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
 let hudSig=null;
 function hudBuilders(){
   return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
@@ -145,16 +168,25 @@ export function renderPlanHud(){
   if(sig!==hudSig){
     hudSig=sig; el.innerHTML='';
     const head=document.createElement('div'); head.className='ph-stage';
-    head.title='The stage new pieces are tagged with';
+    const mkBtn=(cls,svg,title,fn)=>{
+      const b=document.createElement('button'); b.className='ph-btn '+cls;
+      b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
+    };
+    head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
     const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
     if(S) dot.style.background=S.color;
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'Unassigned';
-    const tot=document.createElement('span'); tot.className='ph-n ph-total';
-    head.appendChild(dot); head.appendChild(nm); head.appendChild(tot);
+    nm.title='The stage new pieces are tagged with';
+    head.appendChild(dot); head.appendChild(nm);
+    head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     el.appendChild(head);
     const sub=document.createElement('div'); sub.className='ph-sub';
-    sub.textContent='Builders in this stage'; el.appendChild(sub);
+    const lab=document.createElement('span'); lab.className='ph-sublab';
+    lab.textContent='In this stage';
+    const tot=document.createElement('span'); tot.className='ph-n ph-total';
+    sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
     rows.forEach(r=>{
       const b=document.createElement('button'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
@@ -168,6 +200,9 @@ export function renderPlanHud(){
       el.appendChild(b);
     });
   }
+  const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
+  if(prev) prev.disabled = stageAt(-1)===undefined;
+  if(next) next.disabled = stageAt(1)===undefined;
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
   const tot=el.querySelector('.ph-total');
@@ -191,6 +226,8 @@ export function updatePlanApply(){
   });
   renderPlanHud();
 }
+$('plan-close').onclick=closePlanModal;
+$('plan-bg').onclick=closePlanModal;
 $('plan-addstage').onclick=()=>addPlanEntry('stage');
 $('plan-addbuilder').onclick=()=>addPlanEntry('builder');
 document.querySelectorAll('#plan-colorby button').forEach(b=>{

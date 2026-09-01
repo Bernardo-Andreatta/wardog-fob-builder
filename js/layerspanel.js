@@ -3,7 +3,6 @@ import { pieceLayer } from './floors.js';
 import { groupSel, ungroupSel } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { ensureLayers, floorName, floorsForDraw, itemLayerId, layerActiveId, layerById, pruneSelToActive } from './layers.js';
-import { renderPlanPanel } from './planpanel.js';
 import { render, resize } from './render.js';
 import { clearOverlaySel, clearSelection } from './selection.js';
 import { ST } from './state.js';
@@ -177,20 +176,10 @@ $('lp-opacity').oninput=e=>{ const v=(+e.target.value)/100; selectedLayerObjs().
 $('lp-opacity').onchange=()=>{ snapshot(); };
 // the floating panel carries both sheets; the tab strip swaps which one shows,
 // so Build Plan gets a real panel without adding a second one to the stage
-export function setSpTab(t){
-  ST.spTab = t==='plan' ? 'plan' : 'layers';
-  document.querySelectorAll('#sp-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===ST.spTab));
-  const L=$('tab-layers'), P=$('tab-plan');
-  if(L) L.hidden = ST.spTab!=='layers';
-  if(P) P.hidden = ST.spTab!=='plan';
-  if(ST.spTab==='layers') renderLayerPanel(); else renderPlanPanel();
-  try{ localStorage.setItem('wardog-fob-sptab', ST.spTab); }catch(e){}
-}
-document.querySelectorAll('#sp-tabs button').forEach(b=>{ b.onclick=()=>setSpTab(b.dataset.tab); });
-// open the panel, optionally jumping straight to one of its tabs
-export function showPanel(on, tab){
+// the panel is Floors & Layers only now - the build plan has its own modal
+export function showPanel(on){
   document.querySelector('.app').classList.toggle('panel-off', !on);
-  if(on) setSpTab(tab||ST.spTab);
+  if(on) renderLayerPanel();
   try{ localStorage.setItem('wardog-fob-panel', on?'':'off'); }catch(e){}
 }
 $('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));

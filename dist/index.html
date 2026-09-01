@@ -213,12 +213,11 @@
   .floorrow .lval{font-family:var(--font-mono); font-size:15.5px; color:var(--ink); min-width:22px; text-align:center; font-weight:500;}
   .floorhint{flex-basis:100%; font-size:11px; color:var(--muted); font-family:var(--font-mono); line-height:1.4;}
   .lp-head{display:flex; align-items:center; justify-content:space-between; padding:7px 8px; border-bottom:1px solid var(--line);}
-  .sp-tabs{display:flex; gap:4px; min-width:0;}
-  .sp-tabs button{padding:4px 9px; border:1px solid transparent; border-radius:6px; background:none;
-    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em; font-size:11.5px;
-    color:var(--muted); font-weight:600; cursor:pointer; white-space:nowrap;}
-  .sp-tabs button:hover{color:var(--ink)}
-  .sp-tabs button.on{color:var(--accent); border-color:var(--line); background:var(--panel-2);}
+  .sp-title{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
+    font-size:11.5px; color:var(--accent); font-weight:600; white-space:nowrap;}
+  .plan-cols{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;}
+  @media (max-width:620px){ .plan-cols{grid-template-columns:1fr; gap:14px;} }
+  .plan-cols .plan-list{max-height:46vh; overflow-y:auto;}
   .sp-body{display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;}
   .sp-body[hidden]{display:none}
   .sp-sec.sp-scroll{overflow-y:auto; padding-bottom:10px;}
@@ -360,7 +359,7 @@
     .board-hud{left:14px; top:60px;}            /* under the undo / redo FAB */
     .hl{padding:5px 7px;}
     .plan-hud{min-width:150px; padding:5px 6px;}
-    .ph-sub{display:none;}                      /* the board is short on a phone */
+    .ph-sublab{display:none;}                   /* the board is short on a phone */
     .hl-lab{display:none;}
     .hl .plan-seg button{padding:5px 7px; font-size:10px;}
     .cmd .btn{padding:9px 10px;}
@@ -427,11 +426,12 @@
   .plan-hud{padding:7px 8px; min-width:174px; max-width:210px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
     box-shadow:0 4px 16px var(--shadow); display:flex; flex-direction:column; gap:2px;}
-  .ph-stage{display:flex; align-items:center; gap:6px; padding:1px 3px 6px;
+  .ph-stage{display:flex; align-items:center; gap:5px; padding:1px 3px 6px;
     border-bottom:1px solid var(--line); margin-bottom:3px;}
   .ph-stage .ph-name{font-family:var(--font-disp); text-transform:uppercase;
     letter-spacing:.06em; font-size:11.5px; font-weight:600; color:var(--ink);}
-  .ph-sub{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
+  .ph-sub{display:flex; align-items:center; gap:6px;
+    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
     font-size:9px; color:var(--accent); font-weight:600; padding:1px 3px 2px;}
   .ph-row{display:flex; align-items:center; gap:6px; width:100%; padding:3px 4px;
     border:1px solid transparent; border-radius:5px; background:none;
@@ -442,6 +442,15 @@
   .ph-n{font-family:var(--font-mono); font-size:10px; opacity:.72;}
   .ph-dot{width:8px; height:8px; border-radius:50%; flex:none;}
   .ph-dot.plain{border:1px solid var(--line);}
+  /* stage stepper + the way into the Build Plan editor */
+  .ph-btn{flex:none; width:19px; height:19px; padding:0; display:flex; align-items:center;
+    justify-content:center; border:1px solid var(--line); border-radius:5px;
+    background:var(--panel-2); color:var(--muted);}
+  .ph-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  .ph-btn:disabled{opacity:.3;}
+  .ph-btn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
+    stroke-linecap:round; stroke-linejoin:round;}
+  .ph-total{margin-left:auto;}
 
   /* ---- right-click context menu ---- */
   .ctx{position:absolute; z-index:60; min-width:214px; max-width:264px; padding:6px;
@@ -618,10 +627,7 @@
     <button id="panel-toggle" title="Floors &amp; Layers"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
     <div class="side-panel" id="layers-panel">
       <div class="lp-head">
-        <div class="sp-tabs" id="sp-tabs">
-          <button data-tab="layers" class="on" title="Floors, layers, z-order">Layers</button>
-          <button data-tab="plan" title="Stages &amp; builders">Build Plan</button>
-        </div>
+        <div class="sp-title">Layers</div>
         <button class="lp-x" id="lp-close" title="Close">&times;</button>
       </div>
       <div class="sp-body" id="tab-layers">
@@ -649,17 +655,6 @@
           </div>
         </div>
       </div>
-      </div>
-      <div class="sp-body" id="tab-plan" hidden>
-        <div class="sp-sec sp-grow sp-scroll">
-          <div class="plan">
-            <div class="plan-sub">Stage<em>when it goes down</em><span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
-            <div class="plan-list" id="stage-list"></div>
-            <div class="plan-sub">Builder<em>who puts it there</em><span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
-            <div class="plan-list" id="builder-list"></div>
-            <div class="plan-hint">New pieces take the active stage &amp; builder &mdash; both start Unassigned until you pick one here. To re-tag pieces already on the board, right-click them. The eye filters the board; Export image writes one PNG per stage / builder that has anything built under it.</div>
-          </div>
-        </div>
       </div>
     </div>
     <div class="ctx" id="ctx" hidden></div>
@@ -729,7 +724,8 @@
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
-        <div class="k">Layers button &rarr; Build Plan tab</div><div class="d">Tag pieces with a stage (early &middot; mid &middot; late) and a builder as you place them</div>
+        <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage, and clicking it makes that builder active</div>
+        <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
         <div class="k">Plan row: colour dot &middot; double-click name &middot; eye</div><div class="d">Recolour the tag &middot; rename &middot; filter it off the board</div>
         <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
         <div class="k">Right-click a piece or selection</div><div class="d">Context menu: rotate &middot; mirror &middot; duplicate &middot; delete &middot; group &middot; set stage / builder &middot; move to layer, plus its layer, floor and group</div>
@@ -756,6 +752,26 @@
       <label class="code-lab">Load a code</label>
       <textarea id="code-in" class="code-area" spellcheck="false" placeholder="Paste a build code here&hellip;"></textarea>
       <div class="code-row"><button class="btn" id="code-load"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v5h16v-5"/></svg><span>Load build</span></button><span class="code-msg" id="code-loadmsg"></span></div>
+    </div>
+  </div>
+
+  <div class="modal" id="plan-modal" hidden>
+    <div class="modal-bg" id="plan-bg"></div>
+    <div class="modal-card wide" role="dialog" aria-label="Build plan">
+      <button class="x" id="plan-close" title="Close">&times;</button>
+      <h3>Build Plan</h3>
+      <p class="code-lead">A <b>stage</b> says when a piece goes down, a <b>builder</b> says who puts it there. New pieces take whichever of each is active; to re-tag pieces already on the board, right-click them.</p>
+      <div class="plan-cols">
+        <div class="plan">
+          <div class="plan-sub">Stage<em>when it goes down</em><span class="grow"></span><button id="plan-addstage" title="Add a stage">+</button></div>
+          <div class="plan-list" id="stage-list"></div>
+        </div>
+        <div class="plan">
+          <div class="plan-sub">Builder<em>who puts it there</em><span class="grow"></span><button id="plan-addbuilder" title="Add a builder">+</button></div>
+          <div class="plan-list" id="builder-list"></div>
+        </div>
+      </div>
+      <div class="plan-hint"><b>Click a row</b> to make it active &middot; <b>double-click the name</b> to rename &middot; the <b>colour dot</b> recolours the tag &middot; the <b>eye</b> filters it off the board &middot; <b>&times;</b> removes the tag and leaves its pieces unassigned. Export image writes one PNG per stage / builder that has anything built under it.</div>
     </div>
   </div>
 
@@ -1246,7 +1262,6 @@ const ST = {
   clearTimer: null,
   toastTimer: null,
   dragLayerId: null,
-  spTab: 'layers',
   expCfg: {name:'', whole:true, stagesAll:true, stagesEach:true, stagesCum:false, buildersAll:true, buildersEach:true, fillBuilder:true, ghost:true, grid:true, notes:true, header:true, ruler:true, legend:true, structs:false, zip:true, ppb:80},
   _meas: null,
   expLegRows: 0,                            // legend depth reserved for the whole batch (see runExport)
@@ -2123,6 +2138,231 @@ $('exp-name').addEventListener('input', expFromForm);
 $('exp-name').addEventListener('keydown', e=>e.stopPropagation());
 $('exp-run').onclick=runExport;
 
+/* ===== planpanel.js ===== */
+// ---------------- Build Plan panel (stage + builder tags) --------------------
+const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function planEntries(kind){ return kind==='stage'?ST.stages:ST.builders; }
+function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; }
+function setPlanActive(kind, id){
+  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
+  if(E) E.visible=true;                 // never leave the active tag filtered out
+  if(kind==='stage') ST.curStageId=id; else ST.curBuilderId=id;
+  render(); renderPlanPanel(); persist();
+}
+function addPlanEntry(kind){
+  const arr=planEntries(kind), col=PLAN_COLORS[arr.length%PLAN_COLORS.length];
+  const E = kind==='stage'
+    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
+    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
+  arr.push(E); setPlanActive(kind, E.id); snapshot();
+}
+// removing a tag untags its pieces; it never deletes anything from the board
+function delPlanEntry(kind, id){
+  const arr=planEntries(kind), i=arr.findIndex(e=>e.id===id); if(i<0) return;
+  arr.splice(i,1);
+  ST.pieces.forEach(p=>{ if(kind==='stage'){ if(p.st===id) p.st=null; } else if(p.bd===id) p.bd=null; });
+  if(planActive(kind)===id){ if(kind==='stage') ST.curStageId=null; else ST.curBuilderId=null; }
+  snapshot(); render(); renderPlanPanel();
+}
+// re-tag whatever is selected with one specific stage / builder (null = untag).
+// The context menu is the only way in: a piece is tagged where it lives, not
+// from a panel that has to be open and pointed at the right row first.
+function setPlanOnSel(kind, id){
+  const items=selectedPieces();
+  if(!items.length){ flashToast('Select some pieces first'); return; }
+  items.forEach(p=>{ if(kind==='stage') p.st=id; else p.bd=id; });
+  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
+  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'Unassigned'));
+  snapshot(); render(); renderPlanPanel();
+}
+// the one value shared by every item, or undefined when they disagree
+function commonVal(items, key){
+  if(!items.length) return undefined;
+  const v = items[0][key]==null ? null : items[0][key];
+  return items.every(it=>(it[key]==null?null:it[key])===v) ? v : undefined;
+}
+// move the whole selection onto another layer; a layer belongs to a floor, so
+// pieces follow that floor too rather than drawing at the wrong height
+function moveSelToLayer(id){
+  const L=layerById(id); if(!L) return;
+  const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
+  if(!all.length){ flashToast('Select something first'); return; }
+  all.forEach(it=>{ it.ly=id; });
+  ps.forEach(p=>{ p.l=L.floor||0; });
+  if(ST.selLayers.indexOf(id)===-1) ST.selLayers.push(id);
+  snapshot(); render(); renderLayerPanel(); updateStatus();
+  flashToast(all.length+' item'+(all.length>1?'s':'')+' → '+L.name);
+}
+function planRename(E, nameEl){
+  const inp=document.createElement('input'); inp.type='text'; inp.className='pl-rename'; inp.value=E.name;
+  inp.onclick=e=>e.stopPropagation();
+  let done=false;
+  const finish=keep=>{ if(done)return; done=true; if(keep){ const v=inp.value.trim(); if(v) E.name=v; }
+    snapshot(); renderPlanPanel(); };
+  inp.onkeydown=e=>{ e.stopPropagation();
+    if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } };
+  inp.onblur=()=>finish(true);
+  nameEl.replaceWith(inp); inp.focus(); inp.select();
+}
+// E === null builds the "Unassigned" bucket row (filterable, not editable)
+function buildPlanRow(kind, E){
+  const id = E?E.id:null, active = planActive(kind)===id;
+  const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
+  const row=document.createElement('div');
+  row.className='pl-row'+(active?' active':'')+(vis?'':' off');
+  row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
+  row.title = E ? 'Click to make active · double-click the name to rename'
+                : 'Pieces with no '+kind+' tag yet';
+  let dot;
+  if(E){
+    dot=document.createElement('input'); dot.type='color'; dot.className='pl-dot'; dot.value=E.color;
+    dot.title='Tag colour';
+    dot.onclick=ev=>ev.stopPropagation();
+    dot.oninput=()=>{ E.color=dot.value; render(); };
+    dot.onchange=()=>{ E.color=dot.value; snapshot(); render(); };
+  } else { dot=document.createElement('span'); dot.className='pl-dot plain'; }
+  const name=document.createElement('span'); name.className='pl-name';
+  name.textContent = E ? E.name : 'Unassigned';
+  if(E && E.note) name.title=E.note;
+  if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
+  const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
+  const eye=document.createElement('button'); eye.className='pl-ic'; eye.innerHTML=vis?EYE_ON:EYE_OFF;
+  eye.title = vis?'Hide these on the board':'Show these again';
+  eye.onclick=ev=>{ ev.stopPropagation();
+    if(E) E.visible=!vis; else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
+    pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist(); };
+  row.onclick=()=>setPlanActive(kind, id);
+  row.appendChild(dot); row.appendChild(name); row.appendChild(n); row.appendChild(eye);
+  if(E){
+    const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
+    x.title='Remove this tag (its pieces become unassigned)';
+    x.onclick=ev=>{ ev.stopPropagation(); delPlanEntry(kind, E.id); };
+    row.appendChild(x);
+  }
+  return row;
+}
+function renderPlanPanel(){
+  const sl=$('stage-list'), bl=$('builder-list'); if(!sl||!bl) return;
+  ensurePlan();
+  sl.innerHTML=''; ST.stages.forEach(s=>sl.appendChild(buildPlanRow('stage',s)));
+  sl.appendChild(buildPlanRow('stage',null));
+  bl.innerHTML=''; ST.builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
+  bl.appendChild(buildPlanRow('builder',null));
+  document.querySelectorAll('#plan-colorby button').forEach(b=>b.classList.toggle('on', b.dataset.mode===ST.planColorBy));
+  updatePlanApply();
+}
+// runs from updateStatus, so the tallies keep up with placing / deleting without
+// rebuilding the rows (which would kill an in-progress rename)
+// The Build Plan editor is a modal of its own now: it is a place you go to set
+// the plan up, not something to keep parked in the side panel next to Layers.
+function openPlanModal(){
+  const m=$('plan-modal'); if(!m) return;
+  m.hidden=false; renderPlanPanel();
+}
+function closePlanModal(){ const m=$('plan-modal'); if(m) m.hidden=true; }
+// stage stepper: Unassigned sits at the head of the cycle, since it is a real
+// bucket pieces can be in, and the ends clamp so the order stays readable
+function stageCycle(){ return [null].concat(ST.stages.map(s=>s.id)); }
+function stageAt(dir){
+  const cyc=stageCycle(), i=cyc.indexOf(ST.curStageId==null?null:ST.curStageId);
+  const j=(i<0?0:i)+dir;
+  return (j<0 || j>=cyc.length) ? undefined : cyc[j];
+}
+function stepStage(dir){
+  const id=stageAt(dir);
+  if(id!==undefined) setPlanActive('stage', id);
+}
+
+// ---- board HUD: what is being built right now, and who is on it ------------
+// The rail says which structure is armed; this says which stage and builder it
+// will be stamped with, and how the work already in that stage divides between
+// builders. It sits on the board so neither answer needs the panel open, and a
+// builder row is a shortcut to making that builder active.
+const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
+const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
+let hudSig=null;
+function hudBuilders(){
+  return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
+    .concat([{id:null, name:'Unassigned', color:null}]);
+}
+function renderPlanHud(){
+  const el=$('plan-hud'); if(!el) return;
+  ensurePlan();
+  const S = ST.curStageId==null ? null : stageById(ST.curStageId);
+  const rows=hudBuilders();
+  // the rows only get rebuilt when the tags themselves change, so the counts
+  // below can refresh on every status tick without churning the DOM
+  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
+  if(sig!==hudSig){
+    hudSig=sig; el.innerHTML='';
+    const head=document.createElement('div'); head.className='ph-stage';
+    const mkBtn=(cls,svg,title,fn)=>{
+      const b=document.createElement('button'); b.className='ph-btn '+cls;
+      b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
+    };
+    head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
+    const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
+    if(S) dot.style.background=S.color;
+    const nm=document.createElement('span'); nm.className='ph-name';
+    nm.textContent = S?S.name:'Unassigned';
+    nm.title='The stage new pieces are tagged with';
+    head.appendChild(dot); head.appendChild(nm);
+    head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
+    el.appendChild(head);
+    const sub=document.createElement('div'); sub.className='ph-sub';
+    const lab=document.createElement('span'); lab.className='ph-sublab';
+    lab.textContent='In this stage';
+    const tot=document.createElement('span'); tot.className='ph-n ph-total';
+    sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
+    rows.forEach(r=>{
+      const b=document.createElement('button'); b.className='ph-row';
+      b.dataset.id = r.id==null ? '' : String(r.id);
+      b.title = 'Make '+r.name+' the active builder';
+      const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
+      if(r.color) d.style.background=r.color;
+      const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
+      const c=document.createElement('span'); c.className='ph-n';
+      b.appendChild(d); b.appendChild(t); b.appendChild(c);
+      b.onclick=()=>setPlanActive('builder', r.id);
+      el.appendChild(b);
+    });
+  }
+  const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
+  if(prev) prev.disabled = stageAt(-1)===undefined;
+  if(next) next.disabled = stageAt(1)===undefined;
+  const cur = ST.curStageId==null ? null : ST.curStageId;
+  const inStage = ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
+  const tot=el.querySelector('.ph-total');
+  if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
+    if(tot.textContent!==v) tot.textContent=v; }
+  const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
+  el.querySelectorAll('.ph-row').forEach(row=>{
+    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    const v = String(inStage.filter(p=>(p.bd==null?null:p.bd)===id).length);
+    const c = row.querySelector('.ph-n');
+    if(c && c.textContent!==v) c.textContent=v;
+    row.classList.toggle('on', curB===id);
+  });
+}
+function updatePlanApply(){
+  document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
+    const n=row.querySelector('.pl-n'); if(!n) return;
+    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    const v=String(planCount(row.dataset.kind, id));
+    if(n.textContent!==v) n.textContent=v;
+  });
+  renderPlanHud();
+}
+$('plan-close').onclick=closePlanModal;
+$('plan-bg').onclick=closePlanModal;
+$('plan-addstage').onclick=()=>addPlanEntry('stage');
+$('plan-addbuilder').onclick=()=>addPlanEntry('builder');
+document.querySelectorAll('#plan-colorby button').forEach(b=>{
+  b.onclick=()=>{ ST.planColorBy=b.dataset.mode; render(); renderPlanPanel(); persist(); };
+});
+
 /* ===== svg.js ===== */
 // Inline SVG markup for the tool tiles. No dependencies of its own, so any
 // module can pull an icon in without dragging the rail's wiring along - and
@@ -2510,194 +2750,6 @@ function setLayer(n){ ST.curLayer=Math.max(0,n); $('layer-val').textContent = ST
 $('layer-up').onclick=()=>setLayer(ST.curLayer+1);
 $('layer-down').onclick=()=>setLayer(ST.curLayer-1);
 
-/* ===== planpanel.js ===== */
-// ---------------- Build Plan panel (stage + builder tags) --------------------
-const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-function planEntries(kind){ return kind==='stage'?ST.stages:ST.builders; }
-function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; }
-function setPlanActive(kind, id){
-  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  if(E) E.visible=true;                 // never leave the active tag filtered out
-  if(kind==='stage') ST.curStageId=id; else ST.curBuilderId=id;
-  render(); renderPlanPanel(); persist();
-}
-function addPlanEntry(kind){
-  const arr=planEntries(kind), col=PLAN_COLORS[arr.length%PLAN_COLORS.length];
-  const E = kind==='stage'
-    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
-    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
-  arr.push(E); setPlanActive(kind, E.id); snapshot();
-}
-// removing a tag untags its pieces; it never deletes anything from the board
-function delPlanEntry(kind, id){
-  const arr=planEntries(kind), i=arr.findIndex(e=>e.id===id); if(i<0) return;
-  arr.splice(i,1);
-  ST.pieces.forEach(p=>{ if(kind==='stage'){ if(p.st===id) p.st=null; } else if(p.bd===id) p.bd=null; });
-  if(planActive(kind)===id){ if(kind==='stage') ST.curStageId=null; else ST.curBuilderId=null; }
-  snapshot(); render(); renderPlanPanel();
-}
-// re-tag whatever is selected with one specific stage / builder (null = untag).
-// The context menu is the only way in: a piece is tagged where it lives, not
-// from a panel that has to be open and pointed at the right row first.
-function setPlanOnSel(kind, id){
-  const items=selectedPieces();
-  if(!items.length){ flashToast('Select some pieces first'); return; }
-  items.forEach(p=>{ if(kind==='stage') p.st=id; else p.bd=id; });
-  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'Unassigned'));
-  snapshot(); render(); renderPlanPanel();
-}
-// the one value shared by every item, or undefined when they disagree
-function commonVal(items, key){
-  if(!items.length) return undefined;
-  const v = items[0][key]==null ? null : items[0][key];
-  return items.every(it=>(it[key]==null?null:it[key])===v) ? v : undefined;
-}
-// move the whole selection onto another layer; a layer belongs to a floor, so
-// pieces follow that floor too rather than drawing at the wrong height
-function moveSelToLayer(id){
-  const L=layerById(id); if(!L) return;
-  const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
-  if(!all.length){ flashToast('Select something first'); return; }
-  all.forEach(it=>{ it.ly=id; });
-  ps.forEach(p=>{ p.l=L.floor||0; });
-  if(ST.selLayers.indexOf(id)===-1) ST.selLayers.push(id);
-  snapshot(); render(); renderLayerPanel(); updateStatus();
-  flashToast(all.length+' item'+(all.length>1?'s':'')+' → '+L.name);
-}
-function planRename(E, nameEl){
-  const inp=document.createElement('input'); inp.type='text'; inp.className='pl-rename'; inp.value=E.name;
-  inp.onclick=e=>e.stopPropagation();
-  let done=false;
-  const finish=keep=>{ if(done)return; done=true; if(keep){ const v=inp.value.trim(); if(v) E.name=v; }
-    snapshot(); renderPlanPanel(); };
-  inp.onkeydown=e=>{ e.stopPropagation();
-    if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } };
-  inp.onblur=()=>finish(true);
-  nameEl.replaceWith(inp); inp.focus(); inp.select();
-}
-// E === null builds the "Unassigned" bucket row (filterable, not editable)
-function buildPlanRow(kind, E){
-  const id = E?E.id:null, active = planActive(kind)===id;
-  const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
-  const row=document.createElement('div');
-  row.className='pl-row'+(active?' active':'')+(vis?'':' off');
-  row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
-  row.title = E ? 'Click to make active · double-click the name to rename'
-                : 'Pieces with no '+kind+' tag yet';
-  let dot;
-  if(E){
-    dot=document.createElement('input'); dot.type='color'; dot.className='pl-dot'; dot.value=E.color;
-    dot.title='Tag colour';
-    dot.onclick=ev=>ev.stopPropagation();
-    dot.oninput=()=>{ E.color=dot.value; render(); };
-    dot.onchange=()=>{ E.color=dot.value; snapshot(); render(); };
-  } else { dot=document.createElement('span'); dot.className='pl-dot plain'; }
-  const name=document.createElement('span'); name.className='pl-name';
-  name.textContent = E ? E.name : 'Unassigned';
-  if(E && E.note) name.title=E.note;
-  if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
-  const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
-  const eye=document.createElement('button'); eye.className='pl-ic'; eye.innerHTML=vis?EYE_ON:EYE_OFF;
-  eye.title = vis?'Hide these on the board':'Show these again';
-  eye.onclick=ev=>{ ev.stopPropagation();
-    if(E) E.visible=!vis; else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
-    pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist(); };
-  row.onclick=()=>setPlanActive(kind, id);
-  row.appendChild(dot); row.appendChild(name); row.appendChild(n); row.appendChild(eye);
-  if(E){
-    const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
-    x.title='Remove this tag (its pieces become unassigned)';
-    x.onclick=ev=>{ ev.stopPropagation(); delPlanEntry(kind, E.id); };
-    row.appendChild(x);
-  }
-  return row;
-}
-function renderPlanPanel(){
-  const sl=$('stage-list'), bl=$('builder-list'); if(!sl||!bl) return;
-  ensurePlan();
-  sl.innerHTML=''; ST.stages.forEach(s=>sl.appendChild(buildPlanRow('stage',s)));
-  sl.appendChild(buildPlanRow('stage',null));
-  bl.innerHTML=''; ST.builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
-  bl.appendChild(buildPlanRow('builder',null));
-  document.querySelectorAll('#plan-colorby button').forEach(b=>b.classList.toggle('on', b.dataset.mode===ST.planColorBy));
-  updatePlanApply();
-}
-// runs from updateStatus, so the tallies keep up with placing / deleting without
-// rebuilding the rows (which would kill an in-progress rename)
-// ---- board HUD: what is being built right now, and who is on it ------------
-// The rail says which structure is armed; this says which stage and builder it
-// will be stamped with, and how the work already in that stage divides between
-// builders. It sits on the board so neither answer needs the panel open, and a
-// builder row is a shortcut to making that builder active.
-let hudSig=null;
-function hudBuilders(){
-  return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
-    .concat([{id:null, name:'Unassigned', color:null}]);
-}
-function renderPlanHud(){
-  const el=$('plan-hud'); if(!el) return;
-  ensurePlan();
-  const S = ST.curStageId==null ? null : stageById(ST.curStageId);
-  const rows=hudBuilders();
-  // the rows only get rebuilt when the tags themselves change, so the counts
-  // below can refresh on every status tick without churning the DOM
-  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
-  if(sig!==hudSig){
-    hudSig=sig; el.innerHTML='';
-    const head=document.createElement('div'); head.className='ph-stage';
-    head.title='The stage new pieces are tagged with';
-    const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
-    if(S) dot.style.background=S.color;
-    const nm=document.createElement('span'); nm.className='ph-name';
-    nm.textContent = S?S.name:'Unassigned';
-    const tot=document.createElement('span'); tot.className='ph-n ph-total';
-    head.appendChild(dot); head.appendChild(nm); head.appendChild(tot);
-    el.appendChild(head);
-    const sub=document.createElement('div'); sub.className='ph-sub';
-    sub.textContent='Builders in this stage'; el.appendChild(sub);
-    rows.forEach(r=>{
-      const b=document.createElement('button'); b.className='ph-row';
-      b.dataset.id = r.id==null ? '' : String(r.id);
-      b.title = 'Make '+r.name+' the active builder';
-      const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
-      if(r.color) d.style.background=r.color;
-      const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
-      const c=document.createElement('span'); c.className='ph-n';
-      b.appendChild(d); b.appendChild(t); b.appendChild(c);
-      b.onclick=()=>setPlanActive('builder', r.id);
-      el.appendChild(b);
-    });
-  }
-  const cur = ST.curStageId==null ? null : ST.curStageId;
-  const inStage = ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
-  const tot=el.querySelector('.ph-total');
-  if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
-    if(tot.textContent!==v) tot.textContent=v; }
-  const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
-  el.querySelectorAll('.ph-row').forEach(row=>{
-    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
-    const v = String(inStage.filter(p=>(p.bd==null?null:p.bd)===id).length);
-    const c = row.querySelector('.ph-n');
-    if(c && c.textContent!==v) c.textContent=v;
-    row.classList.toggle('on', curB===id);
-  });
-}
-function updatePlanApply(){
-  document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
-    const n=row.querySelector('.pl-n'); if(!n) return;
-    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
-    const v=String(planCount(row.dataset.kind, id));
-    if(n.textContent!==v) n.textContent=v;
-  });
-  renderPlanHud();
-}
-$('plan-addstage').onclick=()=>addPlanEntry('stage');
-$('plan-addbuilder').onclick=()=>addPlanEntry('builder');
-document.querySelectorAll('#plan-colorby button').forEach(b=>{
-  b.onclick=()=>{ ST.planColorBy=b.dataset.mode; render(); renderPlanPanel(); persist(); };
-});
-
 /* ===== layerspanel.js ===== */
 // ---------------- Layers panel (Photoshop-style: z-order / visibility / opacity)
 const EYE_ON='<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -2866,20 +2918,10 @@ $('lp-opacity').oninput=e=>{ const v=(+e.target.value)/100; selectedLayerObjs().
 $('lp-opacity').onchange=()=>{ snapshot(); };
 // the floating panel carries both sheets; the tab strip swaps which one shows,
 // so Build Plan gets a real panel without adding a second one to the stage
-function setSpTab(t){
-  ST.spTab = t==='plan' ? 'plan' : 'layers';
-  document.querySelectorAll('#sp-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===ST.spTab));
-  const L=$('tab-layers'), P=$('tab-plan');
-  if(L) L.hidden = ST.spTab!=='layers';
-  if(P) P.hidden = ST.spTab!=='plan';
-  if(ST.spTab==='layers') renderLayerPanel(); else renderPlanPanel();
-  try{ localStorage.setItem('wardog-fob-sptab', ST.spTab); }catch(e){}
-}
-document.querySelectorAll('#sp-tabs button').forEach(b=>{ b.onclick=()=>setSpTab(b.dataset.tab); });
-// open the panel, optionally jumping straight to one of its tabs
-function showPanel(on, tab){
+// the panel is Floors & Layers only now - the build plan has its own modal
+function showPanel(on){
   document.querySelector('.app').classList.toggle('panel-off', !on);
-  if(on) setSpTab(tab||ST.spTab);
+  if(on) renderLayerPanel();
   try{ localStorage.setItem('wardog-fob-panel', on?'':'off'); }catch(e){}
 }
 $('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));
@@ -3971,7 +4013,7 @@ window.addEventListener('keydown', e=>{
     else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)){ stepPlaceRot(dir); }
   }
   if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); }
-  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } clearSelection(); clearOverlaySel(); ST.marquee=null; if(CATALOG[ST.tool]||ST.tool==='draw'||ST.tool==='stamp'||ST.tool==='text'||SYMBOLS[ST.tool]) setTool('select'); render(); updateStatus(); }
+  if(e.key==='Escape'){ if(!$('exp-modal').hidden){ closeExp(); return; } if(!$('file-modal').hidden){ closeFile(); return; } if(!$('code-modal').hidden){ closeCode(); return; } if(!$('cmd-modal').hidden){ closeCmd(); return; } if(!$('plan-modal').hidden){ closePlanModal(); return; } clearSelection(); clearOverlaySel(); ST.marquee=null; if(CATALOG[ST.tool]||ST.tool==='draw'||ST.tool==='stamp'||ST.tool==='text'||SYMBOLS[ST.tool]) setTool('select'); render(); updateStatus(); }
   if(e.key==='f'||e.key==='F'){
     if(hasRotSel()) mirrorGroup();
     else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)){ ST.placeFlip=!ST.placeFlip; render(); }
@@ -4070,8 +4112,7 @@ function init(){
   (function(){ let pref=null; try{ pref=localStorage.getItem('wardog-fob-panel'); }catch(e){}
     const hide = pref==='off' || (pref==null && isCoarse());
     document.querySelector('.app').classList.toggle('panel-off', hide);
-    let tab=null; try{ tab=localStorage.getItem('wardog-fob-sptab'); }catch(e){}
-    setSpTab(tab==='plan'?'plan':'layers'); })();
+    renderLayerPanel(); })();
   if(!ST.view.ox && !ST.view.oy){ ST.view.ox=stage.clientWidth/2; ST.view.oy=stage.clientHeight/2; }
   setTool('select');
   applyTouchDefault();
