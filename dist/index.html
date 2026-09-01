@@ -1861,7 +1861,7 @@ function enc(str){
   for(let i=0;i<str.length;i++) a[i]=str.charCodeAt(i)&0xff;
   return a;
 }
-function pdfStr(s){ return '('+String(s).replace(/[\\()]/g,'\\<script type="module" src="js/main.js"></script>')+')'; }
+function pdfStr(s){ return '('+String(s).replace(/[\\()]/g,'\\$&')+')'; }
 function rgbBytes(cv){
   const d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;
   const out=new Uint8Array(cv.width*cv.height*3);

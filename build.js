@@ -44,7 +44,9 @@ if (!html.includes(tag)) { console.error('index.html: module script tag not foun
 // the bundle runs as one classic script, so it needs its own scope + strict mode
 const inline = '<script>\n(function(){\n"use strict";\n' + bundle + '\n})();\n</script>';
 fs.mkdirSync(OUT, { recursive: true });
-fs.writeFileSync(path.join(OUT, 'index.html'), html.replace(tag, inline));
+// A function replacer, not a string: `$&`, `$1` and friends are substitution
+// patterns to String.replace, and the bundled code legitimately contains them.
+fs.writeFileSync(path.join(OUT, 'index.html'), html.replace(tag, () => inline));
 
 console.log('bundled ' + files.length + ' modules -> dist/index.html (' +
   Math.round(fs.statSync(path.join(OUT, 'index.html')).size / 1024) + ' KB)');
