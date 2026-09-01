@@ -19,7 +19,7 @@ import { buildRecent } from './icons.js';
 import { ensureLayers, layerById, migrateLayers } from './layers.js';
 import { renderLayerPanel } from './layerspanel.js';
 import { adoptPlan, cleanPlan, ensurePlan } from './plan.js';
-import { renderPlanPanel } from './planpanel.js';
+import { renderPlanPanel, setHudOpen } from './planpanel.js';
 import { commitPendingMove } from './pointer.js';
 import { applySavedOrder, buildRail, buildSwatches, refreshIcons } from './rail.js';
 import { cssVar, render, resize } from './render.js';
@@ -81,6 +81,7 @@ export function init(){
     const hide = pref==='off' || (pref==null && isCoarse());
     document.querySelector('.app').classList.toggle('panel-off', hide);
     renderLayerPanel(); })();
+  try{ setHudOpen(localStorage.getItem('wardog-fob-hud')!=='off'); }catch(e){}
   if(!ST.view.ox && !ST.view.oy){ ST.view.ox=stage.clientWidth/2; ST.view.oy=stage.clientHeight/2; }
   setTool('select');
   applyTouchDefault();

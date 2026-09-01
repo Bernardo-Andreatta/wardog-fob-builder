@@ -412,8 +412,24 @@
   /* The highlight filter changes what the board shows, so it floats over the
      board itself - not in the header, and not behind a panel that has to be
      open first. */
+  /* The column is only a layout box: it is wider and taller than the panels it
+     holds (the gap between them, and the strip beside the narrower one), and it
+     used to eat the drags that started there, so a marquee near it never began.
+     Only the panels themselves take pointer events. */
   .board-hud{position:absolute; left:12px; top:12px; z-index:12;
-    display:flex; flex-direction:column; align-items:flex-start; gap:8px;}
+    display:flex; flex-direction:column; align-items:flex-start; gap:8px;
+    pointer-events:none;}
+  .board-hud > *{pointer-events:auto;}
+  /* collapsed, the whole readout is just its own toggle */
+  .board-hud.off .plan-hud, .board-hud.off .hl-lab, .board-hud.off .plan-seg{display:none;}
+  .board-hud.off .hl{padding:5px;}
+  .board-hud.off .hl-toggle svg{transform:rotate(180deg);}
+  .hl-toggle{flex:none; width:20px; height:20px; padding:0; display:flex; align-items:center;
+    justify-content:center; border:1px solid var(--line); border-radius:5px;
+    background:var(--panel-2); color:var(--muted);}
+  .hl-toggle:hover{border-color:var(--accent); color:var(--accent);}
+  .hl-toggle svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2;
+    stroke-linecap:round; stroke-linejoin:round;}
   .hl{display:flex; align-items:center; gap:8px; padding:6px 9px;
     background:var(--panel); border:1px solid var(--line); border-radius:9px;
     box-shadow:0 4px 16px var(--shadow);}
@@ -654,7 +670,7 @@
     <div class="rail-resize" id="rail-resize" title="Drag to resize the menu"></div>
     <canvas id="board"></canvas>
 
-    <div class="board-hud">
+    <div class="board-hud" id="board-hud">
       <div class="hl" title="Colour the board by its build-plan tags &middot; outline = builder, fill + hatch = stage">
         <span class="hl-lab">Highlight</span>
         <div class="plan-seg" id="plan-colorby">
@@ -663,6 +679,7 @@
           <button data-mode="builder">Builder</button>
           <button data-mode="both">Both</button>
         </div>
+        <button class="hl-toggle" id="hud-toggle" title="Hide the board readout"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
       </div>
       <div class="plan-hud" id="plan-hud"></div>
     </div>
@@ -772,6 +789,7 @@
         <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage; clicking it makes that builder active and picks out their pieces in this stage, dropping the rest back (click again to undo)</div>
         <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
         <div class="k">Build Plan row: colour dot &middot; double-click name &middot; &times;</div><div class="d">Recolour the tag &middot; rename &middot; remove it, leaving its pieces unassigned. The modal only configures tags; what is active and what is hidden are set on the board readout</div>
+        <div class="k">Board readout: chevron (top right)</div><div class="d">Collapse the whole readout to a single chip, and back</div>
         <div class="k">Board readout: eye</div><div class="d">Hide that stage or builder's pieces from the board</div>
         <div class="k">Highlight (top bar): Off &middot; Stage &middot; Builder &middot; Both</div><div class="d">Both draws the outline in the builder's colour and washes the piece in its stage colour + hatch angle</div>
         <div class="k">Right-click a piece or selection</div><div class="d">Context menu: rotate &middot; mirror &middot; duplicate &middot; delete &middot; group, plus its layer, floor and group. Stage, builder and layer each show what the selection carries now &mdash; the pencil turns that line into a picker</div>

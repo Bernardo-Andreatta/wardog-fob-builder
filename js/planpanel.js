@@ -271,6 +271,15 @@ export function updatePlanApply(){
   });
   renderPlanHud();
 }
+// the readout collapses to its own toggle, and the choice is remembered
+export function setHudOpen(on){
+  const h=$('board-hud'); if(!h) return;
+  h.classList.toggle('off', !on);
+  const t=$('hud-toggle');
+  if(t) t.title = on ? 'Hide the board readout' : 'Show the board readout';
+  try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
+}
+$('hud-toggle').onclick=()=>setHudOpen($('board-hud').classList.contains('off'));
 $('plan-close').onclick=closePlanModal;
 $('plan-bg').onclick=closePlanModal;
 $('plan-addstage').onclick=()=>addPlanEntry('stage');
