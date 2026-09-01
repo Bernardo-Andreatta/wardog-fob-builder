@@ -65,37 +65,43 @@ export function ctxRow(label, icon, fn, opts){
 export function ctxPick(host, label, items, cur, onPick){
   ctxSub(host, label);
   const wrap=document.createElement('div'); wrap.className='ctx-pick';
-  const show=()=>{
+  let open=false;
+  const draw=()=>{
     wrap.innerHTML='';
     const it = cur===undefined ? null : items.find(x=>x.id===cur);
+    const row=document.createElement('div'); row.className='ctx-cur-row';
     const dot=document.createElement('span');
     dot.className='ctx-dot'+((it&&it.color)?'':' plain');
     if(it&&it.color) dot.style.background=it.color;
     const nm=document.createElement('span'); nm.className='ctx-cur';
     nm.textContent = cur===undefined ? 'Mixed' : (it?it.name:'Unassigned');
     nm.title=nm.textContent;
-    const pen=document.createElement('button'); pen.className='ctx-pen';
-    pen.innerHTML=CTX_IC.pen; pen.title='Change '+label.toLowerCase();
-    pen.onclick=ev=>{ ev.stopPropagation(); edit(); };
-    wrap.appendChild(dot); wrap.appendChild(nm); wrap.appendChild(pen);
+    const pen=document.createElement('button'); pen.className='ctx-pen'+(open?' on':'');
+    pen.innerHTML=CTX_IC.pen;
+    pen.title=(open?'Close the ':'Change the ')+label.toLowerCase();
+    pen.onclick=ev=>{ ev.stopPropagation(); open=!open; draw(); };
+    row.appendChild(dot); row.appendChild(nm); row.appendChild(pen);
+    wrap.appendChild(row);
+    if(!open) return;
+    // the list is the app's own, not the browser's: it carries each tag's colour
+    // and marks the one in force, which a native <select> cannot do
+    const list=document.createElement('div'); list.className='ctx-list';
+    items.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='ctx-opt'+(cur!==undefined && o.id===cur ? ' on' : '');
+      const d=document.createElement('span');
+      d.className='ctx-dot'+(o.color?'':' plain');
+      if(o.color) d.style.background=o.color;
+      const s=document.createElement('span'); s.className='ctx-optname'; s.textContent=o.name;
+      b.appendChild(d); b.appendChild(s);
+      b.onclick=ev=>{ ev.stopPropagation(); ctxClose(); onPick(o.id); };
+      list.appendChild(b);
+    });
+    wrap.appendChild(list);
+    ctxFit();
+    list.scrollIntoView({block:'nearest'});   // if the card itself had to scroll
   };
-  const edit=()=>{
-    wrap.innerHTML='';
-    const sel=document.createElement('select'); sel.className='ctx-sel';
-    if(cur===undefined){ const o=document.createElement('option');
-      o.value='-'; o.textContent='Mixed'; o.selected=true; sel.appendChild(o); }
-    items.forEach(it=>{ const o=document.createElement('option');
-      o.value = it.id==null ? '' : String(it.id); o.textContent=it.name;
-      if(cur!==undefined && it.id===cur) o.selected=true; sel.appendChild(o); });
-    sel.onclick=ev=>ev.stopPropagation();
-    sel.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Escape'){ ev.preventDefault(); show(); } };
-    sel.onchange=()=>{
-      if(sel.value==='-') return;                       // still "Mixed": nothing chosen
-      ctxClose(); onPick(sel.value===''?null:parseInt(sel.value,10));
-    };
-    wrap.appendChild(sel); sel.focus();
-  };
-  show(); host.appendChild(wrap);
+  draw(); host.appendChild(wrap);
 }
 export function ctxSelLabel(ps, ims, ts, ss){
   const n=ps.length+ims.length+ts.length+ss.length;
@@ -170,12 +176,18 @@ export function openCtx(e){
     el.appendChild(ctxRow('Deselect everything', CTX_IC.none, ()=>{
       clearSelection(); clearOverlaySel(); render(); updateStatus(); }, {off:!anySelected()}));
   }
-  // keep the whole card on screen, whichever corner it was opened in
   const rc=stage.getBoundingClientRect();
-  el.style.left='0px'; el.style.top='0px';
+  el.style.left=(e.clientX-rc.left)+'px';
+  el.style.top=(e.clientY-rc.top)+'px';
+  ctxFit();
+}
+// Keep the card on screen - on open, and again whenever a picker expands it,
+// since a list unfolding downwards would otherwise run off the bottom edge.
+export function ctxFit(){
+  const el=$('ctx'); if(!el || el.hidden) return;
   const bw=el.offsetWidth, bh=el.offsetHeight;
-  const x=Math.min(e.clientX-rc.left, stage.clientWidth-bw-8);
-  const y=Math.min(e.clientY-rc.top,  stage.clientHeight-bh-8);
+  const x=Math.min(parseFloat(el.style.left)||0, stage.clientWidth-bw-8);
+  const y=Math.min(parseFloat(el.style.top)||0, stage.clientHeight-bh-8);
   el.style.left=Math.max(8,x)+'px'; el.style.top=Math.max(8,y)+'px';
 }
 // any click outside, any Escape, any zoom closes it
