@@ -172,7 +172,13 @@
   .code-msg{font-family:var(--font-mono); font-size:11.5px; color:var(--good);}
   .code-msg.bad{color:var(--bad)}
   .file-acts{display:flex; gap:10px; flex-wrap:wrap;}
-  .file-acts .btn{padding:10px 14px;}
+  .file-acts .btn{padding:9px 13px; font-size:12.5px;}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#1a1710; font-weight:600;}
+  .btn.primary:hover{background:var(--accent); filter:brightness(1.08);}
+  .btn.primary svg{stroke:currentColor;}
+  .wide-btn{width:100%; justify-content:center; padding:12px 16px; font-size:14.5px;}
+  .file-sub{margin:18px 0 8px; font-family:var(--font-disp); text-transform:uppercase;
+    letter-spacing:.12em; font-size:10px; color:var(--muted); font-weight:600;}
 
   .drawopts{position:absolute; left:14px; top:14px; background:var(--panel); border:1px solid var(--line);
     border-radius:9px; padding:11px 13px; display:none; gap:12px; align-items:center;
@@ -566,8 +572,31 @@
 
   /* ---- multi-image export ---- */
   .modal-card.wide{width:min(640px,92vw);}
-  .exp-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px 22px;}
-  .exp-col h4{margin:0 0 8px; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
+  /* The sheet you are about to hand over is the thing worth looking at, so the
+     preview takes the room and the choices sit beside it as a list of the
+     actual pages - not categories that silently expand into pages. */
+  .exp-card{width:min(1060px,95vw); max-height:92vh; display:flex; flex-direction:column;}
+  .exp-body{display:grid; grid-template-columns:250px 1fr; gap:18px; flex:1; min-height:0;}
+  .exp-side{display:flex; flex-direction:column; gap:10px; min-height:0; overflow-y:auto; padding-right:4px;}
+  .exp-side h4{margin:4px 0 0;}
+  .exp-sheets{display:flex; flex-direction:column; border:1px solid var(--line);
+    border-radius:8px; overflow:hidden; background:var(--panel-2);}
+  .exp-sheet{display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px;
+    border:0; border-bottom:1px solid var(--line); background:none; color:var(--muted);
+    font-size:12px; text-align:left; cursor:pointer;}
+  .exp-sheet:last-child{border-bottom:none;}
+  .exp-sheet:hover{background:var(--panel); color:var(--ink);}
+  .exp-sheet.on{color:var(--ink);}
+  .exp-sheet.cur{background:var(--accent-soft); box-shadow:inset 2px 0 0 var(--accent);}
+  .exp-sheet input{flex:none; margin:0; accent-color:var(--accent);}
+  .exp-sheet .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .exp-sheet.off .nm{opacity:.5; text-decoration:line-through;}
+  .exp-more{border:1px solid var(--line); border-radius:8px; padding:6px 10px; background:var(--panel-2);}
+  .exp-more summary{cursor:pointer; font-family:var(--font-disp); text-transform:uppercase;
+    letter-spacing:.12em; font-size:10px; color:var(--accent); font-weight:600; padding:2px 0;}
+  .exp-more[open] summary{margin-bottom:6px;}
+  .exp-main{display:flex; flex-direction:column; min-height:0; gap:8px;}
+  .exp-side h4{margin:0 0 8px; font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
     font-size:11.5px; color:var(--accent); font-weight:600;}
   .exp-opt{display:flex; align-items:center; gap:8px; padding:3px 0; font-size:13px; cursor:pointer;}
   .exp-opt input{accent-color:var(--accent); width:15px; height:15px; flex:0 0 15px;}
@@ -583,23 +612,30 @@
   .exp-name-row input[type=text]{flex:1; min-width:0;}
   .exp-count{line-height:1.4}
   /* live preview: the options are abstract until you see the sheet they make */
-  .exp-preview{margin-top:16px; border-top:1px solid var(--line); padding-top:12px;}
-  .exp-prev-bar{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
-  .exp-prev-lab{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
-    font-size:10px; color:var(--accent); font-weight:600; white-space:nowrap;}
-  .exp-prev-bar select{flex:0 1 240px; min-width:0; background:var(--panel-2); color:var(--ink);
-    border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:12px;
-    font-family:var(--font-ui);}
-  .exp-prev-meta{margin-left:auto; font-family:var(--font-mono); font-size:10.5px;
-    color:var(--muted); white-space:nowrap;}
-  .exp-prev-box{display:flex; align-items:center; justify-content:center; padding:8px;
-    min-height:160px; background:var(--canvas-bg); border:1px solid var(--line);
-    border-radius:8px; overflow:hidden;}
-  .exp-prev-box canvas{max-width:100%; max-height:32vh; display:block;}
+  .exp-prev-bar{display:flex; align-items:center; gap:10px;}
+  .exp-prev-title{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
+    font-size:12px; color:var(--ink); font-weight:600; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  .exp-prev-meta{font-family:var(--font-mono); font-size:10.5px; color:var(--muted); white-space:nowrap;}
+  .exp-zoom{margin-left:auto; display:flex; gap:4px; flex:none;}
+  .exp-zoom button{min-width:26px; height:24px; padding:0 7px; border:1px solid var(--line);
+    border-radius:6px; background:var(--panel-2); color:var(--muted); font-size:12px;
+    font-family:var(--font-mono);}
+  .exp-zoom button:hover{border-color:var(--accent); color:var(--accent);}
+  .exp-prev-box{position:relative; flex:1; min-height:min(52vh,420px); background:var(--canvas-bg);
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; cursor:grab;
+    display:flex; align-items:center; justify-content:center;}
+  .exp-prev-box.panning{cursor:grabbing;}
+  .exp-prev-box canvas{position:absolute; left:50%; top:50%; transform-origin:center center;
+    image-rendering:auto; display:block;}
   .exp-prev-empty{font-family:var(--font-mono); font-size:11.5px; color:var(--muted);}
   .exp-foot{display:flex; align-items:center; gap:10px; margin-top:18px;}
   .exp-count{font-family:var(--font-mono); font-size:12px; color:var(--muted)}
-  @media (max-width:720px){ .exp-grid{grid-template-columns:1fr} }
+  @media (max-width:860px){
+    .exp-body{grid-template-columns:1fr; overflow-y:auto;}
+    .exp-side{overflow:visible;}
+    .exp-prev-box{min-height:300px;}
+  }
 
 </style>
 
@@ -824,53 +860,50 @@
 
   <div class="modal" id="exp-modal" hidden>
     <div class="modal-bg" id="exp-bg"></div>
-    <div class="modal-card wide" role="dialog" aria-label="Export images">
+    <div class="modal-card exp-card" role="dialog" aria-label="Export images">
       <button class="x" id="exp-close" title="Close">&times;</button>
       <h3>Export Schematics</h3>
-      <p class="code-lead">Each sheet is framed on the whole build, so they line up when you stack them or flip through them, and carries a block ruler and a legend for what it shows.</p>
-      <div class="exp-row exp-name-row">
-        <label for="exp-name">Build name</label>
-        <input type="text" id="exp-name" maxlength="48" placeholder="fob-build" spellcheck="false">
-      </div>
-      <div class="exp-grid">
-        <div class="exp-col">
-          <h4>Sheets</h4>
-          <label class="exp-opt"><input type="checkbox" id="exp-whole"><span>Whole build</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-stages-all"><span>All stages, colour-coded</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-stages-each"><span>One sheet per stage</span></label>
-          <label class="exp-opt sub"><input type="checkbox" id="exp-stages-cum"><span>Cumulative (stage 1&hellip;N)</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-builders-all"><span>All builders, colour-coded</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-builders-each"><span>One sheet per builder</span></label>
-          <label class="exp-opt" title="One page per hand-off: what a single builder puts down in a single stage. Only pairs that have work get a sheet"><input type="checkbox" id="exp-pairs"><span>One sheet per stage &amp; builder</span></label>
-          <label class="exp-opt" title="A page of its own: every structure used, drawn at the same scale as the map, named and counted"><input type="checkbox" id="exp-structs"><span>Structure key sheet</span></label>
-          <label class="exp-opt" title="One .zip holding every sheet in a named folder, plus a build-info.txt"><input type="checkbox" id="exp-zip"><span>Package as a .zip folder</span></label>
-        </div>
-        <div class="exp-col">
-          <h4>Sheet layout</h4>
-          <label class="exp-opt" title="Build name, what the sheet shows, and the stage / builder badge"><input type="checkbox" id="exp-header"><span>Title bar</span></label>
-          <label class="exp-opt" title="Dimension rulers ticked every block, numbered every 4"><input type="checkbox" id="exp-ruler"><span>Block ruler</span></label>
-          <label class="exp-opt" title="Swatches and piece counts for the stages / builders on this sheet"><input type="checkbox" id="exp-legend"><span>Legend</span></label>
-          <label class="exp-opt" title="Stage sheets also draw each piece's outline in its builder's colour"><input type="checkbox" id="exp-fill-builder"><span>Mark builders with an outline colour</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-ghost"><span>Ghost the pieces left out</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-grid"><span>Draw the grid</span></label>
-          <label class="exp-opt"><input type="checkbox" id="exp-notes"><span>Include drawings &amp; labels</span></label>
-          <div class="exp-row"><label for="exp-ppb">Quality</label>
-            <select id="exp-ppb">
-              <option value="40">Draft &middot; 40 px / block</option>
-              <option value="80">Standard &middot; 80 px / block</option>
-              <option value="120">High &middot; 120 px / block</option>
-              <option value="200">Max &middot; 200 px / block</option>
-            </select>
+      <div class="exp-body">
+        <div class="exp-side">
+          <div class="exp-row exp-name-row">
+            <label for="exp-name">Build name</label>
+            <input type="text" id="exp-name" maxlength="48" placeholder="fob-build" spellcheck="false">
           </div>
+          <h4>Sheets</h4>
+          <div class="exp-sheets" id="exp-sheets"></div>
+          <details class="exp-more" id="exp-more">
+            <summary>Sheet options</summary>
+            <label class="exp-opt" title="Build name, what the sheet shows, and the stage / builder badge"><input type="checkbox" id="exp-header"><span>Title bar</span></label>
+            <label class="exp-opt" title="Dimension rulers ticked every block, numbered every 4"><input type="checkbox" id="exp-ruler"><span>Block ruler</span></label>
+            <label class="exp-opt" title="Swatches and piece counts for the stages / builders on this sheet"><input type="checkbox" id="exp-legend"><span>Legend</span></label>
+            <label class="exp-opt" title="Stage sheets also draw each piece's outline in its builder's colour"><input type="checkbox" id="exp-fill-builder"><span>Mark builders with an outline colour</span></label>
+            <label class="exp-opt"><input type="checkbox" id="exp-ghost"><span>Ghost the pieces left out</span></label>
+            <label class="exp-opt"><input type="checkbox" id="exp-grid"><span>Draw the grid</span></label>
+            <label class="exp-opt"><input type="checkbox" id="exp-notes"><span>Include drawings &amp; labels</span></label>
+            <label class="exp-opt" title="A stage sheet also shows the stages before it, ghosted"><input type="checkbox" id="exp-stages-cum"><span>Stage sheets show the build-up</span></label>
+            <label class="exp-opt" title="One .zip holding every sheet in a named folder, plus a build-info.txt"><input type="checkbox" id="exp-zip"><span>Package as a .zip folder</span></label>
+            <div class="exp-row"><label for="exp-ppb">Quality</label>
+              <select id="exp-ppb">
+                <option value="40">Draft &middot; 40 px / block</option>
+                <option value="80">Standard &middot; 80 px / block</option>
+                <option value="120">High &middot; 120 px / block</option>
+                <option value="200">Max &middot; 200 px / block</option>
+              </select>
+            </div>
+          </details>
         </div>
-      </div>
-      <div class="exp-preview">
-        <div class="exp-prev-bar">
-          <span class="exp-prev-lab">Preview</span>
-          <select id="exp-prev-pick" title="Which sheet to preview"></select>
-          <span class="exp-prev-meta" id="exp-prev-meta"></span>
+        <div class="exp-main">
+          <div class="exp-prev-bar">
+            <span class="exp-prev-title" id="exp-prev-title">Preview</span>
+            <span class="exp-prev-meta" id="exp-prev-meta"></span>
+            <div class="exp-zoom">
+              <button id="exp-zoom-out" title="Zoom out">&minus;</button>
+              <button id="exp-zoom-fit" title="Fit the sheet">Fit</button>
+              <button id="exp-zoom-in" title="Zoom in">+</button>
+            </div>
+          </div>
+          <div class="exp-prev-box" id="exp-prev-box" title="Scroll to zoom &middot; drag to pan"></div>
         </div>
-        <div class="exp-prev-box" id="exp-prev-box"></div>
       </div>
       <div class="exp-foot">
         <button class="btn" id="exp-run"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>Export</span></button>
@@ -884,11 +917,12 @@
     <div class="modal-card" role="dialog" aria-label="Export / import file">
       <button class="x" id="file-close" title="Close">&times;</button>
       <h3>Export / Import</h3>
-      <p class="code-lead">Save your layout as a <code>.json</code> file (or a <code>.png</code> image), or load one from disk.</p>
+      <p class="code-lead">Schematic <b>images</b> are what you hand the crew. The <code>.json</code> is the working file &mdash; save it to carry on later, or load one from disk.</p>
+      <button class="btn primary wide-btn" id="file-png"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>Export schematic images</span></button>
+      <div class="file-sub">Working file</div>
       <div class="file-acts">
         <button class="btn" id="file-export"><svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h7M8 21v-7h8v7"/></svg><span>Export .json</span></button>
         <button class="btn" id="file-import"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M4 15v5h16v-5"/></svg><span>Import .json</span></button>
-        <button class="btn" id="file-png"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>Export image</span></button>
       </div>
     </div>
   </div>

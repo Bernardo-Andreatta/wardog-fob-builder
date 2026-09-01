@@ -14,12 +14,11 @@ import { flashToast, saveFile } from './topbar.js';
 // grid blocks - so the PNGs stack and flip cleanly. On top of the map each one
 // carries the context a builder needs on site: what they are looking at, how
 // big it is in blocks, and a legend for the stages / builders in front of them.
-export const EXP_FIELDS=[['whole','exp-whole'],['stagesAll','exp-stages-all'],['stagesEach','exp-stages-each'],
-  ['stagesCum','exp-stages-cum'],['buildersAll','exp-builders-all'],['buildersEach','exp-builders-each'],
-  ['fillBuilder','exp-fill-builder'],['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
-  ['pairsEach','exp-pairs'],
-  ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['structs','exp-structs'],
-  ['zip','exp-zip']];
+// Which sheets to make is a per-sheet choice now (see sheetOn); these are the
+// options that change how every sheet is drawn.
+export const EXP_FIELDS=[['stagesCum','exp-stages-cum'],['fillBuilder','exp-fill-builder'],
+  ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
+  ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['zip','exp-zip']];
 export function loadExpCfg(){
   try{ const o=JSON.parse(localStorage.getItem('wardog-fob-export')||'null');
     if(o&&typeof o==='object'){
@@ -53,40 +52,43 @@ export function usedPlan(kind){
   const shown=ST.pieces.filter(planVisible), key = kind==='stage'?'st':'bd';
   return (kind==='stage'?ST.stages:ST.builders).filter(e=>shown.some(p=>p[key]===e.id));
 }
-export function exportJobs(){
+// Every sheet this build could produce. The dialog lists these one by one, so
+// what you tick is a page you can see rather than a category that quietly
+// expands into five of them.
+export function exportCandidates(){
   const jobs=[], all=()=>true;
   const uS=usedPlan('stage'), uB=usedPlan('builder');
   // outline channel = builder, fill channel = stage; on a stage sheet the builder
   // outline is the optional second read
   const so = ST.expCfg.fillBuilder && uB.length ? 'builder' : null;
-  if(ST.expCfg.whole) jobs.push({file:'whole-build', title:'Whole build', inc:all, col:null});
-  if(ST.expCfg.stagesAll && uS.length) jobs.push({file:'all-stages', title:'All stages', inc:all, col:so, fill:'stage'});
-  if(ST.expCfg.stagesEach) uS.forEach(s=>{
+  jobs.push({file:'whole-build', group:'whole', title:'Whole build', inc:all, col:null});
+  if(uS.length) jobs.push({file:'all-stages', group:'stagesAll', title:'All stages', inc:all, col:so, fill:'stage'});
+  uS.forEach(s=>{
     const i=ST.stages.indexOf(s), cum=ST.expCfg.stagesCum;
     // Only ever one stage is drawn solid: the one the sheet is for. A cumulative
     // sheet is a build-up, so everything already standing from the earlier
     // stages sits behind it as a ghost - which is what makes the new work on
     // this sheet readable at a glance. (Drawing them solid too, as it used to,
     // made stage 1 and stage 2 indistinguishable on the stage 2 sheet.)
-    jobs.push({file:jobFile('stage',i,s.name),
+    jobs.push({file:jobFile('stage',i,s.name), group:'stage',
       title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
       inc:p=>p.st===s.id,
       rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
       note:(s.note||'').trim(),
       col:so, fill:'stage', badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
   });
-  if(ST.expCfg.buildersAll && uB.length) jobs.push({file:'all-builders', title:'All builders', inc:all, col:'builder'});
-  if(ST.expCfg.buildersEach) uB.forEach(b=>
-    jobs.push({file:jobFile('builder',ST.builders.indexOf(b),b.name), title:b.name,
+  if(uB.length) jobs.push({file:'all-builders', group:'buildersAll', title:'All builders', inc:all, col:'builder'});
+  uB.forEach(b=>
+    jobs.push({file:jobFile('builder',ST.builders.indexOf(b),b.name), group:'builder', title:b.name,
       inc:p=>p.bd===b.id, col:'builder', badge:{label:b.name, color:b.color}}));
   // One page per hand-off: "Stage 1 - Builder 2" is what a single builder is
   // asked to put down in a single stage, so only pairs with work get a sheet.
-  if(ST.expCfg.pairsEach){
+  {
     const seen=ST.pieces.filter(planVisible);
     uS.forEach(s=>{ const i=ST.stages.indexOf(s);
       ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
         if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
-        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1),
+        jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair',
           title:s.name+' · '+b.name,
           inc:p=>p.st===s.id && p.bd===b.id,
           note:(s.note||'').trim(), col:'builder', fill:'stage',
@@ -94,10 +96,22 @@ export function exportJobs(){
       });
     });
   }
-  if(ST.expCfg.structs && keyEntries().length)
-    jobs.push({file:'structure-key', title:'Structure key', kind:'key', inc:all});
+  if(keyEntries().length)
+    jobs.push({file:'structure-key', group:'key', title:'Structure key', kind:'key', inc:all});
   return jobs;
 }
+// A sheet the user has never touched follows its group's default, so adding a
+// stage adds its sheet without anyone going back to tick it.
+const GROUP_ON={whole:true, stagesAll:true, stage:true, buildersAll:true, builder:true, pair:false, key:false};
+export function sheetOn(j){
+  const pick=ST.expCfg.sheets||{};
+  return (j.file in pick) ? !!pick[j.file] : !!GROUP_ON[j.group];
+}
+export function setSheetOn(file, on){
+  if(!ST.expCfg.sheets) ST.expCfg.sheets={};
+  ST.expCfg.sheets[file]=!!on; saveExpCfg();
+}
+export function exportJobs(){ return exportCandidates().filter(sheetOn); }
 // bounds of everything on the board, snapped out to whole blocks (so the ruler
 // ticks land on grid lines) plus a one-block margin
 export function contentBounds(){
@@ -511,40 +525,85 @@ export async function runExport(){
 // The switches above are abstract until you see what they make, so the sheet
 // they add up to is drawn here as you tick them - at a coarse px-per-block,
 // since this only has to read, not print.
-const PREV_PPB=26;
-let prevPick='';
-export function updateExpPreview(){
-  const box=$('exp-prev-box'), pick=$('exp-prev-pick'), meta=$('exp-prev-meta');
-  if(!box||!pick) return;
-  const jobs=exportJobs(), B=contentBounds();
-  const names=jobs.map(j=>j.file);
-  if(names.indexOf(prevPick)<0) prevPick=names[0]||'';   // keep the chosen sheet while it lasts
-  pick.innerHTML='';
-  jobs.forEach(j=>{ const o=document.createElement('option');
-    o.value=j.file; o.textContent=j.title; o.selected=(j.file===prevPick); pick.appendChild(o); });
-  pick.disabled=!jobs.length;
-  box.innerHTML='';
-  const job=jobs.find(j=>j.file===prevPick);
-  if(!job || (!B && job.kind!=='key')){
-    if(meta) meta.textContent='';
+// The sheet is drawn at the real px-per-block wherever that stays a sane canvas
+// to hold live, so zooming in shows the detail the exported PNG will have.
+const PREV_MAX_PX=2.2e6;
+let prevPick='', pz={z:1,x:0,y:0};
+function prevCanvas(){ const b=$('exp-prev-box'); return b?b.querySelector('canvas'):null; }
+function applyPZ(){
+  const c=prevCanvas(); if(!c) return;
+  c.style.transform='translate(calc(-50% + '+pz.x+'px), calc(-50% + '+pz.y+'px)) scale('+pz.z+')';
+  const z=$('exp-zoom-fit'); if(z) z.textContent=Math.round(pz.z*100)+'%';
+}
+// The box has no size for a frame or two after the dialog is unhidden, and
+// fitting against a zero-width box lands on a nonsense (even negative) zoom, so
+// wait for a real layout before measuring.
+function fitPreview(tries){
+  const box=$('exp-prev-box'), c=prevCanvas(); if(!box||!c) return;
+  const w=box.clientWidth-16, h=box.clientHeight-16;
+  const n=typeof tries==='number'?tries:0;
+  if((w<40||h<40) && n<12){ requestAnimationFrame(()=>fitPreview(n+1)); return; }
+  pz.z=Math.max(0.05, Math.min(w/c.width, h/c.height, 1));
+  pz.x=0; pz.y=0; applyPZ();
+}
+function zoomBy(k, ax, ay){
+  const c=prevCanvas(); if(!c) return;
+  const nz=Math.max(0.05, Math.min(6, pz.z*k));
+  const r=nz/pz.z;
+  pz.x = ax - r*(ax - pz.x); pz.y = ay - r*(ay - pz.y); pz.z = nz;
+  applyPZ();
+}
+// which sheets exist, which are ticked, and which one is on screen
+export function renderSheetList(){
+  const host=$('exp-sheets'); if(!host) return;
+  const cands=exportCandidates();
+  if(cands.every(j=>j.file!==prevPick)) prevPick = (cands.find(sheetOn)||cands[0]||{}).file||'';
+  host.innerHTML='';
+  cands.forEach(j=>{
+    const on=sheetOn(j);
+    const row=document.createElement('div');
+    row.className='exp-sheet'+(on?' on':' off')+(j.file===prevPick?' cur':'');
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=on;
+    cb.title=on?'Leave this sheet out':'Include this sheet';
+    cb.onclick=ev=>{ ev.stopPropagation(); setSheetOn(j.file, cb.checked); updateExpCount(); };
+    const nm=document.createElement('span'); nm.className='nm'; nm.textContent=j.title; nm.title=j.title;
+    row.appendChild(cb); row.appendChild(nm);
+    row.onclick=()=>{ prevPick=j.file; renderSheetList(); updateExpPreview(); };
+    host.appendChild(row);
+  });
+  if(!cands.length){
     const d=document.createElement('div'); d.className='exp-prev-empty';
-    d.textContent = jobs.length ? 'Nothing on the board yet' : 'No sheets selected';
+    d.style.padding='8px'; d.textContent='Nothing on the board yet'; host.appendChild(d);
+  }
+}
+export function updateExpPreview(){
+  const box=$('exp-prev-box'), meta=$('exp-prev-meta'), ttl=$('exp-prev-title');
+  if(!box) return;
+  const cands=exportCandidates(), B=contentBounds();
+  const job=cands.find(j=>j.file===prevPick);
+  box.innerHTML='';
+  if(!job || (!B && job.kind!=='key')){
+    if(meta) meta.textContent=''; if(ttl) ttl.textContent='Preview';
+    const d=document.createElement('div'); d.className='exp-prev-empty';
+    d.textContent = cands.length ? 'Nothing on the board yet' : 'No sheets to show';
     box.appendChild(d); return;
   }
+  if(ttl) ttl.textContent=job.title;
   const realPpb=ST.expCfg.ppb;
   try{
-    // reserve the same legend depth the batch would, so the preview frames match
-    ST.expLegRows=jobs.reduce((m,j)=>Math.max(m, expSheet(j,B).rows.length), 0);
+    // reserve the same legend depth the batch would, so previews frame like the sheets
+    ST.expLegRows=exportJobs().reduce((m,j)=>Math.max(m, expSheet(j,B).rows.length), 0);
     const S=expSheet(job,B), sc=expScaleFor(S.w,S.h);
-    if(meta) meta.textContent=(jobs.indexOf(job)+1)+' of '+jobs.length+' · '
-      +Math.round(S.w*sc)+'x'+Math.round(S.h*sc)+' px';
-    ST.expCfg.ppb=PREV_PPB;
+    if(meta) meta.textContent=Math.round(S.w*sc)+'x'+Math.round(S.h*sc)+' px';
+    const cap=GRID*Math.sqrt(PREV_MAX_PX/Math.max(1,S.w*S.h));
+    ST.expCfg.ppb=Math.max(8, Math.min(realPpb, cap));
     box.appendChild(renderExport(job, B));
   } catch(e){
     box.innerHTML='';
     const d=document.createElement('div'); d.className='exp-prev-empty';
     d.textContent='Preview unavailable'; box.appendChild(d);
   } finally { ST.expCfg.ppb=realPpb; ST.expLegRows=0; }
+  fitPreview();
 }
 export function updateExpCount(){
   const el=$('exp-count'); if(!el) return;
@@ -561,6 +620,7 @@ export function updateExpCount(){
   }
   if(ST.expCfg.zip && jobs.length>1) txt += ' · '+buildName()+'.zip';
   el.textContent=txt;
+  renderSheetList();
   updateExpPreview();
 }
 export function openExp(){ ensurePlan(); expToForm(); $('exp-modal').hidden=false; }
@@ -570,5 +630,26 @@ $('exp-bg').onclick=closeExp;
 $('exp-modal').addEventListener('change', expFromForm);
 $('exp-name').addEventListener('input', expFromForm);
 $('exp-name').addEventListener('keydown', e=>e.stopPropagation());
-$('exp-prev-pick').onchange=e=>{ prevPick=e.target.value; updateExpPreview(); };
+$('exp-zoom-in').onclick=()=>zoomBy(1.25,0,0);
+$('exp-zoom-out').onclick=()=>zoomBy(1/1.25,0,0);
+$('exp-zoom-fit').onclick=()=>fitPreview();
+$('exp-prev-box').addEventListener('wheel', e=>{
+  if(!prevCanvas()) return;
+  e.preventDefault();
+  const r=e.currentTarget.getBoundingClientRect();
+  zoomBy(e.deltaY<0?1.12:1/1.12, e.clientX-r.left-r.width/2, e.clientY-r.top-r.height/2);
+}, {passive:false});
+$('exp-prev-box').addEventListener('pointerdown', e=>{
+  const box=e.currentTarget; if(!prevCanvas()) return;
+  box.classList.add('panning');
+  const sx=e.clientX-pz.x, sy=e.clientY-pz.y;
+  try{ box.setPointerCapture(e.pointerId); }catch(_){}
+  const move=ev=>{ pz.x=ev.clientX-sx; pz.y=ev.clientY-sy; applyPZ(); };
+  const up=()=>{ box.classList.remove('panning');
+    box.removeEventListener('pointermove', move); box.removeEventListener('pointerup', up);
+    box.removeEventListener('pointercancel', up); };
+  box.addEventListener('pointermove', move);
+  box.addEventListener('pointerup', up);
+  box.addEventListener('pointercancel', up);
+});
 $('exp-run').onclick=runExport;
