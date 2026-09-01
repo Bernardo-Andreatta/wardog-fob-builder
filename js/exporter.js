@@ -4,7 +4,7 @@ import { $, GRID, ctx } from './dom.js';
 import { DRAWERS, drawPiece, roundRect } from './drawers.js';
 import { LAYER_OFF, _hx, drawLayer, layerColor, layerOff, lowCounts, lowStyle, maskPiece, masksBelow, maxLayer, mixCol, pieceLayer, shortwallCells, swRank } from './floors.js';
 import { drawText, textBox } from './overlays.js';
-import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, planVisible, stageIndex, stageOf, tagInk } from './plan.js';
+import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, stageIndex, stageOf, tagInk } from './plan.js';
 import { cssVar } from './render.js';
 import { noteTrackpad } from './pointer.js';
 import { ST } from './state.js';
@@ -53,7 +53,7 @@ export function buildName(){ return slug(ST.expCfg.name) || 'fob-build'; }
 // a tag nothing was built under would only ever render an empty sheet, so it is
 // dropped from the batch (and takes its "all stages / all builders" sheet with it)
 export function usedPlan(kind){
-  const shown=ST.pieces.filter(planVisible), key = kind==='stage'?'st':'bd';
+  const shown=ST.pieces, key = kind==='stage'?'st':'bd';
   return (kind==='stage'?ST.stages:ST.builders).filter(e=>shown.some(p=>p[key]===e.id));
 }
 // Every sheet this build could produce. The dialog lists these one by one, so
@@ -88,7 +88,7 @@ export function exportCandidates(){
   // One page per hand-off: "Stage 1 - Builder 2" is what a single builder is
   // asked to put down in a single stage, so only pairs with work get a sheet.
   {
-    const seen=ST.pieces.filter(planVisible);
+    const seen=ST.pieces;
     uS.forEach(s=>{ const i=ST.stages.indexOf(s);
       ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
         if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
@@ -170,7 +170,7 @@ const KEY_GAP=GRID*0.55, KEY_TEXT=GRID*3.6, KEY_MAXH=GRID*22;
 // still drawn at true scale; only the spacing around it grows.
 const KEY_ART_H={gate:2.5, door:1.4};
 export function keyEntries(){
-  const shown=ST.pieces.filter(planVisible), seen=new Map();
+  const shown=ST.pieces, seen=new Map();
   shown.forEach(p=>{ if(CATALOG[p.type]) seen.set(p.type, (seen.get(p.type)||0)+1); });
   return Object.keys(CATALOG).filter(t=>seen.has(t))
     .map(t=>({type:t, n:seen.get(t), c:CATALOG[t]}));
@@ -306,7 +306,7 @@ export function expSheet(job, B){
   if(job.kind==='key'){ const K=keyLayout();
     return {key:K, focus:[], rest:[], rows:[], head:K.head, rule:0, legH:0,
             w:K.w, h:K.h, ox:0, oy:0}; }
-  const shown=ST.pieces.filter(planVisible);
+  const shown=ST.pieces;
   const focus=shown.filter(job.inc);
   const chips=ST.expCfg.legend ? legendChips(job, focus) : [];
   // a stage note adds a line under the title, so the header grows to hold it

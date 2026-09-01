@@ -474,13 +474,6 @@
   .ph-row{display:flex; align-items:center; gap:6px; width:100%; padding:3px 4px;
     border:1px solid transparent; border-radius:5px; background:none; cursor:pointer;
     color:var(--muted); font-size:11px; text-align:left;}
-  /* a hidden tag reads the same on the board readout as it does in the editor */
-  .ph-row.off .ph-name, .ph-stage.off .ph-name{opacity:.45; text-decoration:line-through;}
-  .ph-eye{flex:none; width:16px; height:16px; padding:0; border:none; background:none;
-    color:var(--muted); display:flex; align-items:center; justify-content:center;}
-  .ph-eye:hover{color:var(--ink);}
-  .ph-eye svg{width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8;
-    stroke-linecap:round; stroke-linejoin:round;}
   .ph-row:hover{border-color:var(--line); color:var(--ink);}
   .ph-row.on{border-color:var(--accent); color:var(--accent);}
   /* lit = this builder's work in this stage is spotlit on the board */
@@ -553,8 +546,6 @@
     .ph-sublab{display:none;}                  /* the count carries the row */
     .ph-total{margin-left:0;}
     .ph-row{padding:6px 4px; gap:7px; font-size:12px;}
-    .ph-eye{width:26px; height:26px;}
-    .ph-eye svg{width:15px; height:15px;}
     .ph-dot{width:9px; height:9px;}
     .ph-n{font-size:11px;}
     .hud-chip{width:38px; height:38px;}
@@ -651,7 +642,6 @@
   .pl-row:hover{background:var(--panel)}
   .pl-row.active{background:var(--accent-soft); box-shadow:inset 3px 0 0 var(--accent);}
   .pl-row.active .pl-name{color:var(--accent); font-weight:600;}
-  .pl-row.off .pl-name{opacity:.45; text-decoration:line-through;}
   .pl-dot{width:14px; height:14px; flex:0 0 14px; padding:0; border:1px solid var(--line); border-radius:4px;
     background:none; cursor:pointer; appearance:none; -webkit-appearance:none;}
   .pl-dot::-webkit-color-swatch-wrapper{padding:0}

@@ -33,8 +33,6 @@ export const ST = {
   builderUid: 1,
   curStageId: undefined,                    // tags stamped onto newly placed pieces (undefined = never chosen)
   curBuilderId: undefined,
-  showNoStage: true,                        // filter rows for untagged pieces
-  showNoBuilder: true,
   hlBuilder: undefined,                     // builder in focus (undefined = General, every hand)
   layers: [],                               // {id,name,visible,opacity,locked}
   curLayerId: 0,                            // primary active layer new items land on

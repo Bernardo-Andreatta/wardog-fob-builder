@@ -68,8 +68,6 @@ $('btn-clear').onclick=()=>{
   ST.pieces=[]; ST.strokes=[]; ST.images=[]; ST.texts=[]; clearSelection(); clearOverlaySel();
   ST.layers=[]; ST.selLayers=[]; ST.curLayerId=0; ST.curLayer=0; ensureLayers();   // back to a single Ground layer
   $('layer-val').textContent='G'; renderLayerPanel();
-  ST.showNoStage=true; ST.showNoBuilder=true;                 // the plan itself survives a Clear
-  ST.stages.concat(ST.builders).forEach(e=>{ e.visible=true; });
   renderPlanPanel();
   snapshot(); render(); updateStatus();
 };

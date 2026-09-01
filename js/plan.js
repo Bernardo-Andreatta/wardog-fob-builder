@@ -38,7 +38,6 @@ export function tagInk(col, bg){
 export function ensurePlan(){
   if(!Array.isArray(ST.stages)) ST.stages=[];
   if(!Array.isArray(ST.builders)) ST.builders=[];
-  ST.stages.concat(ST.builders).forEach(e=>{ if(e.visible==null) e.visible=true; });
   ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
   ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
   // both tags start (and stay) General until the user picks one, so a piece is
@@ -53,11 +52,6 @@ export function builderById(id){ return ST.builders.find(b=>b.id===id)||null; }
 export function stageOf(p){ return p.st==null?null:stageById(p.st); }
 export function builderOf(p){ return p.bd==null?null:builderById(p.bd); }
 export function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s):-1; }
-// a piece shows on the board only while both of its tags are unfiltered
-export function planVisible(p){
-  const s=stageOf(p), b=builderOf(p);
-  return (s?s.visible:ST.showNoStage) && (b?b.visible:ST.showNoBuilder);
-}
 // Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
@@ -118,20 +112,16 @@ export function planFill(g, p, bg){
 export function planCount(kind, id){
   return ST.pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
 }
-// filtering a tag off the board must not leave its pieces selected
-export function pruneSelToPlan(){
-  ST.selected=ST.selected.filter(id=>{ const p=ST.pieces.find(x=>x.id===id); return p && planVisible(p); });
-}
 // share codes and .json files carry their own tag tables: adopt them under fresh
 // local ids and hand back a mapper from a stored tag (index or old id) to the new id
 export function adoptPlan(o){
   const S=(o.stages||[]).map((s,i)=>({id:ST.stageUid++, name:s.name||('Stage '+(i+1)),
-    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], visible:true, _old:s.id}));
+    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], _old:s.id}));
   const B=(o.builders||[]).map((b,i)=>({id:ST.builderUid++, name:b.name||('Builder '+(i+1)),
-    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], visible:true, _old:b.id}));
+    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], _old:b.id}));
   if(S.length) ST.stages=S;
   if(B.length) ST.builders=B;
-  ST.curStageId=undefined; ST.curBuilderId=undefined; ST.showNoStage=true; ST.showNoBuilder=true;
+  ST.curStageId=undefined; ST.curBuilderId=undefined;
   ensurePlan();
   return (kind,p)=>{
     const arr = kind==='stage'?ST.stages:ST.builders;

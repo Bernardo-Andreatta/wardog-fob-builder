@@ -63,8 +63,6 @@ export function init(){
       if(saved.builderUid) ST.builderUid=saved.builderUid;
       if('curStageId' in saved) ST.curStageId=saved.curStageId;
       if('curBuilderId' in saved) ST.curBuilderId=saved.curBuilderId;
-      if('showNoStage' in saved) ST.showNoStage=saved.showNoStage;
-      if('showNoBuilder' in saved) ST.showNoBuilder=saved.showNoBuilder;
       ST.uid=saved.uid||Math.max(1,...ST.pieces.map(p=>p.id||0),...ST.images.map(i=>i.id||0),...ST.texts.map(t=>t.id||0),0)+1; }
   }catch(e){}
   migrateLayers(); ensurePlan(); loadExpCfg();

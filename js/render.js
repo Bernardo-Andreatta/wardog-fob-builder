@@ -6,7 +6,7 @@ import { LAYER_OFF, drawLayer, fobArea, fobList, layerColor, layerOff, lowCounts
 import { screenToWorld, snapCenter } from './geometry.js';
 import { ensureLayers, itemLayerId, zOrder } from './layers.js';
 import { drawImageSel, drawStrokeSel, drawText, drawTextSel } from './overlays.js';
-import { planColorOf, planFill, planVisible } from './plan.js';
+import { planColorOf, planFill, planLit } from './plan.js';
 import { selectedPieces } from './selection.js';
 import { stampInstance } from './stamps.js';
 import { ST } from './state.js';
@@ -88,11 +88,16 @@ export function drawLayerContent(g, L, colInk, bg, maxL){
     for(let i=1;i<s.pts.length;i++) g.lineTo(s.pts[i].x,s.pts[i].y);
     if(s.pts.length===1) g.lineTo(s.pts[0].x+0.1,s.pts[0].y);
     g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round'; g.lineCap='round'; g.globalAlpha=1; g.stroke(); }
-  const lp=ST.pieces.filter(p=>itemLayerId(p)===lid && planVisible(p));
+  const lp=ST.pieces.filter(p=>itemLayerId(p)===lid);
   const lc=lowCounts(lp), swSet=shortwallCells(lp), lowDrawn=new Set();
+  // Ghosted work goes down before the stage in view, the way the export sheets
+  // already lay it down. Otherwise a piece from a later stage, drawn after its
+  // neighbour, paints its own near-paper body over the shared edge and the wall
+  // in focus reads as cut open where the two meet.
   const sorted=lp.map((p,i)=>({p,i}))
     .filter(o=>pieceLayer(o.p)<=ST.curLayer)
-    .sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .sort((a,b)=> (planLit(a.p)?1:0)-(planLit(b.p)?1:0)
+      || (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
     .map(o=>o.p);
   for(const p of sorted){ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
     const st=lowStyle(p, layerColor(planColorOf(p,colInk,bg),bg,dl,maxL), bg, lc, swSet, lowDrawn);

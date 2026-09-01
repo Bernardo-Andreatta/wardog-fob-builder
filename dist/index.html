@@ -474,13 +474,6 @@
   .ph-row{display:flex; align-items:center; gap:6px; width:100%; padding:3px 4px;
     border:1px solid transparent; border-radius:5px; background:none; cursor:pointer;
     color:var(--muted); font-size:11px; text-align:left;}
-  /* a hidden tag reads the same on the board readout as it does in the editor */
-  .ph-row.off .ph-name, .ph-stage.off .ph-name{opacity:.45; text-decoration:line-through;}
-  .ph-eye{flex:none; width:16px; height:16px; padding:0; border:none; background:none;
-    color:var(--muted); display:flex; align-items:center; justify-content:center;}
-  .ph-eye:hover{color:var(--ink);}
-  .ph-eye svg{width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8;
-    stroke-linecap:round; stroke-linejoin:round;}
   .ph-row:hover{border-color:var(--line); color:var(--ink);}
   .ph-row.on{border-color:var(--accent); color:var(--accent);}
   /* lit = this builder's work in this stage is spotlit on the board */
@@ -553,8 +546,6 @@
     .ph-sublab{display:none;}                  /* the count carries the row */
     .ph-total{margin-left:0;}
     .ph-row{padding:6px 4px; gap:7px; font-size:12px;}
-    .ph-eye{width:26px; height:26px;}
-    .ph-eye svg{width:15px; height:15px;}
     .ph-dot{width:9px; height:9px;}
     .ph-n{font-size:11px;}
     .hud-chip{width:38px; height:38px;}
@@ -651,7 +642,6 @@
   .pl-row:hover{background:var(--panel)}
   .pl-row.active{background:var(--accent-soft); box-shadow:inset 3px 0 0 var(--accent);}
   .pl-row.active .pl-name{color:var(--accent); font-weight:600;}
-  .pl-row.off .pl-name{opacity:.45; text-decoration:line-through;}
   .pl-dot{width:14px; height:14px; flex:0 0 14px; padding:0; border:1px solid var(--line); border-radius:4px;
     background:none; cursor:pointer; appearance:none; -webkit-appearance:none;}
   .pl-dot::-webkit-color-swatch-wrapper{padding:0}
@@ -1477,8 +1467,6 @@ const ST = {
   builderUid: 1,
   curStageId: undefined,                    // tags stamped onto newly placed pieces (undefined = never chosen)
   curBuilderId: undefined,
-  showNoStage: true,                        // filter rows for untagged pieces
-  showNoBuilder: true,
   hlBuilder: undefined,                     // builder in focus (undefined = General, every hand)
   layers: [],                               // {id,name,visible,opacity,locked}
   curLayerId: 0,                            // primary active layer new items land on
@@ -1667,147 +1655,6 @@ function migrateLayers(){
 }
 function allItems(){ return [...ST.pieces,...ST.images,...ST.texts,...ST.strokes]; }
 
-/* ===== plan.js ===== */
-// ---------------- build plan: stages + builders -------------------------------
-// A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
-// a builder answers *who* puts it there. Both are plain tags on a piece (p.st /
-// p.bd), independent of floors and layers, so they survive move / rotate /
-// duplicate and can be re-tagged long after the build is finished.
-// Mid-tone hues on purpose: a pale tag vanishes on the sand-coloured board and
-// a dark one vanishes on the near-black one. tagInk() then nudges whichever is
-// drawn away from the canvas it lands on.
-const PLAN_COLORS=['#c8871a','#2f7fc4','#4e9b3f','#c8402f','#8a5cd6','#149c92','#cc4f86','#4a6fc4'];
-// Stages and builders share the one palette, and a new tag takes the first
-// colour nobody is using - starting from an offset picked per session, so two
-// builds do not both open with the same yellow, then the same blue.
-let colSeed = Math.floor(Math.random()*PLAN_COLORS.length);
-function nextPlanColor(){
-  const used=new Set(ST.stages.concat(ST.builders).map(e=>(e.color||'').toLowerCase()));
-  for(let i=0;i<PLAN_COLORS.length;i++){
-    const c=PLAN_COLORS[(colSeed+i)%PLAN_COLORS.length];
-    if(!used.has(c.toLowerCase())){ colSeed=(colSeed+i+1)%PLAN_COLORS.length; return c; }
-  }
-  const c=PLAN_COLORS[colSeed%PLAN_COLORS.length];
-  colSeed=(colSeed+1)%PLAN_COLORS.length; return c;
-}
-// A tag's stored colour is its identity and never changes; what gets *drawn* is
-// pushed away from the board underneath it, so the same tag stays legible in
-// both themes instead of washing out on one of them.
-function lightBg(bg){ const c=_hx(bg); return (c[0]*0.299+c[1]*0.587+c[2]*0.114) > 140; }
-function tagInk(col, bg){
-  return lightBg(bg) ? mixCol(col,'#241d10',0.28) : mixCol(col,'#fbf7ea',0.22);
-}
-// A build starts with no plan at all - no stages, no builders. Naming them is
-// the crew's call, and pieces stay General until someone does, so nothing on
-// the board is ever tagged with a name nobody chose.
-function ensurePlan(){
-  if(!Array.isArray(ST.stages)) ST.stages=[];
-  if(!Array.isArray(ST.builders)) ST.builders=[];
-  ST.stages.concat(ST.builders).forEach(e=>{ if(e.visible==null) e.visible=true; });
-  ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
-  ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
-  // both tags start (and stay) General until the user picks one, so a piece is
-  // never silently stamped with a stage / builder nobody chose
-  if(ST.curStageId===undefined) ST.curStageId = null;
-  if(ST.curBuilderId===undefined) ST.curBuilderId = null;
-  if(ST.curStageId!=null && !stageById(ST.curStageId)) ST.curStageId = null;
-  if(ST.curBuilderId!=null && !builderById(ST.curBuilderId)) ST.curBuilderId = null;
-}
-function stageById(id){ return ST.stages.find(s=>s.id===id)||null; }
-function builderById(id){ return ST.builders.find(b=>b.id===id)||null; }
-function stageOf(p){ return p.st==null?null:stageById(p.st); }
-function builderOf(p){ return p.bd==null?null:builderById(p.bd); }
-function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s):-1; }
-// a piece shows on the board only while both of its tags are unfiltered
-function planVisible(p){
-  const s=stageOf(p), b=builderOf(p);
-  return (s?s.visible:ST.showNoStage) && (b?b.visible:ST.showNoBuilder);
-}
-// Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
-// says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
-// paints the stage on as a wash; untagged pieces stay ink, dimmed.
-function planColorOf(p, ink, bg){
-  // General is nobody in particular: with no builder in view there is no crew
-  // to pick out, so the outlines drop back to plain ink instead of showing the
-  // whole roster's colours at once
-  const b = ST.hlBuilder===undefined ? null : builderOf(p);
-  let col = b ? tagInk(b.color, bg) : ink;
-  if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
-  return col;
-}
-// The board shows one stage at a time: what carries it reads normally, each
-// piece in its builder's colour, and the other stages drop back without leaving
-// the board. Pick a builder inside the stage and only their work stays up.
-//
-// General is the exception at both ends. Selecting it is not "show me the
-// untagged", it is "show me everything" - and a piece left on General belongs
-// to no stage in particular, so it stands in every stage's view rather than
-// being ghosted out of the one you are working in.
-function planLit(p){
-  const cur = ST.curStageId==null ? null : ST.curStageId;
-  const st  = p.st==null ? null : p.st;
-  if(cur!==null && st!==null && st!==cur) return false;
-  if(ST.hlBuilder===undefined) return true;     // General builder: every hand
-  const bd = p.bd==null ? null : p.bd;
-  return bd===null || bd===ST.hlBuilder;        // General work stands alongside
-}
-
-// The fill channel. The outline says *who* (builder); this one says *when*: a
-// translucent wash plus a hatch whose angle belongs to that stage, so the two
-// dimensions read at the same time - and the hatch still separates stages in
-// greyscale or for anyone who can't split the colours apart.
-const HATCH_ANGLES=[Math.PI/4, -Math.PI/4, 0, Math.PI/2, Math.PI/8, -Math.PI/8, 3*Math.PI/8, -3*Math.PI/8];
-function drawPlanFill(g, p, col, idx){
-  const c=CATALOG[p.type]; if(!c) return;
-  const w=c.w*GRID, h=c.h*GRID, r=(p.rot||0)*Math.PI/180;
-  const n=HATCH_ANGLES.length, ang=HATCH_ANGLES[((idx%n)+n)%n];
-  g.save();
-  g.translate(p.x,p.y); g.rotate(r);
-  g.beginPath(); g.rect(-w/2,-h/2,w,h); g.clip();
-  g.globalAlpha=0.14; g.fillStyle=col; g.fillRect(-w/2,-h/2,w,h);
-  g.rotate(ang-r);                       // hatch angle is absolute, not per-piece
-  const R=Math.hypot(w,h)/2+GRID/4, step=GRID/3.2;
-  g.globalAlpha=0.42; g.strokeStyle=col; g.lineWidth=1.5; g.lineCap='butt';
-  g.beginPath();
-  for(let d=-R; d<=R; d+=step){ g.moveTo(-R,d); g.lineTo(R,d); }
-  g.stroke();
-  g.restore();
-}
-// the board's own fill pass (export builds its own from the job's fill channel)
-function planFill(g, p, bg){
-  if(!planLit(p)) return;                       // a ghosted piece carries no hatch
-  if(ST.curStageId==null) return;               // General: no stage in view, no wash
-  const s=stageOf(p); if(!s) return;
-  drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
-}
-function planCount(kind, id){
-  return ST.pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
-}
-// filtering a tag off the board must not leave its pieces selected
-function pruneSelToPlan(){
-  ST.selected=ST.selected.filter(id=>{ const p=ST.pieces.find(x=>x.id===id); return p && planVisible(p); });
-}
-// share codes and .json files carry their own tag tables: adopt them under fresh
-// local ids and hand back a mapper from a stored tag (index or old id) to the new id
-function adoptPlan(o){
-  const S=(o.stages||[]).map((s,i)=>({id:ST.stageUid++, name:s.name||('Stage '+(i+1)),
-    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], visible:true, _old:s.id}));
-  const B=(o.builders||[]).map((b,i)=>({id:ST.builderUid++, name:b.name||('Builder '+(i+1)),
-    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], visible:true, _old:b.id}));
-  if(S.length) ST.stages=S;
-  if(B.length) ST.builders=B;
-  ST.curStageId=undefined; ST.curBuilderId=undefined; ST.showNoStage=true; ST.showNoBuilder=true;
-  ensurePlan();
-  return (kind,p)=>{
-    const arr = kind==='stage'?ST.stages:ST.builders;
-    const idx = kind==='stage'?p._s:p._b, old = kind==='stage'?p.st:p.bd;
-    if(idx){ const e=arr[idx-1]; return e?e.id:null; }          // v3 code: 1-based index
-    if(old!=null){ const e=arr.find(x=>x._old===old); return e?e.id:null; }   // .json: old id
-    return null;
-  };
-}
-function cleanPlan(){ ST.stages.concat(ST.builders).forEach(e=>{ delete e._old; }); }
-
 /* ===== geometry.js ===== */
 // ---------------- geometry
 function snapVal(v){ return ST.snapOn ? Math.round(v/SNAP)*SNAP : v; }
@@ -1840,7 +1687,6 @@ function hitPiece(wx,wy){
   for(const {p} of order){
     if(pieceLayer(p)>ST.curLayer) continue;   // floors above the view are untouchable
     if(!layerEditable(p)) continue;        // hidden/locked layers aren't selectable
-    if(!planVisible(p)) continue;          // filtered-out stages/builders aren't either
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
@@ -1987,14 +1833,143 @@ function duplicateSel(){ const items=selectedPieces(); if(!items.length)return;
   startPlacing(st);
 }
 
+/* ===== plan.js ===== */
+// ---------------- build plan: stages + builders -------------------------------
+// A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
+// a builder answers *who* puts it there. Both are plain tags on a piece (p.st /
+// p.bd), independent of floors and layers, so they survive move / rotate /
+// duplicate and can be re-tagged long after the build is finished.
+// Mid-tone hues on purpose: a pale tag vanishes on the sand-coloured board and
+// a dark one vanishes on the near-black one. tagInk() then nudges whichever is
+// drawn away from the canvas it lands on.
+const PLAN_COLORS=['#c8871a','#2f7fc4','#4e9b3f','#c8402f','#8a5cd6','#149c92','#cc4f86','#4a6fc4'];
+// Stages and builders share the one palette, and a new tag takes the first
+// colour nobody is using - starting from an offset picked per session, so two
+// builds do not both open with the same yellow, then the same blue.
+let colSeed = Math.floor(Math.random()*PLAN_COLORS.length);
+function nextPlanColor(){
+  const used=new Set(ST.stages.concat(ST.builders).map(e=>(e.color||'').toLowerCase()));
+  for(let i=0;i<PLAN_COLORS.length;i++){
+    const c=PLAN_COLORS[(colSeed+i)%PLAN_COLORS.length];
+    if(!used.has(c.toLowerCase())){ colSeed=(colSeed+i+1)%PLAN_COLORS.length; return c; }
+  }
+  const c=PLAN_COLORS[colSeed%PLAN_COLORS.length];
+  colSeed=(colSeed+1)%PLAN_COLORS.length; return c;
+}
+// A tag's stored colour is its identity and never changes; what gets *drawn* is
+// pushed away from the board underneath it, so the same tag stays legible in
+// both themes instead of washing out on one of them.
+function lightBg(bg){ const c=_hx(bg); return (c[0]*0.299+c[1]*0.587+c[2]*0.114) > 140; }
+function tagInk(col, bg){
+  return lightBg(bg) ? mixCol(col,'#241d10',0.28) : mixCol(col,'#fbf7ea',0.22);
+}
+// A build starts with no plan at all - no stages, no builders. Naming them is
+// the crew's call, and pieces stay General until someone does, so nothing on
+// the board is ever tagged with a name nobody chose.
+function ensurePlan(){
+  if(!Array.isArray(ST.stages)) ST.stages=[];
+  if(!Array.isArray(ST.builders)) ST.builders=[];
+  ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
+  ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
+  // both tags start (and stay) General until the user picks one, so a piece is
+  // never silently stamped with a stage / builder nobody chose
+  if(ST.curStageId===undefined) ST.curStageId = null;
+  if(ST.curBuilderId===undefined) ST.curBuilderId = null;
+  if(ST.curStageId!=null && !stageById(ST.curStageId)) ST.curStageId = null;
+  if(ST.curBuilderId!=null && !builderById(ST.curBuilderId)) ST.curBuilderId = null;
+}
+function stageById(id){ return ST.stages.find(s=>s.id===id)||null; }
+function builderById(id){ return ST.builders.find(b=>b.id===id)||null; }
+function stageOf(p){ return p.st==null?null:stageById(p.st); }
+function builderOf(p){ return p.bd==null?null:builderById(p.bd); }
+function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s):-1; }
+// Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
+// says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
+// paints the stage on as a wash; untagged pieces stay ink, dimmed.
+function planColorOf(p, ink, bg){
+  // General is nobody in particular: with no builder in view there is no crew
+  // to pick out, so the outlines drop back to plain ink instead of showing the
+  // whole roster's colours at once
+  const b = ST.hlBuilder===undefined ? null : builderOf(p);
+  let col = b ? tagInk(b.color, bg) : ink;
+  if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
+  return col;
+}
+// The board shows one stage at a time: what carries it reads normally, each
+// piece in its builder's colour, and the other stages drop back without leaving
+// the board. Pick a builder inside the stage and only their work stays up.
+//
+// General is the exception at both ends. Selecting it is not "show me the
+// untagged", it is "show me everything" - and a piece left on General belongs
+// to no stage in particular, so it stands in every stage's view rather than
+// being ghosted out of the one you are working in.
+function planLit(p){
+  const cur = ST.curStageId==null ? null : ST.curStageId;
+  const st  = p.st==null ? null : p.st;
+  if(cur!==null && st!==null && st!==cur) return false;
+  if(ST.hlBuilder===undefined) return true;     // General builder: every hand
+  const bd = p.bd==null ? null : p.bd;
+  return bd===null || bd===ST.hlBuilder;        // General work stands alongside
+}
+
+// The fill channel. The outline says *who* (builder); this one says *when*: a
+// translucent wash plus a hatch whose angle belongs to that stage, so the two
+// dimensions read at the same time - and the hatch still separates stages in
+// greyscale or for anyone who can't split the colours apart.
+const HATCH_ANGLES=[Math.PI/4, -Math.PI/4, 0, Math.PI/2, Math.PI/8, -Math.PI/8, 3*Math.PI/8, -3*Math.PI/8];
+function drawPlanFill(g, p, col, idx){
+  const c=CATALOG[p.type]; if(!c) return;
+  const w=c.w*GRID, h=c.h*GRID, r=(p.rot||0)*Math.PI/180;
+  const n=HATCH_ANGLES.length, ang=HATCH_ANGLES[((idx%n)+n)%n];
+  g.save();
+  g.translate(p.x,p.y); g.rotate(r);
+  g.beginPath(); g.rect(-w/2,-h/2,w,h); g.clip();
+  g.globalAlpha=0.14; g.fillStyle=col; g.fillRect(-w/2,-h/2,w,h);
+  g.rotate(ang-r);                       // hatch angle is absolute, not per-piece
+  const R=Math.hypot(w,h)/2+GRID/4, step=GRID/3.2;
+  g.globalAlpha=0.42; g.strokeStyle=col; g.lineWidth=1.5; g.lineCap='butt';
+  g.beginPath();
+  for(let d=-R; d<=R; d+=step){ g.moveTo(-R,d); g.lineTo(R,d); }
+  g.stroke();
+  g.restore();
+}
+// the board's own fill pass (export builds its own from the job's fill channel)
+function planFill(g, p, bg){
+  if(!planLit(p)) return;                       // a ghosted piece carries no hatch
+  if(ST.curStageId==null) return;               // General: no stage in view, no wash
+  const s=stageOf(p); if(!s) return;
+  drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
+}
+function planCount(kind, id){
+  return ST.pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
+}
+// share codes and .json files carry their own tag tables: adopt them under fresh
+// local ids and hand back a mapper from a stored tag (index or old id) to the new id
+function adoptPlan(o){
+  const S=(o.stages||[]).map((s,i)=>({id:ST.stageUid++, name:s.name||('Stage '+(i+1)),
+    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], _old:s.id}));
+  const B=(o.builders||[]).map((b,i)=>({id:ST.builderUid++, name:b.name||('Builder '+(i+1)),
+    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], _old:b.id}));
+  if(S.length) ST.stages=S;
+  if(B.length) ST.builders=B;
+  ST.curStageId=undefined; ST.curBuilderId=undefined;
+  ensurePlan();
+  return (kind,p)=>{
+    const arr = kind==='stage'?ST.stages:ST.builders;
+    const idx = kind==='stage'?p._s:p._b, old = kind==='stage'?p.st:p.bd;
+    if(idx){ const e=arr[idx-1]; return e?e.id:null; }          // v3 code: 1-based index
+    if(old!=null){ const e=arr.find(x=>x._old===old); return e?e.id:null; }   // .json: old id
+    return null;
+  };
+}
+function cleanPlan(){ ST.stages.concat(ST.builders).forEach(e=>{ delete e._old; }); }
+
 /* ===== planpanel.js ===== */
 // ---------------- Build Plan panel (stage + builder tags) --------------------
 const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 function planEntries(kind){ return kind==='stage'?ST.stages:ST.builders; }
 function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; }
 function setPlanActive(kind, id){
-  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  if(E) E.visible=true;                 // never leave the active tag filtered out
   if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
   else ST.curBuilderId=id;
   render(); renderPlanPanel(); persist();
@@ -2002,8 +1977,8 @@ function setPlanActive(kind, id){
 function addPlanEntry(kind){
   const arr=planEntries(kind), col=nextPlanColor();
   const E = kind==='stage'
-    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
-    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
+    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col}
+    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col};
   arr.push(E); setPlanActive(kind, E.id); snapshot();
 }
 // removing a tag untags its pieces; it never deletes anything from the board
@@ -2060,9 +2035,8 @@ function planRename(E, nameEl){
 // decisions, so they live on the board readout instead.
 function buildPlanRow(kind, E){
   const id = E?E.id:null;
-  const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
   const row=document.createElement('div');
-  row.className='pl-row'+(vis?'':' off');
+  row.className='pl-row';
   row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
   row.title = E ? 'Double-click the name to rename'
                 : 'Work with no '+kind+' of its own - it shows in every view';
@@ -2148,17 +2122,6 @@ const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
 // desktop card, where the readout folds up into its own header.
 const PH_CLOSE='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 let hudSig=null;
-// show / hide everything carrying one tag. The General bucket has no entry
-// of its own, so its switch lives on the plan flags instead.
-function tagVisible(kind, E){
-  return E ? E.visible!==false : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
-}
-function toggleTag(kind, E){
-  const vis=tagVisible(kind,E);
-  if(E) E.visible=!vis;
-  else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
-  pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist();
-}
 function hudBuilders(){
   return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
     .concat([{id:null, name:'General', color:null}]);
@@ -2189,8 +2152,6 @@ function renderPlanHud(){
     const scount=document.createElement('span'); scount.className='ph-n ph-scount';
     head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
-    head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
-      ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
       touch?'Close the board readout':'Hide the board readout', ()=>setHudOpen(false)));
@@ -2220,10 +2181,7 @@ function renderPlanHud(){
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
       const c=document.createElement('span'); c.className='ph-n';
-      const eye=document.createElement('button'); eye.className='ph-eye';
-      eye.onclick=ev=>{ ev.stopPropagation();
-        toggleTag('builder', r.id==null?null:builderById(r.id)); };
-      b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(eye);
+      b.appendChild(d); b.appendChild(t); b.appendChild(c);
       b.onclick=()=>{
         // General is the "every hand" row, so picking it drops the filter
         // rather than narrowing the board down to untagged work
@@ -2237,15 +2195,6 @@ function renderPlanHud(){
   const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
   if(prev) prev.disabled = stageAt(-1)===undefined;
   if(next) next.disabled = stageAt(1)===undefined;
-  const paintEye=(btn, vis)=>{
-    if(!btn || btn.dataset.on===String(vis)) return;
-    btn.dataset.on=String(vis); btn.innerHTML=vis?EYE_ON:EYE_OFF;
-    btn.title = vis?'Hide these on the board':'Show these again';
-  };
-  const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
-  const sVis = tagVisible('stage', curS);
-  paintEye(el.querySelector('.ph-seye'), sVis);
-  const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
                              : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
@@ -2272,9 +2221,6 @@ function renderPlanHud(){
     if(c && c.textContent!==v) c.textContent=v;
     row.classList.toggle('on', curB===id);
     row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
-    const bVis=tagVisible('builder', id==null?null:builderById(id));
-    paintEye(row.querySelector('.ph-eye'), bVis);
-    row.classList.toggle('off', !bVis);
   });
 }
 function updatePlanApply(){
@@ -2826,7 +2772,7 @@ cv.addEventListener('pointermove', e=>{
       const bx1=Math.max(ST.marquee.x0,ST.marquee.x1), by1=Math.max(ST.marquee.y0,ST.marquee.y1);
       const B=ST.marquee.base;
       ST.selected=B.pieces.slice();
-      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p) || !planVisible(p)) return; const b=pieceAABB(p);
+      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p)) return; const b=pieceAABB(p);
         if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) ST.selected.push(p.id); });
       ST.selTexts=B.texts.slice();
       ST.texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !ST.selTexts.includes(t.id)) ST.selTexts.push(t.id); });
@@ -3092,7 +3038,7 @@ function buildName(){ return slug(ST.expCfg.name) || 'fob-build'; }
 // a tag nothing was built under would only ever render an empty sheet, so it is
 // dropped from the batch (and takes its "all stages / all builders" sheet with it)
 function usedPlan(kind){
-  const shown=ST.pieces.filter(planVisible), key = kind==='stage'?'st':'bd';
+  const shown=ST.pieces, key = kind==='stage'?'st':'bd';
   return (kind==='stage'?ST.stages:ST.builders).filter(e=>shown.some(p=>p[key]===e.id));
 }
 // Every sheet this build could produce. The dialog lists these one by one, so
@@ -3127,7 +3073,7 @@ function exportCandidates(){
   // One page per hand-off: "Stage 1 - Builder 2" is what a single builder is
   // asked to put down in a single stage, so only pairs with work get a sheet.
   {
-    const seen=ST.pieces.filter(planVisible);
+    const seen=ST.pieces;
     uS.forEach(s=>{ const i=ST.stages.indexOf(s);
       ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
         if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
@@ -3209,7 +3155,7 @@ const KEY_GAP=GRID*0.55, KEY_TEXT=GRID*3.6, KEY_MAXH=GRID*22;
 // still drawn at true scale; only the spacing around it grows.
 const KEY_ART_H={gate:2.5, door:1.4};
 function keyEntries(){
-  const shown=ST.pieces.filter(planVisible), seen=new Map();
+  const shown=ST.pieces, seen=new Map();
   shown.forEach(p=>{ if(CATALOG[p.type]) seen.set(p.type, (seen.get(p.type)||0)+1); });
   return Object.keys(CATALOG).filter(t=>seen.has(t))
     .map(t=>({type:t, n:seen.get(t), c:CATALOG[t]}));
@@ -3345,7 +3291,7 @@ function expSheet(job, B){
   if(job.kind==='key'){ const K=keyLayout();
     return {key:K, focus:[], rest:[], rows:[], head:K.head, rule:0, legH:0,
             w:K.w, h:K.h, ox:0, oy:0}; }
-  const shown=ST.pieces.filter(planVisible);
+  const shown=ST.pieces;
   const focus=shown.filter(job.inc);
   const chips=ST.expCfg.legend ? legendChips(job, focus) : [];
   // a stage note adds a line under the title, so the header grows to hold it
@@ -3958,8 +3904,6 @@ $('btn-clear').onclick=()=>{
   ST.pieces=[]; ST.strokes=[]; ST.images=[]; ST.texts=[]; clearSelection(); clearOverlaySel();
   ST.layers=[]; ST.selLayers=[]; ST.curLayerId=0; ST.curLayer=0; ensureLayers();   // back to a single Ground layer
   $('layer-val').textContent='G'; renderLayerPanel();
-  ST.showNoStage=true; ST.showNoBuilder=true;                 // the plan itself survives a Clear
-  ST.stages.concat(ST.builders).forEach(e=>{ e.visible=true; });
   renderPlanPanel();
   snapshot(); render(); updateStatus();
 };
@@ -4427,7 +4371,7 @@ function restore(s){ const o=JSON.parse(s); ST.pieces=o.pieces; ST.strokes=o.str
   ST.selTexts = ST.selTexts.filter(id=>ST.texts.some(t=>t.id===id));
   ST.selStrokes = ST.selStrokes.filter(s=>ST.strokes.indexOf(s)!==-1);
   render(); updateStatus(); persist(); }
-function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,view:ST.view,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,curLayer:ST.curLayer,layerUid:ST.layerUid,groupUid:ST.groupUid,higherFloorOnTop:ST.higherFloorOnTop,stages:ST.stages,builders:ST.builders,stageUid:ST.stageUid,builderUid:ST.builderUid,curStageId:ST.curStageId,curBuilderId:ST.curBuilderId,showNoStage:ST.showNoStage,showNoBuilder:ST.showNoBuilder})); }catch(e){} }
+function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,view:ST.view,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,curLayer:ST.curLayer,layerUid:ST.layerUid,groupUid:ST.groupUid,higherFloorOnTop:ST.higherFloorOnTop,stages:ST.stages,builders:ST.builders,stageUid:ST.stageUid,builderUid:ST.builderUid,curStageId:ST.curStageId,curBuilderId:ST.curBuilderId})); }catch(e){} }
 
 /* ===== groups.js ===== */
 // ---------------- groups (persistent binding of placed items) -----------------
@@ -4810,11 +4754,16 @@ function drawLayerContent(g, L, colInk, bg, maxL){
     for(let i=1;i<s.pts.length;i++) g.lineTo(s.pts[i].x,s.pts[i].y);
     if(s.pts.length===1) g.lineTo(s.pts[0].x+0.1,s.pts[0].y);
     g.strokeStyle=s.color; g.lineWidth=s.width; g.lineJoin='round'; g.lineCap='round'; g.globalAlpha=1; g.stroke(); }
-  const lp=ST.pieces.filter(p=>itemLayerId(p)===lid && planVisible(p));
+  const lp=ST.pieces.filter(p=>itemLayerId(p)===lid);
   const lc=lowCounts(lp), swSet=shortwallCells(lp), lowDrawn=new Set();
+  // Ghosted work goes down before the stage in view, the way the export sheets
+  // already lay it down. Otherwise a piece from a later stage, drawn after its
+  // neighbour, paints its own near-paper body over the shared edge and the wall
+  // in focus reads as cut open where the two meet.
   const sorted=lp.map((p,i)=>({p,i}))
     .filter(o=>pieceLayer(o.p)<=ST.curLayer)
-    .sort((a,b)=> (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
+    .sort((a,b)=> (planLit(a.p)?1:0)-(planLit(b.p)?1:0)
+      || (drawLayer(a.p)-drawLayer(b.p)) || (swRank(a.p)-swRank(b.p)) || (a.i-b.i))
     .map(o=>o.p);
   for(const p of sorted){ const l=pieceLayer(p), dl=drawLayer(p), off=layerOff(l);
     const st=lowStyle(p, layerColor(planColorOf(p,colInk,bg),bg,dl,maxL), bg, lc, swSet, lowDrawn);
@@ -5003,8 +4952,6 @@ function init(){
       if(saved.builderUid) ST.builderUid=saved.builderUid;
       if('curStageId' in saved) ST.curStageId=saved.curStageId;
       if('curBuilderId' in saved) ST.curBuilderId=saved.curBuilderId;
-      if('showNoStage' in saved) ST.showNoStage=saved.showNoStage;
-      if('showNoBuilder' in saved) ST.showNoBuilder=saved.showNoBuilder;
       ST.uid=saved.uid||Math.max(1,...ST.pieces.map(p=>p.id||0),...ST.images.map(i=>i.id||0),...ST.texts.map(t=>t.id||0),0)+1; }
   }catch(e){}
   migrateLayers(); ensurePlan(); loadExpCfg();

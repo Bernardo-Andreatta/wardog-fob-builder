@@ -9,7 +9,6 @@ import { persist, snapshot } from './history.js';
 import { layerEditable } from './layers.js';
 import { ensureFloorLayer } from './layerspanel.js';
 import { addText, hitImage, hitStroke, hitText, openTextEditor, strokeBBox, textBox } from './overlays.js';
-import { planVisible } from './plan.js';
 import { pieceAABB, render } from './render.js';
 import { clearOverlaySel, clearSelection, isSel, selectedPieces } from './selection.js';
 import { stampInstance } from './stamps.js';
@@ -233,7 +232,7 @@ cv.addEventListener('pointermove', e=>{
       const bx1=Math.max(ST.marquee.x0,ST.marquee.x1), by1=Math.max(ST.marquee.y0,ST.marquee.y1);
       const B=ST.marquee.base;
       ST.selected=B.pieces.slice();
-      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p) || !planVisible(p)) return; const b=pieceAABB(p);
+      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p)) return; const b=pieceAABB(p);
         if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) ST.selected.push(p.id); });
       ST.selTexts=B.texts.slice();
       ST.texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !ST.selTexts.includes(t.id)) ST.selTexts.push(t.id); });

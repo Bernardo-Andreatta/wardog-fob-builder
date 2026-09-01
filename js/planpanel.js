@@ -2,8 +2,8 @@ import { $, isCoarse, stage } from './dom.js';
 import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { layerById } from './layers.js';
-import { EYE_OFF, EYE_ON, renderLayerPanel } from './layerspanel.js';
-import { builderById, ensurePlan, nextPlanColor, planCount, pruneSelToPlan, stageById } from './plan.js';
+import { renderLayerPanel } from './layerspanel.js';
+import { builderById, ensurePlan, nextPlanColor, planCount, stageById } from './plan.js';
 import { render } from './render.js';
 import { selectedPieces } from './selection.js';
 import { ST } from './state.js';
@@ -15,8 +15,6 @@ export const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></sv
 export function planEntries(kind){ return kind==='stage'?ST.stages:ST.builders; }
 export function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; }
 export function setPlanActive(kind, id){
-  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  if(E) E.visible=true;                 // never leave the active tag filtered out
   if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
   else ST.curBuilderId=id;
   render(); renderPlanPanel(); persist();
@@ -24,8 +22,8 @@ export function setPlanActive(kind, id){
 export function addPlanEntry(kind){
   const arr=planEntries(kind), col=nextPlanColor();
   const E = kind==='stage'
-    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
-    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
+    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col}
+    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col};
   arr.push(E); setPlanActive(kind, E.id); snapshot();
 }
 // removing a tag untags its pieces; it never deletes anything from the board
@@ -82,9 +80,8 @@ export function planRename(E, nameEl){
 // decisions, so they live on the board readout instead.
 export function buildPlanRow(kind, E){
   const id = E?E.id:null;
-  const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
   const row=document.createElement('div');
-  row.className='pl-row'+(vis?'':' off');
+  row.className='pl-row';
   row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
   row.title = E ? 'Double-click the name to rename'
                 : 'Work with no '+kind+' of its own - it shows in every view';
@@ -170,17 +167,6 @@ const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
 // desktop card, where the readout folds up into its own header.
 const PH_CLOSE='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 let hudSig=null;
-// show / hide everything carrying one tag. The General bucket has no entry
-// of its own, so its switch lives on the plan flags instead.
-function tagVisible(kind, E){
-  return E ? E.visible!==false : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
-}
-function toggleTag(kind, E){
-  const vis=tagVisible(kind,E);
-  if(E) E.visible=!vis;
-  else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
-  pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist();
-}
 function hudBuilders(){
   return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
     .concat([{id:null, name:'General', color:null}]);
@@ -211,8 +197,6 @@ export function renderPlanHud(){
     const scount=document.createElement('span'); scount.className='ph-n ph-scount';
     head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
-    head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
-      ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
       touch?'Close the board readout':'Hide the board readout', ()=>setHudOpen(false)));
@@ -242,10 +226,7 @@ export function renderPlanHud(){
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
       const c=document.createElement('span'); c.className='ph-n';
-      const eye=document.createElement('button'); eye.className='ph-eye';
-      eye.onclick=ev=>{ ev.stopPropagation();
-        toggleTag('builder', r.id==null?null:builderById(r.id)); };
-      b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(eye);
+      b.appendChild(d); b.appendChild(t); b.appendChild(c);
       b.onclick=()=>{
         // General is the "every hand" row, so picking it drops the filter
         // rather than narrowing the board down to untagged work
@@ -259,15 +240,6 @@ export function renderPlanHud(){
   const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
   if(prev) prev.disabled = stageAt(-1)===undefined;
   if(next) next.disabled = stageAt(1)===undefined;
-  const paintEye=(btn, vis)=>{
-    if(!btn || btn.dataset.on===String(vis)) return;
-    btn.dataset.on=String(vis); btn.innerHTML=vis?EYE_ON:EYE_OFF;
-    btn.title = vis?'Hide these on the board':'Show these again';
-  };
-  const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
-  const sVis = tagVisible('stage', curS);
-  paintEye(el.querySelector('.ph-seye'), sVis);
-  const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
                              : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
@@ -294,9 +266,6 @@ export function renderPlanHud(){
     if(c && c.textContent!==v) c.textContent=v;
     row.classList.toggle('on', curB===id);
     row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
-    const bVis=tagVisible('builder', id==null?null:builderById(id));
-    paintEye(row.querySelector('.ph-eye'), bVis);
-    row.classList.toggle('off', !bVis);
   });
 }
 export function updatePlanApply(){
