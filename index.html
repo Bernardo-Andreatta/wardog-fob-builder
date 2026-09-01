@@ -492,7 +492,10 @@
        the board. Rows get taller, the buttons get real hit areas, and the
        chrome around them tightens to pay for it. (These have to live after the
        base rules - same specificity, later wins.) */
-    .plan-hud{min-width:0; padding:5px 5px 6px; gap:1px;}
+    /* five 25px controls, the dot and a name that holds 64px do not fit the
+       210px the desktop card is capped at - the fold button was being clipped
+       off the right edge. The phone card is allowed to be wider. */
+    .plan-hud{min-width:0; max-width:min(78vw,252px); padding:5px 5px 6px; gap:1px;}
     .ph-stage{gap:3px; padding:1px 1px 5px; margin-bottom:2px;}
     /* five controls plus the name is a lot for a phone's width; the name holds
        its ground and the buttons give way, rather than the name truncating */
