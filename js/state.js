@@ -35,7 +35,7 @@ export const ST = {
   curBuilderId: undefined,
   showNoStage: true,                        // filter rows for untagged pieces
   showNoBuilder: true,
-  hlBuilder: undefined,                     // spotlit builder (null = Unassigned, undefined = off)
+  hlBuilder: undefined,                     // builder in focus (undefined = General, every hand)
   layers: [],                               // {id,name,visible,opacity,locked}
   curLayerId: 0,                            // primary active layer new items land on
   selLayers: [],                            // active layer set (panel multi-select); canvas Select only touches these

@@ -33,7 +33,7 @@ export function tagInk(col, bg){
   return lightBg(bg) ? mixCol(col,'#241d10',0.28) : mixCol(col,'#fbf7ea',0.22);
 }
 // A build starts with no plan at all - no stages, no builders. Naming them is
-// the crew's call, and pieces stay Unassigned until someone does, so nothing on
+// the crew's call, and pieces stay General until someone does, so nothing on
 // the board is ever tagged with a name nobody chose.
 export function ensurePlan(){
   if(!Array.isArray(ST.stages)) ST.stages=[];
@@ -41,7 +41,7 @@ export function ensurePlan(){
   ST.stages.concat(ST.builders).forEach(e=>{ if(e.visible==null) e.visible=true; });
   ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
   ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
-  // both tags start (and stay) Unassigned until the user picks one, so a piece is
+  // both tags start (and stay) General until the user picks one, so a piece is
   // never silently stamped with a stage / builder nobody chose
   if(ST.curStageId===undefined) ST.curStageId = null;
   if(ST.curBuilderId===undefined) ST.curBuilderId = null;
@@ -67,14 +67,21 @@ export function planColorOf(p, ink, bg){
   if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
   return col;
 }
-// The board shows one stage at a time. Everything tagged with the stage being
-// built reads normally - each piece in its builder's colour - and every other
-// stage drops back without leaving the board, so the rest still gives context.
-// Pick a builder inside the stage and only their work stays up.
+// The board shows one stage at a time: what carries it reads normally, each
+// piece in its builder's colour, and the other stages drop back without leaving
+// the board. Pick a builder inside the stage and only their work stays up.
+//
+// General is the exception at both ends. Selecting it is not "show me the
+// untagged", it is "show me everything" - and a piece left on General belongs
+// to no stage in particular, so it stands in every stage's view rather than
+// being ghosted out of the one you are working in.
 export function planLit(p){
-  if((p.st==null?null:p.st) !== (ST.curStageId==null?null:ST.curStageId)) return false;
-  if(ST.hlBuilder===undefined) return true;     // the whole stage, all builders
-  return (p.bd==null?null:p.bd) === ST.hlBuilder;
+  const cur = ST.curStageId==null ? null : ST.curStageId;
+  const st  = p.st==null ? null : p.st;
+  if(cur!==null && st!==null && st!==cur) return false;
+  if(ST.hlBuilder===undefined) return true;     // General builder: every hand
+  const bd = p.bd==null ? null : p.bd;
+  return bd===null || bd===ST.hlBuilder;        // General work stands alongside
 }
 
 // The fill channel. The outline says *who* (builder); this one says *when*: a

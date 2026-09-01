@@ -149,7 +149,7 @@ export function legendChips(job, focus){
     arr.forEach((e,i)=>{ const n=count(p=>p[key]===e.id);
       if(n){ any=true; chips.push({label:e.name, color:e.color, n:n, hatch:hatched?i:null}); } });
     if(kind===subject && any){ const u=count(p=>p[key]==null);
-      if(u) chips.push({label:'Unassigned', color:null, n:u}); }
+      if(u) chips.push({label:'General', color:null, n:u}); }
   };
   if(job.col) add(job.col, false);              // outline swatch
   if(job.fill) add(job.fill, true);             // hatched swatch
@@ -474,10 +474,10 @@ export function buildManifest(jobs, B, files){
   L.push('Rendered  : '+ST.expCfg.ppb+' px per block');
   L.push('');
   L.push('STAGES'); L.push(tally(ST.stages, p=>p.st)||'  (none)');
-  const us=ST.pieces.filter(p=>p.st==null).length; if(us) L.push('  Unassigned - '+us+(us===1?' piece':' pieces'));
+  const us=ST.pieces.filter(p=>p.st==null).length; if(us) L.push('  General - '+us+(us===1?' piece':' pieces'));
   L.push('');
   L.push('BUILDERS'); L.push(tally(ST.builders, p=>p.bd)||'  (none)');
-  const ub=ST.pieces.filter(p=>p.bd==null).length; if(ub) L.push('  Unassigned - '+ub+(ub===1?' piece':' pieces'));
+  const ub=ST.pieces.filter(p=>p.bd==null).length; if(ub) L.push('  General - '+ub+(ub===1?' piece':' pieces'));
   L.push('');
   L.push('SHEETS');
   files.forEach(f=>L.push('  '+f));

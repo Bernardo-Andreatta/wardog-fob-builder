@@ -44,7 +44,7 @@ export function setPlanOnSel(kind, id){
   if(!items.length){ flashToast('Select some pieces first'); return; }
   items.forEach(p=>{ if(kind==='stage') p.st=id; else p.bd=id; });
   const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'Unassigned'));
+  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'General'));
   snapshot(); render(); renderPlanPanel();
 }
 // the one value shared by every item, or undefined when they disagree
@@ -76,7 +76,7 @@ export function planRename(E, nameEl){
   inp.onblur=()=>finish(true);
   nameEl.replaceWith(inp); inp.focus(); inp.select();
 }
-// E === null builds the "Unassigned" bucket row (filterable, not editable)
+// E === null builds the "General" bucket row (filterable, not editable)
 // The modal is configuration only: it adds, renames, recolours and removes
 // tags. Which stage and builder are *active*, and which are hidden, are board
 // decisions, so they live on the board readout instead.
@@ -87,7 +87,7 @@ export function buildPlanRow(kind, E){
   row.className='pl-row'+(vis?'':' off');
   row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
   row.title = E ? 'Double-click the name to rename'
-                : 'Pieces with no '+kind+' tag yet';
+                : 'Work with no '+kind+' of its own - it shows in every view';
   let dot;
   if(E){
     dot=document.createElement('input'); dot.type='color'; dot.className='pl-dot'; dot.value=E.color;
@@ -97,7 +97,7 @@ export function buildPlanRow(kind, E){
     dot.onchange=()=>{ E.color=dot.value; snapshot(); render(); };
   } else { dot=document.createElement('span'); dot.className='pl-dot plain'; }
   const name=document.createElement('span'); name.className='pl-name';
-  name.textContent = E ? E.name : 'Unassigned';
+  name.textContent = E ? E.name : 'General';
   if(E && E.note) name.title=E.note;
   if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
   const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
@@ -119,7 +119,7 @@ export function buildPlanRow(kind, E){
   }
   if(E){
     const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
-    x.title='Remove this tag (its pieces become unassigned)';
+    x.title='Remove this tag (its pieces fall back to General)';
     x.onclick=ev=>{ ev.stopPropagation(); delPlanEntry(kind, E.id); };
     row.appendChild(x);
   }
@@ -143,8 +143,8 @@ export function openPlanModal(){
   m.hidden=false; renderPlanPanel();
 }
 export function closePlanModal(){ const m=$('plan-modal'); if(m) m.hidden=true; }
-// stage stepper: Unassigned sits at the head of the cycle, since it is a real
-// bucket pieces can be in, and the ends clamp so the order stays readable
+// stage stepper: General sits at the head of the cycle - it is where a piece
+// with no stage lives, and selecting it shows the whole build
 function stageCycle(){ return [null].concat(ST.stages.map(s=>s.id)); }
 function stageAt(dir){
   const cyc=stageCycle(), i=cyc.indexOf(ST.curStageId==null?null:ST.curStageId);
@@ -166,7 +166,7 @@ const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
 const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
 const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
 let hudSig=null;
-// show / hide everything carrying one tag. The Unassigned bucket has no entry
+// show / hide everything carrying one tag. The General bucket has no entry
 // of its own, so its switch lives on the plan flags instead.
 function tagVisible(kind, E){
   return E ? E.visible!==false : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
@@ -179,7 +179,7 @@ function toggleTag(kind, E){
 }
 function hudBuilders(){
   return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
-    .concat([{id:null, name:'Unassigned', color:null}]);
+    .concat([{id:null, name:'General', color:null}]);
 }
 export function renderPlanHud(){
   const el=$('plan-hud'); if(!el) return;
@@ -200,7 +200,7 @@ export function renderPlanHud(){
     const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
     if(S) dot.style.background=S.color;
     const nm=document.createElement('span'); nm.className='ph-name';
-    nm.textContent = S?S.name:'Unassigned';
+    nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
     head.appendChild(dot); head.appendChild(nm);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
@@ -211,7 +211,9 @@ export function renderPlanHud(){
     el.appendChild(head);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
-    lab.textContent='In this stage';
+    // General is the whole build, so counting "in this stage" there would read 0
+    // while the board plainly shows everything
+    lab.textContent = S ? 'In this stage' : 'On the board';
     const tot=document.createElement('span'); tot.className='ph-n ph-total';
     sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
     rows.forEach(r=>{
@@ -227,7 +229,9 @@ export function renderPlanHud(){
         toggleTag('builder', r.id==null?null:builderById(r.id)); };
       b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(eye);
       b.onclick=()=>{
-        ST.hlBuilder = (ST.hlBuilder===r.id) ? undefined : r.id;
+        // General is the "every hand" row, so picking it drops the filter
+        // rather than narrowing the board down to untagged work
+        ST.hlBuilder = (r.id==null || ST.hlBuilder===r.id) ? undefined : r.id;
         setPlanActive('builder', r.id);
       };
       el.appendChild(b);
@@ -246,7 +250,8 @@ export function renderPlanHud(){
   paintEye(el.querySelector('.ph-seye'), sVis);
   const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
   const cur = ST.curStageId==null ? null : ST.curStageId;
-  const inStage = ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
+  const inStage = cur===null ? ST.pieces.slice()
+                             : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
   const tot=el.querySelector('.ph-total');
   if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
     if(tot.textContent!==v) tot.textContent=v; }
@@ -257,7 +262,7 @@ export function renderPlanHud(){
     const c = row.querySelector('.ph-n');
     if(c && c.textContent!==v) c.textContent=v;
     row.classList.toggle('on', curB===id);
-    row.classList.toggle('lit', ST.hlBuilder!==undefined && ST.hlBuilder===id);
+    row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
     const bVis=tagVisible('builder', id==null?null:builderById(id));
     paintEye(row.querySelector('.ph-eye'), bVis);
     row.classList.toggle('off', !bVis);

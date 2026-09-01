@@ -806,11 +806,12 @@
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
         <div class="k">Board readout (top left)</div><div class="d">The stage being built and its piece count &middot; arrows step through the stages &middot; a builder row shows its share of that stage; clicking it makes that builder active and picks out their pieces in this stage, dropping the rest back (click again to undo)</div>
         <div class="k">Board readout &rarr; pencil</div><div class="d">Opens Build Plan: add, rename, recolour, filter or remove stages and builders</div>
-        <div class="k">Build Plan row: colour dot &middot; double-click name &middot; &times;</div><div class="d">Recolour the tag &middot; rename &middot; remove it, leaving its pieces unassigned. The modal only configures tags; what is active and what is hidden are set on the board readout</div>
+        <div class="k">Build Plan row: colour dot &middot; double-click name &middot; &times;</div><div class="d">Recolour the tag &middot; rename &middot; remove it, leaving its pieces on General. The modal only configures tags; what is active and what is hidden are set on the board readout</div>
         <div class="k">Board readout: chevron (top right)</div><div class="d">Collapse the whole readout to a single chip, and back</div>
         <div class="k">Board readout: eye</div><div class="d">Hide that stage or builder's pieces from the board</div>
         <div class="k">The board shows one stage</div><div class="d">Whatever carries the stage on the readout draws normally &mdash; each piece in its builder's colour, washed in its stage's colour and hatch. Every other stage drops back without leaving the board</div>
-        <div class="k">Pick a builder on the readout</div><div class="d">Only their work in that stage stays up; pick it again to see the whole stage</div>
+        <div class="k">Pick a builder on the readout</div><div class="d">Only their work in that stage stays up; pick it again to see every hand</div>
+        <div class="k">General (stage or builder)</div><div class="d">Where work with no tag of its own lives. Selecting it shows the whole build, and a piece left on General stands in every stage's view instead of dropping back</div>
         <div class="k">Right-click a piece or selection</div><div class="d">Context menu: rotate &middot; mirror &middot; duplicate &middot; delete &middot; group, plus its layer, floor and group. Stage, builder and layer each show what the selection carries now &mdash; the pencil turns that line into a picker</div>
         <div class="k">Eyedrop tool &middot; right-click &rarr; Pick this structure</div><div class="d">Adopt a placed piece's type and rotation and carry on placing more of it</div>
         <div class="k">Export / Import &rarr; Export image</div><div class="d">One sheet per stage / builder / stage&amp;builder pair, every PNG the same size and frame</div>
@@ -854,7 +855,7 @@
           <div class="plan-list" id="builder-list"></div>
         </div>
       </div>
-      <div class="plan-hint">A build starts with no stages and no builders &mdash; <b>+</b> adds one. <b>Double-click a name</b> to rename it &middot; the <b>colour dot</b> recolours the tag &middot; <b>&times;</b> removes it and leaves its pieces unassigned. Choosing which stage and builder are active, and hiding a tag from the board, are done on the board readout. Export image writes one PNG per stage / builder that has anything built under it.</div>
+      <div class="plan-hint">A build starts with no stages and no builders &mdash; <b>+</b> adds one. <b>Double-click a name</b> to rename it &middot; the <b>colour dot</b> recolours the tag &middot; <b>&times;</b> removes it and leaves its pieces on <b>General</b> &mdash; work with no stage or builder of its own, which shows in every view rather than only its own. Choosing which stage and builder are active, and hiding a tag from the board, are done on the board readout. Export image writes one PNG per stage / builder that has anything built under it.</div>
     </div>
   </div>
 

@@ -74,7 +74,7 @@ export function ctxPick(host, label, items, cur, onPick){
     dot.className='ctx-dot'+((it&&it.color)?'':' plain');
     if(it&&it.color) dot.style.background=it.color;
     const nm=document.createElement('span'); nm.className='ctx-cur';
-    nm.textContent = cur===undefined ? 'Mixed' : (it?it.name:'Unassigned');
+    nm.textContent = cur===undefined ? 'Mixed' : (it?it.name:'General');
     nm.title=nm.textContent;
     const pen=document.createElement('button'); pen.className='ctx-pen'+(open?' on':'');
     pen.innerHTML=CTX_IC.pen;
@@ -155,7 +155,7 @@ export function openCtx(e){
 
     if(ps.length){
       ensurePlan();
-      const un=[{id:null, name:'Unassigned'}];
+      const un=[{id:null, name:'General'}];
       ctxPick(el, 'Stage', un.concat(ST.stages.map(s=>({id:s.id,name:s.name,color:s.color}))),
         commonVal(ps,'st'), id=>setPlanOnSel('stage',id));
       ctxPick(el, 'Builder', un.concat(ST.builders.map(b=>({id:b.id,name:b.name,color:b.color}))),
