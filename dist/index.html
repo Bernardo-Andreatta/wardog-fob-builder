@@ -358,8 +358,18 @@
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
     .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete{display:none;}
+    /* The board's top edge is what you look at while building, so only the
+       stage stepper and the builder chip stay up there. The occasional controls
+       - the stage eye and the plan editor - come down here with undo / redo,
+       two by two, which keeps the bar one row tall. */
     .undo-fab{position:absolute; left:auto; right:14px; top:auto; bottom:14px;
-      display:flex; gap:8px; z-index:9;}
+      display:grid; grid-template-columns:repeat(2,44px); gap:8px; z-index:9;}
+    .hud-aux{display:contents;}
+    .undo-fab .ph-btn{width:44px; height:44px; border-radius:7px;
+      background:var(--panel); box-shadow:0 4px 16px var(--shadow);}
+    .undo-fab .ph-btn svg{width:18px; height:18px;}
+    /* their places in the bar stand empty on a phone */
+    .ph-stage .ph-seye, .ph-stage .ph-edit{display:none;}
     .undo-fab .btn{width:44px; height:44px; padding:0; justify-content:center;
       background:var(--panel); box-shadow:0 4px 16px var(--shadow);}
     .undo-fab .btn svg{width:18px; height:18px;}
@@ -419,7 +429,7 @@
       padding:3px 20px;}
     /* edit buttons take priority over the collapse tab: fab owns the bottom
        edge, the toggle steps aside while the fab is up */
-    .rot-fab.show{bottom:14px; right:122px;}   /* clear of undo / redo */
+    .rot-fab.show{bottom:14px; right:122px;}   /* clear of the bottom cluster */
     .stage:has(.rot-fab.show) #rail-toggle{display:none;}
     #rail-toggle svg{transform:rotate(-90deg);}
     .app.rail-off #rail-toggle svg{transform:rotate(90deg);}
@@ -504,10 +514,15 @@
        row genuinely needs the width, and takes the full width when it does. */
     .plan-hud{min-width:0; max-width:none; width:100%; padding:5px 6px; gap:5px 6px;
       flex-direction:row; flex-wrap:wrap; align-items:center; position:relative;}
-    .ph-stage{flex:1 1 auto; min-width:228px; gap:3px; padding:0; margin:0; border-bottom:none;}
+    /* the stage row asks for only what it still holds - stepper, name, count and
+       the fold - so the builder chip fits beside it on one line */
+    .ph-stage{flex:0 1 auto; min-width:172px; gap:3px; padding:0; margin:0; border-bottom:none;}
     .ph-scount{display:inline; margin-left:1px; opacity:.85;}
     .ph-sub{display:none;}                     /* the count rides in the bar */
-    .ph-bchip{display:flex; align-items:center; gap:5px; flex:1 1 auto; min-width:0;
+    /* base size 0 so the chip never forces the wrap - it simply takes whatever
+       the stage row leaves on the line, and only drops below when there is
+       genuinely nothing left */
+    .ph-bchip{display:flex; align-items:center; gap:5px; flex:1 1 0; min-width:0;
       justify-content:flex-start; padding:5px 8px; font-size:11.5px;
       border:1px solid var(--line); border-radius:7px; background:var(--panel-2);
       color:var(--muted);}
@@ -838,6 +853,7 @@
     <div class="undo-fab" id="undo-fab">
       <button class="btn" id="fab-undo" title="Undo"><svg viewBox="0 0 24 24"><path d="M4 10h11a5 5 0 0 1 0 10h-5"/><path d="M8 6l-4 4 4 4"/></svg></button>
       <button class="btn" id="fab-redo" title="Redo"><svg viewBox="0 0 24 24"><path d="M20 10H9a5 5 0 0 0 0 10h5"/><path d="M16 6l4 4-4 4"/></svg></button>
+      <div class="hud-aux" id="hud-aux"></div>
     </div>
 
     <div class="rot-fab" id="rot-fab">
@@ -2137,6 +2153,15 @@ function renderPlanHud(){
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
+    // A phone shows these two down with undo / redo instead of on the bar; the
+    // bar's own copies are hidden there, so only one set is ever on screen.
+    const aux=$('hud-aux');
+    if(aux){
+      aux.innerHTML='';
+      aux.appendChild(mkBtn('ph-eye ph-auxeye', EYE_ON, 'Hide this stage on the board',
+        ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
+      aux.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
+    }
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -2179,6 +2204,7 @@ function renderPlanHud(){
   const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
   const sVis = tagVisible('stage', curS);
   paintEye(el.querySelector('.ph-seye'), sVis);
+  paintEye(document.querySelector('.ph-auxeye'), sVis);
   const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
@@ -2191,7 +2217,7 @@ function renderPlanHud(){
   const chip=el.querySelector('.ph-bchip');
   if(chip){
     const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
-    const nm = ST.hlBuilder===undefined ? 'All builders' : (b?b.name:'General');
+    const nm = ST.hlBuilder===undefined ? 'Everyone' : (b?b.name:'General');
     const d=chip.querySelector('.ph-dot'), t=chip.querySelector('.ph-name');
     if(t.textContent!==nm) t.textContent=nm;
     d.className='ph-dot'+((b&&b.color)?'':' plain');
