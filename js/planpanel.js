@@ -195,7 +195,9 @@ export function renderPlanHud(){
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    head.appendChild(dot); head.appendChild(nm);
+    // the tally belongs to the stage, so it sits with the stage's own row
+    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
+    head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
@@ -209,11 +211,6 @@ export function renderPlanHud(){
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
-    // The tally rides on the chip's line, not the stage's. Beside the name it
-    // left the name four pixels short of "General" and truncated the one word
-    // the bar exists to show; here it has the room to spell "supplies" out.
-    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
-    el.appendChild(scount);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
