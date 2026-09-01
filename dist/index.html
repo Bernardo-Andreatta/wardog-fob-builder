@@ -2204,8 +2204,11 @@ function renderPlanHud(){
   const tot=el.querySelector('.ph-total');
   if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
     if(tot.textContent!==v) tot.textContent=v; }
+  // a bare number beside the stage name reads as an id; the noun says what it
+  // counts, and agrees with it the way the folded-out readout already does
   const sc=el.querySelector('.ph-scount');
-  if(sc && sc.textContent!==String(inStage.length)) sc.textContent=String(inStage.length);
+  if(sc){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
+    if(sc.textContent!==v) sc.textContent=v; }
   const chip=el.querySelector('.ph-bchip');
   if(chip){
     const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
