@@ -159,6 +159,13 @@
     border-bottom:1px solid var(--line);}
   .modal-grid .d{color:var(--muted); padding:8px 2px 8px 16px;
     border-bottom:1px solid var(--line); border-left:1px solid var(--line);}
+  /* the key column refuses to wrap, so on a narrow card the table ran wider
+     than the card itself; stack the pairs instead */
+  @media (max-width:700px){
+    .modal-grid{grid-template-columns:1fr;}
+    .modal-grid .k{white-space:normal; padding:8px 2px 2px; border-bottom:none;}
+    .modal-grid .d{padding:0 2px 8px; border-left:none;}
+  }
   .modal-grid kbd{font-family:var(--font-mono); background:var(--panel-2); border:1px solid var(--line);
     border-radius:4px; padding:1px 5px; color:var(--accent); font-size:12px;}
   .code-lead{margin:0 0 16px; font-size:12.5px; color:var(--muted); line-height:1.5;}
@@ -674,6 +681,19 @@
     .exp-body{grid-template-columns:1fr; overflow-y:auto;}
     .exp-side{overflow:visible;}
     .exp-prev-box{min-height:300px;}
+  }
+  /* On a narrow screen the footer and the preview bar have more in them than
+     fits on one line. Left as nowrap rows, the tally was squeezed into a column
+     that ran off the card's right edge and the zoom buttons were pushed under
+     it. Both wrap instead, and the tally takes a line of its own. */
+  @media (max-width:700px){
+    .exp-foot{flex-wrap:wrap; gap:8px 10px;}
+    .exp-foot .exp-count{flex:1 0 100%; margin-left:0; white-space:normal;}
+    .exp-fmt{margin-left:auto;}
+    .exp-prev-bar{flex-wrap:wrap; gap:4px 8px;}
+    .exp-prev-title{flex:1 1 auto;}
+    .exp-prev-meta{order:3; flex:1 0 100%;}   /* its own line, off the edge */
+    .exp-zoom{order:2; margin-left:auto;}
   }
 
 </style>
