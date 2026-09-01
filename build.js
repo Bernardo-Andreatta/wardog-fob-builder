@@ -32,7 +32,32 @@ function strip(src) {
     .trim();
 }
 
+// In the bundle every module shares one scope, so two modules declaring the same
+// top-level name silently collapse into one - the last declaration wins and the
+// other module's callers quietly get the wrong function. Modules never notice,
+// which is exactly why this has to be checked here.
+function collisions(files) {
+  const seen = new Map(), dups = [];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(JSDIR, f), 'utf8');
+    for (const line of src.split('\n')) {
+      if (!line || /^\s/.test(line)) continue;
+      const m = line.match(/^(?:export\s+)?(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)/);
+      if (!m) continue;
+      const prev = seen.get(m[1]);
+      if (prev && prev !== f) dups.push(m[1] + ': ' + prev + ' and ' + f);
+      else seen.set(m[1], f);
+    }
+  }
+  return dups;
+}
+
 const files = order('main.js');
+const clash = collisions(files);
+if (clash.length) {
+  console.error('name collisions would break the bundle:\n  ' + clash.join('\n  '));
+  process.exit(1);
+}
 const bundle = files
   .map(f => '/* ===== ' + f + ' ===== */\n' + strip(fs.readFileSync(path.join(JSDIR, f), 'utf8')))
   .join('\n\n');

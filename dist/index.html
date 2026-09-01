@@ -1848,6 +1848,858 @@ function duplicateSel(){ const items=selectedPieces(); if(!items.length)return;
   startPlacing(st);
 }
 
+/* ===== planpanel.js ===== */
+// ---------------- Build Plan panel (stage + builder tags) --------------------
+const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function planEntries(kind){ return kind==='stage'?ST.stages:ST.builders; }
+function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; }
+function setPlanActive(kind, id){
+  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
+  if(E) E.visible=true;                 // never leave the active tag filtered out
+  if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
+  else ST.curBuilderId=id;
+  render(); renderPlanPanel(); persist();
+}
+function addPlanEntry(kind){
+  const arr=planEntries(kind), col=nextPlanColor();
+  const E = kind==='stage'
+    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
+    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
+  arr.push(E); setPlanActive(kind, E.id); snapshot();
+}
+// removing a tag untags its pieces; it never deletes anything from the board
+function delPlanEntry(kind, id){
+  const arr=planEntries(kind), i=arr.findIndex(e=>e.id===id); if(i<0) return;
+  arr.splice(i,1);
+  ST.pieces.forEach(p=>{ if(kind==='stage'){ if(p.st===id) p.st=null; } else if(p.bd===id) p.bd=null; });
+  if(planActive(kind)===id){ if(kind==='stage') ST.curStageId=null; else ST.curBuilderId=null; }
+  snapshot(); render(); renderPlanPanel();
+}
+// re-tag whatever is selected with one specific stage / builder (null = untag).
+// The context menu is the only way in: a piece is tagged where it lives, not
+// from a panel that has to be open and pointed at the right row first.
+function setPlanOnSel(kind, id){
+  const items=selectedPieces();
+  if(!items.length){ flashToast('Select some pieces first'); return; }
+  items.forEach(p=>{ if(kind==='stage') p.st=id; else p.bd=id; });
+  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
+  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'General'));
+  snapshot(); render(); renderPlanPanel();
+}
+// the one value shared by every item, or undefined when they disagree
+function commonVal(items, key){
+  if(!items.length) return undefined;
+  const v = items[0][key]==null ? null : items[0][key];
+  return items.every(it=>(it[key]==null?null:it[key])===v) ? v : undefined;
+}
+// move the whole selection onto another layer; a layer belongs to a floor, so
+// pieces follow that floor too rather than drawing at the wrong height
+function moveSelToLayer(id){
+  const L=layerById(id); if(!L) return;
+  const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
+  if(!all.length){ flashToast('Select something first'); return; }
+  all.forEach(it=>{ it.ly=id; });
+  ps.forEach(p=>{ p.l=L.floor||0; });
+  if(ST.selLayers.indexOf(id)===-1) ST.selLayers.push(id);
+  snapshot(); render(); renderLayerPanel(); updateStatus();
+  flashToast(all.length+' item'+(all.length>1?'s':'')+' → '+L.name);
+}
+function planRename(E, nameEl){
+  const inp=document.createElement('input'); inp.type='text'; inp.className='pl-rename'; inp.value=E.name;
+  inp.onclick=e=>e.stopPropagation();
+  let done=false;
+  const finish=keep=>{ if(done)return; done=true; if(keep){ const v=inp.value.trim(); if(v) E.name=v; }
+    snapshot(); renderPlanPanel(); };
+  inp.onkeydown=e=>{ e.stopPropagation();
+    if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } };
+  inp.onblur=()=>finish(true);
+  nameEl.replaceWith(inp); inp.focus(); inp.select();
+}
+// E === null builds the "General" bucket row (filterable, not editable)
+// The modal is configuration only: it adds, renames, recolours and removes
+// tags. Which stage and builder are *active*, and which are hidden, are board
+// decisions, so they live on the board readout instead.
+function buildPlanRow(kind, E){
+  const id = E?E.id:null;
+  const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
+  const row=document.createElement('div');
+  row.className='pl-row'+(vis?'':' off');
+  row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
+  row.title = E ? 'Double-click the name to rename'
+                : 'Work with no '+kind+' of its own - it shows in every view';
+  let dot;
+  if(E){
+    dot=document.createElement('input'); dot.type='color'; dot.className='pl-dot'; dot.value=E.color;
+    dot.title='Tag colour';
+    dot.onclick=ev=>ev.stopPropagation();
+    dot.oninput=()=>{ E.color=dot.value; render(); };
+    dot.onchange=()=>{ E.color=dot.value; snapshot(); render(); };
+  } else { dot=document.createElement('span'); dot.className='pl-dot plain'; }
+  const name=document.createElement('span'); name.className='pl-name';
+  name.textContent = E ? E.name : 'General';
+  if(E && E.note) name.title=E.note;
+  if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
+  const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
+  row.appendChild(dot); row.appendChild(name); row.appendChild(n);
+  // a stage carries a free-text purpose, written here and carried onto its
+  // export sheet - nothing is pre-filled, the crew says what the stage is for
+  if(E && kind==='stage'){
+    const note=document.createElement('input');
+    note.type='text'; note.className='pl-note'; note.maxLength=90;
+    note.placeholder='What happens in this stage?';
+    note.value=E.note||'';
+    note.title='Shown on this stage\'s export sheet';
+    note.onclick=ev=>ev.stopPropagation();
+    note.ondblclick=ev=>ev.stopPropagation();
+    note.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ ev.preventDefault(); note.blur(); } };
+    note.oninput=()=>{ const v=note.value.trim(); if(v) E.note=v; else delete E.note; };
+    note.onchange=()=>{ snapshot(); persist(); };
+    row.appendChild(note);
+  }
+  if(E){
+    const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
+    x.title='Remove this tag (its pieces fall back to General)';
+    x.onclick=ev=>{ ev.stopPropagation(); delPlanEntry(kind, E.id); };
+    row.appendChild(x);
+  }
+  return row;
+}
+function renderPlanPanel(){
+  const sl=$('stage-list'), bl=$('builder-list'); if(!sl||!bl) return;
+  ensurePlan();
+  sl.innerHTML=''; ST.stages.forEach(s=>sl.appendChild(buildPlanRow('stage',s)));
+  sl.appendChild(buildPlanRow('stage',null));
+  bl.innerHTML=''; ST.builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
+  bl.appendChild(buildPlanRow('builder',null));
+  updatePlanApply();
+}
+// runs from updateStatus, so the tallies keep up with placing / deleting without
+// rebuilding the rows (which would kill an in-progress rename)
+// The Build Plan editor is a modal of its own now: it is a place you go to set
+// the plan up, not something to keep parked in the side panel next to Layers.
+function openPlanModal(){
+  const m=$('plan-modal'); if(!m) return;
+  m.hidden=false; renderPlanPanel();
+}
+function closePlanModal(){ const m=$('plan-modal'); if(m) m.hidden=true; }
+// stage stepper: General sits at the head of the cycle - it is where a piece
+// with no stage lives, and selecting it shows the whole build
+function stageCycle(){ return [null].concat(ST.stages.map(s=>s.id)); }
+function stageAt(dir){
+  const cyc=stageCycle(), i=cyc.indexOf(ST.curStageId==null?null:ST.curStageId);
+  const j=(i<0?0:i)+dir;
+  return (j<0 || j>=cyc.length) ? undefined : cyc[j];
+}
+function stepStage(dir){
+  const id=stageAt(dir);
+  if(id!==undefined) setPlanActive('stage', id);
+}
+
+// ---- board HUD: what is being built right now, and who is on it ------------
+// The rail says which structure is armed; this says which stage and builder it
+// will be stamped with, and how the work already in that stage divides between
+// builders. It sits on the board so neither answer needs the panel open, and a
+// builder row is a shortcut to making that builder active.
+const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
+const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
+const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
+let hudSig=null;
+// show / hide everything carrying one tag. The General bucket has no entry
+// of its own, so its switch lives on the plan flags instead.
+function tagVisible(kind, E){
+  return E ? E.visible!==false : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
+}
+function toggleTag(kind, E){
+  const vis=tagVisible(kind,E);
+  if(E) E.visible=!vis;
+  else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
+  pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist();
+}
+function hudBuilders(){
+  return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
+    .concat([{id:null, name:'General', color:null}]);
+}
+function renderPlanHud(){
+  const el=$('plan-hud'); if(!el) return;
+  ensurePlan();
+  const S = ST.curStageId==null ? null : stageById(ST.curStageId);
+  const rows=hudBuilders();
+  // the rows only get rebuilt when the tags themselves change, so the counts
+  // below can refresh on every status tick without churning the DOM
+  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
+  if(sig!==hudSig){
+    hudSig=sig; el.innerHTML='';
+    const head=document.createElement('div'); head.className='ph-stage';
+    const mkBtn=(cls,svg,title,fn)=>{
+      const b=document.createElement('button'); b.className='ph-btn '+cls;
+      b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
+    };
+    head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
+    const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
+    if(S) dot.style.background=S.color;
+    const nm=document.createElement('span'); nm.className='ph-name';
+    nm.textContent = S?S.name:'General';
+    nm.title='The stage new pieces are tagged with';
+    head.appendChild(dot); head.appendChild(nm);
+    head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
+      ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
+    head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
+    head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
+    el.appendChild(head);
+    const sub=document.createElement('div'); sub.className='ph-sub';
+    const lab=document.createElement('span'); lab.className='ph-sublab';
+    // General is the whole build, so counting "in this stage" there would read 0
+    // while the board plainly shows everything
+    lab.textContent = S ? 'In this stage' : 'On the board';
+    const tot=document.createElement('span'); tot.className='ph-n ph-total';
+    sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
+    rows.forEach(r=>{
+      const b=document.createElement('div'); b.className='ph-row';
+      b.dataset.id = r.id==null ? '' : String(r.id);
+      b.title = 'Make '+r.name+' the active builder, and pick out what they have in this stage';
+      const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
+      if(r.color) d.style.background=r.color;
+      const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
+      const c=document.createElement('span'); c.className='ph-n';
+      const eye=document.createElement('button'); eye.className='ph-eye';
+      eye.onclick=ev=>{ ev.stopPropagation();
+        toggleTag('builder', r.id==null?null:builderById(r.id)); };
+      b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(eye);
+      b.onclick=()=>{
+        // General is the "every hand" row, so picking it drops the filter
+        // rather than narrowing the board down to untagged work
+        ST.hlBuilder = (r.id==null || ST.hlBuilder===r.id) ? undefined : r.id;
+        setPlanActive('builder', r.id);
+      };
+      el.appendChild(b);
+    });
+  }
+  const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
+  if(prev) prev.disabled = stageAt(-1)===undefined;
+  if(next) next.disabled = stageAt(1)===undefined;
+  const paintEye=(btn, vis)=>{
+    if(!btn || btn.dataset.on===String(vis)) return;
+    btn.dataset.on=String(vis); btn.innerHTML=vis?EYE_ON:EYE_OFF;
+    btn.title = vis?'Hide these on the board':'Show these again';
+  };
+  const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
+  const sVis = tagVisible('stage', curS);
+  paintEye(el.querySelector('.ph-seye'), sVis);
+  const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
+  const cur = ST.curStageId==null ? null : ST.curStageId;
+  const inStage = cur===null ? ST.pieces.slice()
+                             : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
+  const tot=el.querySelector('.ph-total');
+  if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
+    if(tot.textContent!==v) tot.textContent=v; }
+  const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
+  el.querySelectorAll('.ph-row').forEach(row=>{
+    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    const v = String(inStage.filter(p=>(p.bd==null?null:p.bd)===id).length);
+    const c = row.querySelector('.ph-n');
+    if(c && c.textContent!==v) c.textContent=v;
+    row.classList.toggle('on', curB===id);
+    row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
+    const bVis=tagVisible('builder', id==null?null:builderById(id));
+    paintEye(row.querySelector('.ph-eye'), bVis);
+    row.classList.toggle('off', !bVis);
+  });
+}
+function updatePlanApply(){
+  document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
+    const n=row.querySelector('.pl-n'); if(!n) return;
+    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    const v=String(planCount(row.dataset.kind, id));
+    if(n.textContent!==v) n.textContent=v;
+  });
+  renderPlanHud();
+}
+// the readout collapses to its own toggle, and the choice is remembered
+function setHudOpen(on){
+  const h=$('board-hud'); if(!h) return;
+  h.classList.toggle('off', !on);
+  try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
+}
+$('hud-show').onclick=()=>setHudOpen(true);
+$('plan-close').onclick=closePlanModal;
+$('plan-bg').onclick=closePlanModal;
+$('plan-addstage').onclick=()=>addPlanEntry('stage');
+$('plan-addbuilder').onclick=()=>addPlanEntry('builder');
+
+/* ===== svg.js ===== */
+// Inline SVG markup for the tool tiles. No dependencies of its own, so any
+// module can pull an icon in without dragging the rail's wiring along - and
+// without forming an import cycle back through it.
+const GRIP_SVG='<svg viewBox="0 0 16 16"><circle cx="5.5" cy="4" r="1.3"/><circle cx="10.5" cy="4" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="10.5" cy="12" r="1.3"/></svg>';
+const TOOL_ICONS = {
+  select:'<svg viewBox="0 0 24 24"><path d="M5 3l7 17 2.2-6.5L21 11z"/></svg>',
+  draw:'<svg viewBox="0 0 24 24"><path d="M15 4l5 5L9 20l-5 1 1-5z"/><path d="M13 6l5 5"/></svg>',
+  erase:'<svg viewBox="0 0 24 24"><path d="M4 15l7-7 6 6-5 5H8z"/><path d="M9 20h11"/><path d="M11 8l6 6"/></svg>',
+  pan:'<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 8l-4 4 4 4M16 8l4 4-4 4M8 4l4-1 4 1M8 20l4 1 4-1"/></svg>',
+  eyedrop:'<svg viewBox="0 0 24 24"><path d="M15.5 4.5l4 4M17.6 2.4a2.1 2.1 0 0 1 3 3l-3.1 3.1 1 1-2 2-1-1L8 18.9 4.4 20l1.1-3.6 7.4-7.4-1-1 2-2 1 1z"/></svg>',
+  text:'<svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>',
+  image:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>',
+};
+
+/* ===== ctxmenu.js ===== */
+// ---------------- canvas context menu ---------------------------------------
+// One place for everything you can do to a piece: the edit ops, the eyedropper,
+// its stage / builder tags, the layer it sits on, and what it actually is. It
+// replaces the old right-click-is-always-an-eyedropper gesture (the eyedropper
+// is a tool in the rail now) and the Build Plan panel's "apply to selection"
+// buttons, which made you aim a panel row at a board selection from far away.
+const CTX_IC={
+  eyedrop:TOOL_ICONS.eyedrop, select:TOOL_ICONS.select, pan:TOOL_ICONS.pan,
+  rotate:'<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg>',
+  mirror:'<svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg>',
+  copy:'<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg>',
+  del:'<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  group:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg>',
+  ungroup:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg>',
+  snap:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>',
+  pen:'<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>',
+  none:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>',
+};
+// pick a piece's type + orientation and go straight into placing more of it
+function eyedropPiece(p){
+  if(!p || !CATALOG[p.type]) return false;
+  ST.placeRot=((Math.round(p.rot||0)%360)+360)%360; ST.placeFlip=!!p.flip;
+  setTool(p.type); flashToast('Picked '+CATALOG[p.type].name);
+  return true;
+}
+function ctxClose(){ const el=$('ctx'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; } }
+function ctxSub(host, label){
+  const d=document.createElement('div'); d.className='ctx-sub'; d.textContent=label;
+  host.appendChild(d); return d;
+}
+function ctxRow(label, icon, fn, opts){
+  opts=opts||{};
+  const b=document.createElement('button');
+  b.className='ctx-row'+(opts.danger?' danger':'');
+  b.innerHTML=(icon||'')+'<span>'+label+'</span>';
+  if(opts.title) b.title=opts.title;
+  b.disabled=!!opts.off;
+  b.onclick=()=>{ ctxClose(); fn(); };
+  return b;
+}
+// a tag row: one chip per option, the current one lit. A mixed selection lights
+// nothing, so picking a chip is always an unambiguous "make it this".
+// A tag reads as one line: what the selection carries now, and a pencil that
+// turns that line into a picker. Laying every stage, builder and layer out as
+// chips made the menu as tall as the whole plan and buried the one fact you
+// opened it for. A mixed selection says so, and picking still applies to all.
+function ctxPick(host, label, items, cur, onPick){
+  ctxSub(host, label);
+  const wrap=document.createElement('div'); wrap.className='ctx-pick';
+  let open=false;
+  const draw=()=>{
+    wrap.innerHTML='';
+    const it = cur===undefined ? null : items.find(x=>x.id===cur);
+    const row=document.createElement('div'); row.className='ctx-cur-row';
+    const dot=document.createElement('span');
+    dot.className='ctx-dot'+((it&&it.color)?'':' plain');
+    if(it&&it.color) dot.style.background=it.color;
+    const nm=document.createElement('span'); nm.className='ctx-cur';
+    nm.textContent = cur===undefined ? 'Mixed' : (it?it.name:'General');
+    nm.title=nm.textContent;
+    const pen=document.createElement('button'); pen.className='ctx-pen'+(open?' on':'');
+    pen.innerHTML=CTX_IC.pen;
+    pen.title=(open?'Close the ':'Change the ')+label.toLowerCase();
+    pen.onclick=ev=>{ ev.stopPropagation(); open=!open; draw(); };
+    row.appendChild(dot); row.appendChild(nm); row.appendChild(pen);
+    wrap.appendChild(row);
+    if(!open) return;
+    // the list is the app's own, not the browser's: it carries each tag's colour
+    // and marks the one in force, which a native <select> cannot do
+    const list=document.createElement('div'); list.className='ctx-list';
+    items.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='ctx-opt'+(cur!==undefined && o.id===cur ? ' on' : '');
+      const d=document.createElement('span');
+      d.className='ctx-dot'+(o.color?'':' plain');
+      if(o.color) d.style.background=o.color;
+      const s=document.createElement('span'); s.className='ctx-optname'; s.textContent=o.name;
+      b.appendChild(d); b.appendChild(s);
+      b.onclick=ev=>{ ev.stopPropagation(); ctxClose(); onPick(o.id); };
+      list.appendChild(b);
+    });
+    wrap.appendChild(list);
+    ctxFit();
+    list.scrollIntoView({block:'nearest'});   // if the card itself had to scroll
+  };
+  draw(); host.appendChild(wrap);
+}
+function ctxSelLabel(ps, ims, ts, ss){
+  const n=ps.length+ims.length+ts.length+ss.length;
+  if(n!==1) return n+' items selected';
+  if(ps.length) return (CATALOG[ps[0].type]||{name:'Piece'}).name;
+  return ims.length?'Image overlay':ts.length?'Label':'Drawing';
+}
+function openCtx(e){
+  const el=$('ctx'); if(!el) return;
+  const w=evtW(e), hit=hitPiece(w.x,w.y);
+  // right-clicking outside the selection retargets it to what is under the
+  // cursor; inside it, the whole selection stays the subject
+  if(hit && !isSel(hit.id)){
+    clearSelection(); clearOverlaySel(); ST.selected=[hit.id]; expandGroups();
+    render(); updateStatus();
+  }
+  const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
+  el.innerHTML=''; el.hidden=false;
+  if(all.length){
+    const head=document.createElement('div'); head.className='ctx-head';
+    const t=document.createElement('div'); t.className='ctx-title';
+    t.textContent=ctxSelLabel(ps,ims,ts,ss); head.appendChild(t);
+    const L=layerById(itemLayerId(all[0]));
+    const floors=[...new Set(ps.map(pieceLayer))];
+    const gids=[...new Set(all.map(it=>it.g).filter(g=>g!=null))];
+    const m=document.createElement('div'); m.className='ctx-meta';
+    m.innerHTML='Layer &middot; '+((L&&all.every(it=>itemLayerId(it)===L.id))?L.name:'mixed')+'<br>'
+      +'Floor &middot; '+(floors.length===1?floorName(floors[0]):(floors.length?'mixed':'&mdash;'))+'<br>'
+      +'Group &middot; '+(gids.length===1?('#'+gids[0]+' · '+all.length+' items'):(gids.length?'mixed':'none'));
+    head.appendChild(m); el.appendChild(head);
+
+    // The eyedropper copies one structure's type and rotation, so it only means
+    // anything when the selection speaks with a single voice: one piece, or
+    // several of the same type. Mixed types have no one structure to pick, so
+    // the row greys out and Duplicate is what still applies to the whole set.
+    const types=[...new Set(ps.map(p=>p.type))];
+    if(types.length){
+      const pick = types.length===1 ? ((hit && hit.type===types[0]) ? hit : ps[0]) : null;
+      el.appendChild(ctxRow('Pick this structure', CTX_IC.eyedrop, ()=>eyedropPiece(pick),
+        {off:!pick, title: pick ? 'Place more of these, at this rotation'
+                                : 'Selection mixes '+types.length+' structure types - duplicate it instead'}));
+    }
+    const grid=document.createElement('div'); grid.className='ctx-grid';
+    grid.appendChild(ctxRow('Rotate', CTX_IC.rotate, ()=>rotateGroup(rotStep()), {off:!hasRotSel()}));
+    grid.appendChild(ctxRow('Mirror', CTX_IC.mirror, mirrorGroup, {off:!hasRotSel()}));
+    grid.appendChild(ctxRow('Duplicate', CTX_IC.copy, duplicateSel, {off:!ps.length}));
+    grid.appendChild(ctxRow('Delete', CTX_IC.del, deleteSel, {danger:true}));
+    grid.appendChild(ctxRow('Group', CTX_IC.group, groupSel, {off:all.length<2}));
+    grid.appendChild(ctxRow('Ungroup', CTX_IC.ungroup, ungroupSel, {off:!gids.length}));
+    el.appendChild(grid);
+
+    if(ps.length){
+      ensurePlan();
+      const un=[{id:null, name:'General'}];
+      ctxPick(el, 'Stage', un.concat(ST.stages.map(s=>({id:s.id,name:s.name,color:s.color}))),
+        commonVal(ps,'st'), id=>setPlanOnSel('stage',id));
+      ctxPick(el, 'Builder', un.concat(ST.builders.map(b=>({id:b.id,name:b.name,color:b.color}))),
+        commonVal(ps,'bd'), id=>setPlanOnSel('builder',id));
+    }
+    const curLy = all.every(it=>itemLayerId(it)===itemLayerId(all[0])) ? itemLayerId(all[0]) : undefined;
+    ctxPick(el, 'Layer', zOrder().slice().reverse().map(l=>({id:l.id, name:l.name+' · '+floorName(l.floor||0)})),
+      curLy, moveSelToLayer);
+  } else {
+    ctxSub(el,'Tools');
+    const grid=document.createElement('div'); grid.className='ctx-grid';
+    grid.appendChild(ctxRow('Select', CTX_IC.select, ()=>{ ST.userPickedTool=true; setTool('select'); }));
+    grid.appendChild(ctxRow('Pan', CTX_IC.pan, ()=>{ ST.userPickedTool=true; setTool('pan'); }));
+    grid.appendChild(ctxRow('Eyedrop', CTX_IC.eyedrop, ()=>{ ST.userPickedTool=true; setTool('eyedrop'); }));
+    grid.appendChild(ctxRow('Snap: '+(ST.snapOn?'on':'off'), CTX_IC.snap, toggleSnap));
+    el.appendChild(grid);
+    ctxSub(el,'Board');
+    el.appendChild(ctxRow('Deselect everything', CTX_IC.none, ()=>{
+      clearSelection(); clearOverlaySel(); render(); updateStatus(); }, {off:!anySelected()}));
+  }
+  const rc=stage.getBoundingClientRect();
+  el.style.left=(e.clientX-rc.left)+'px';
+  el.style.top=(e.clientY-rc.top)+'px';
+  ctxFit();
+}
+// Keep the card on screen - on open, and again whenever a picker expands it,
+// since a list unfolding downwards would otherwise run off the bottom edge.
+function ctxFit(){
+  const el=$('ctx'); if(!el || el.hidden) return;
+  const bw=el.offsetWidth, bh=el.offsetHeight;
+  const x=Math.min(parseFloat(el.style.left)||0, stage.clientWidth-bw-8);
+  const y=Math.min(parseFloat(el.style.top)||0, stage.clientHeight-bh-8);
+  el.style.left=Math.max(8,x)+'px'; el.style.top=Math.max(8,y)+'px';
+}
+// any click outside, any Escape, any zoom closes it
+document.addEventListener('pointerdown', e=>{
+  const el=$('ctx'); if(el && !el.hidden && !el.contains(e.target)) ctxClose();
+}, true);
+window.addEventListener('keydown', e=>{ if(e.key==='Escape') ctxClose(); }, true);
+cv.addEventListener('wheel', ctxClose, {passive:true});
+
+/* ===== touch.js ===== */
+// ---------------- touch: two-finger pinch zoom / pan (capture on stage runs
+// before the canvas handlers, so a second finger hijacks any single-finger
+// gesture into a pinch without desktop code ever seeing it)
+const tpts = new Map();     // active touch pointers on the canvas (screen coords)
+stage.addEventListener('pointerdown', e=>{
+  if(e.pointerType!=='touch' || e.target!==cv) return;
+  tpts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(tpts.size===2){ e.preventDefault(); e.stopPropagation(); beginPinch(); }
+  else if(tpts.size>2){ e.stopPropagation(); }
+}, true);
+function beginPinch(){
+  if(ST.drag){   // roll back whatever the first finger started
+    if(ST.drag.mode==='draw') ST.strokes.pop();
+    else if(ST.drag.mode==='gmove'){
+      ST.drag.ps.forEach(it=>{ it.p.x=it.ox; it.p.y=it.oy; });
+      ST.drag.ims.forEach(it=>{ it.im.x=it.ox; it.im.y=it.oy; });
+      ST.drag.ts.forEach(it=>{ it.t.x=it.ox; it.t.y=it.oy; });
+      ST.drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x; pt.y=it.pts[k].y; }); });
+    }
+    else if(ST.drag.mode==='imgresize'){ ST.drag.im.w=ST.drag.ow; ST.drag.im.h=ST.drag.ow/ST.drag.ar; }
+    ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move');
+  }
+  for(const id of tpts.keys()){ try{ cv.setPointerCapture(id); }catch(_){} }
+  const [a,b]=[...tpts.values()];
+  ST.pinch={d:Math.max(10,Math.hypot(a.x-b.x,a.y-b.y)), cx:(a.x+b.x)/2, cy:(a.y+b.y)/2,
+    scale:ST.view.scale, ox:ST.view.ox, oy:ST.view.oy};
+  render();
+}
+stage.addEventListener('pointermove', e=>{
+  if(e.pointerType!=='touch') return;
+  if(tpts.has(e.pointerId)) tpts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(!ST.pinch || tpts.size<2) return;
+  e.stopPropagation();
+  const rc=cv.getBoundingClientRect();
+  const [a,b]=[...tpts.values()];
+  const d=Math.max(10,Math.hypot(a.x-b.x,a.y-b.y));
+  const cx=(a.x+b.x)/2-rc.left, cy=(a.y+b.y)/2-rc.top;
+  const ns=Math.min(6, Math.max(0.15, ST.pinch.scale*(d/ST.pinch.d)));
+  // keep the world point that was under the start midpoint glued to the current midpoint
+  const wx=((ST.pinch.cx-rc.left)-ST.pinch.ox)/ST.pinch.scale, wy=((ST.pinch.cy-rc.top)-ST.pinch.oy)/ST.pinch.scale;
+  ST.view.scale=ns; ST.view.ox=cx-wx*ns; ST.view.oy=cy-wy*ns;
+  render(); updateStatus();
+}, true);
+function endTouch(e){
+  if(e.pointerType!=='touch') return;
+  tpts.delete(e.pointerId);
+  if(ST.pinch){ e.stopPropagation(); if(tpts.size<2){ ST.pinch=null; persist(); } }
+  else if(e.type==='pointercancel' && ST.drag){   // OS stole the touch: drop the gesture
+    ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move'); render();
+  }
+}
+stage.addEventListener('pointerup', endTouch, true);
+stage.addEventListener('pointercancel', endTouch, true);
+
+/* ===== pointer.js ===== */
+function evtW(e){ const rc=cv.getBoundingClientRect(); return screenToWorld(e.clientX-rc.left,e.clientY-rc.top); }
+function evtS(e){ const rc=cv.getBoundingClientRect(); return {x:e.clientX-rc.left,y:e.clientY-rc.top}; }
+
+// distance from point to a line segment
+function segDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax, dy=by-ay, l2=dx*dx+dy*dy;
+  let t = l2 ? ((px-ax)*dx+(py-ay)*dy)/l2 : 0; t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+t*dx), py-(ay+t*dy));
+}
+// erase any free-draw strokes under the cursor
+function eraseAt(w){
+  let changed=false;
+  for(let i=ST.strokes.length-1;i>=0;i--){
+    const s=ST.strokes[i], th=s.width/2 + 9/ST.view.scale;
+    let hit=false;
+    if(s.pts.length<2){ hit=Math.hypot(w.x-s.pts[0].x, w.y-s.pts[0].y)<th; }
+    else for(let k=1;k<s.pts.length;k++){
+      if(segDist(w.x,w.y, s.pts[k-1].x,s.pts[k-1].y, s.pts[k].x,s.pts[k].y)<th){ hit=true; break; } }
+    if(hit){ ST.strokes.splice(i,1); changed=true; }
+  }
+  if(changed){ if(ST.drag) ST.drag.erased=true; render(); }
+}
+
+// world distance from the ghost's center to its lowest edge, for the current
+// rotation - so the touch-drag offset always lifts the whole piece above the
+// finger, even for long pieces rotated vertical
+function ghostDrop(){
+  const half=(type,rot)=>{ const c=CATALOG[type], r=(rot||0)*Math.PI/180;
+    return (Math.abs(Math.sin(r))*c.w*GRID + Math.abs(Math.cos(r))*c.h*GRID)/2; };
+  if(CATALOG[ST.tool]) return half(ST.tool,ST.placeRot);
+  if(ST.tool==='stamp' && ST.activeStamp){ let m=GRID/2;
+    stampInstance(ST.activeStamp,0,0,ST.placeRot,ST.placeFlip).forEach(ip=>{ m=Math.max(m, ip.y + half(ip.type,ip.rot)); });
+    return m; }
+  return GRID/2;
+}
+
+function placeSymbolAt(w){
+  const cx=ST.snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=ST.snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
+  const s={pts:SYMBOLS[ST.tool](cx,cy,GRID), color:ST.drawColor, width:ST.drawWidth, ly:ST.curLayerId};
+  ST.strokes.push(s);
+  clearSelection(); clearOverlaySel(); ST.selStrokes=[s];   // selected, ready to move/resize
+  editNewOverlay();
+  snapshot(); render(); updateStatus();
+}
+
+function placeStampAt(w){
+  const inst=stampInstance(ST.activeStamp, w.x, w.y, ST.placeRot, ST.placeFlip);
+  // every part must be a legal placement (support + no overlap + inside a FOB area)
+  for(const ip of inst){ const err=placeError(ip.type, ip.x, ip.y, ip.rot, ST.curLayer); if(err){ flashToast(err); return; } }
+  ensureFloorLayer();
+  const gid = inst.length>1 ? ST.groupUid++ : undefined;   // a multi-piece stamp lands as one Group
+  const nn=inst.map(ip=>({id:ST.uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:ST.curLayer, ly:ST.curLayerId, g:gid, st:ST.curStageId, bd:ST.curBuilderId}));
+  ST.pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
+}
+function placePieceAt(w){
+  const c=snapCenter(ST.tool,ST.placeRot,w.x,w.y);
+  const err=placeError(ST.tool,c.x,c.y,ST.placeRot,ST.curLayer);
+  if(err){ flashToast(err); return; }
+  ensureFloorLayer();
+  const np={id:ST.uid++,type:ST.tool,x:c.x,y:c.y,rot:ST.placeRot,flip:ST.placeFlip,l:ST.curLayer,ly:ST.curLayerId,st:ST.curStageId,bd:ST.curBuilderId};
+  ST.pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
+}
+
+cv.addEventListener('pointerdown', e=>{
+  if(e.button===2) return;                 // right-click handled by contextmenu
+  try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+  const w=evtW(e), sc=evtS(e);
+  // a floating touch move is waiting: this tap just drops it where it sits
+  if(ST.pendingMove){ commitPendingMove(); ST.drag={mode:'placed'}; render(); updateStatus(); return; }
+  if(e.button===1 || ST.spaceDown || ST.tool==='pan'){
+    ST.drag={mode:'pan',sx:sc.x,sy:sc.y,ox:ST.view.ox,oy:ST.view.oy}; stage.classList.add('c-panning'); return;
+  }
+  if(ST.tool==='eyedrop'){
+    const h=hitPiece(w.x,w.y);
+    if(!h || !eyedropPiece(h)) flashToast('Nothing to pick there');
+    ST.drag={mode:'placed'}; return;
+  }
+  if(ST.tool==='draw'){
+    const s={pts:[{x:w.x,y:w.y}],color:ST.drawColor,width:ST.drawWidth,ly:ST.curLayerId};
+    ST.strokes.push(s); ST.drag={mode:'draw',s}; render(); return;
+  }
+  if(ST.tool==='erase'){ ST.drag={mode:'erase',erased:false}; eraseAt(w); return; }
+  // touch: a drag only aims the ghost; a plain tap places it (on the ghost =
+  // confirm its aimed spot, elsewhere = place right there). Mouse places on press.
+  if(ST.tool==='stamp' && ST.activeStamp){
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'stamp', w, ss:sc, moved:false, prev:{x:ST.hover.x,y:ST.hover.y}}; return; }
+    placeStampAt(w); ST.drag={mode:'placed'}; return;
+  }
+  if(CATALOG[ST.tool]){
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'piece', w, ss:sc, moved:false, prev:{x:ST.hover.x,y:ST.hover.y}}; return; }
+    placePieceAt(w); ST.drag={mode:'placed'}; return;
+  }
+  if(SYMBOLS[ST.tool]){
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'sym', w, ss:sc, moved:false}; return; }
+    placeSymbolAt(w); ST.drag={mode:'placed'}; return;
+  }
+  if(ST.tool==='text'){
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'text', w, ss:sc, moved:false}; return; }
+    clearSelection(); addText(w); ST.drag={mode:'placed'}; return;
+  }
+  // --- select tool ---
+  const singlePieceSel = ST.selected.length===1 && !ST.selImages.length && !ST.selTexts.length && !ST.selStrokes.length;
+  const singleImgSel   = ST.selImages.length===1 && !ST.selected.length && !ST.selTexts.length && !ST.selStrokes.length;
+  // rotate handle (single piece only)
+  if(singlePieceSel){
+    const sel=ST.pieces.find(p=>p.id===ST.selected[0]);
+    if(sel){ const hs=handleXY(sel); const hss=worldToScreen(hs.x,hs.y);
+      if(Math.hypot(hss.x-sc.x,hss.y-sc.y)<=13){ ST.drag={mode:'rotate',p:sel}; return; } }
+  }
+  // image resize handle (single image only)
+  if(singleImgSel){ const im=ST.images.find(i=>i.id===ST.selImages[0]);
+    if(im){ const h=worldToScreen(im.x+im.w/2, im.y+im.h/2);
+      if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){ ST.drag={mode:'imgresize', im, ar:im.w/im.h, startW:{x:w.x,y:w.y}, ow:im.w, moved:false}; return; } } }
+  // drawing/symbol resize handle (single stroke only)
+  const singleStrokeSel = ST.selStrokes.length===1 && !ST.selected.length && !ST.selImages.length && !ST.selTexts.length;
+  if(singleStrokeSel){ const s=ST.selStrokes[0], bb=strokeBBox(s);
+    if(bb){ const h=worldToScreen(bb.maxx, bb.maxy);
+      if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){
+        ST.drag={mode:'strokeresize', s, bb, startW:{x:w.x,y:w.y},
+          pts0:s.pts.map(pt=>({x:pt.x,y:pt.y})), moved:false}; return; } } }
+  const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+  // hit test top -> bottom: text, piece, drawing, image
+  const tHit=hitText(w);
+  const pHit=tHit?null:hitPiece(w.x,w.y);
+  const sHit=(tHit||pHit)?null:hitStroke(w);
+  const iHit=(tHit||pHit||sHit)?null:hitImage(w);
+  if(tHit||pHit||sHit||iHit){
+    const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
+    const wasSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
+    if(additive){
+      if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
+      else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
+      else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
+      else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
+    } else if(!wasSel){
+      clearSelection(); clearOverlaySel();
+      if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id]; else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
+    }
+    expandGroups();   // clicking any grouped item selects its whole group
+    const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
+    if(nowSel){ startGroupMove(w, pHit||null); ST.drag.touch=(e.pointerType==='touch'); }
+    render(); updateStatus(); return;
+  }
+  // empty ground => rubber-band multi-select (pieces + overlays + drawings)
+  if(!additive){ clearSelection(); clearOverlaySel(); }
+  ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
+    base:{pieces:ST.selected.slice(), texts:ST.selTexts.slice(), imgs:ST.selImages.slice(), strokes:ST.selStrokes.slice()}};
+  ST.drag={mode:'marquee'};
+  render(); updateStatus();
+});
+// lowest world edge of everything in a move, from the positions it started at
+function selBottomAtStart(d){
+  let bot=-Infinity;
+  d.ps.forEach(it=>{ const b=pieceAABB({type:it.p.type, x:it.ox, y:it.oy, rot:it.p.rot}); bot=Math.max(bot,b.maxy); });
+  d.ims.forEach(it=>{ bot=Math.max(bot, it.oy+it.im.h/2); });
+  d.ts.forEach(it=>{ const b=textBox(it.t); bot=Math.max(bot, it.oy+b.h/2); });
+  d.ss.forEach(it=>{ it.pts.forEach(pt=>{ bot=Math.max(bot, pt.y); }); });
+  return bot===-Infinity ? d.startW.y : bot;
+}
+// A touch move finishes like a placement: the finger lift leaves the selection
+// floating where it was dragged, and the next tap anywhere commits it.
+function commitPendingMove(){ if(ST.pendingMove){ ST.pendingMove=false; snapshot(); } }
+function startGroupMove(w, primary){
+  ST.drag={ mode:'gmove', primary: primary||null,
+    pox: primary?primary.x:0, poy: primary?primary.y:0, anchor:null,
+    startW:{x:w.x,y:w.y}, moved:false,
+    ps: selectedPieces().map(p=>({p,ox:p.x,oy:p.y})),
+    ims: ST.images.filter(i=>ST.selImages.includes(i.id)).map(im=>({im,ox:im.x,oy:im.y})),
+    ts: ST.texts.filter(t=>ST.selTexts.includes(t.id)).map(t=>({t,ox:t.x,oy:t.y})),
+    ss: ST.strokes.filter(s=>ST.selStrokes.indexOf(s)!==-1).map(s=>({s,pts:s.pts.map(pt=>({x:pt.x,y:pt.y}))})) };
+  if(!primary){
+    if(ST.drag.ims[0]) ST.drag.anchor={ox:ST.drag.ims[0].ox, oy:ST.drag.ims[0].oy};
+    else if(ST.drag.ts[0]) ST.drag.anchor={ox:ST.drag.ts[0].ox, oy:ST.drag.ts[0].oy};
+    else if(ST.drag.ss[0]) ST.drag.anchor={ox:ST.drag.ss[0].pts[0].x, oy:ST.drag.ss[0].pts[0].y};
+  }
+  stage.classList.add('c-move');
+}
+cv.addEventListener('pointermove', e=>{
+  const w=evtW(e), sc=evtS(e); ST.hover=w;
+  if(ST.drag){
+    if(ST.drag.mode==='pan'){ ST.view.ox=ST.drag.ox+(sc.x-ST.drag.sx); ST.view.oy=ST.drag.oy+(sc.y-ST.drag.sy); render(); }
+    else if(ST.drag.mode==='gmove'){
+      // move the whole selection (pieces + images + texts + drawings) as one
+      let rawdx=w.x-ST.drag.startW.x, rawdy=w.y-ST.drag.startW.y;
+      // on touch, once the drag really starts, lift the selection clear of the
+      // finger so it stays visible - measured once so it doesn't drift
+      if(ST.drag.touch){
+        if(!ST.drag.lifted && Math.hypot(rawdx,rawdy)*ST.view.scale>8){
+          ST.drag.lifted=true;
+          ST.drag.lift=(selBottomAtStart(ST.drag)-ST.drag.startW.y)+40/ST.view.scale;
+        }
+        if(ST.drag.lifted) rawdy-=ST.drag.lift;
+      }
+      let ddx=rawdx, ddy=rawdy;
+      if(ST.drag.primary){ const s=snapCenter(ST.drag.primary.type, ST.drag.primary.rot, ST.drag.pox+rawdx, ST.drag.poy+rawdy);
+        ddx=s.x-ST.drag.pox; ddy=s.y-ST.drag.poy; }
+      else if(ST.snapOn && ST.drag.anchor){ ddx=Math.round((ST.drag.anchor.ox+rawdx)/SNAP)*SNAP-ST.drag.anchor.ox;
+        ddy=Math.round((ST.drag.anchor.oy+rawdy)/SNAP)*SNAP-ST.drag.anchor.oy; }
+      ST.drag.ps.forEach(it=>{ it.p.x=it.ox+ddx; it.p.y=it.oy+ddy; });
+      ST.drag.ims.forEach(it=>{ it.im.x=it.ox+ddx; it.im.y=it.oy+ddy; });
+      ST.drag.ts.forEach(it=>{ it.t.x=it.ox+ddx; it.t.y=it.oy+ddy; });
+      ST.drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x+ddx; pt.y=it.pts[k].y+ddy; }); });
+      ST.drag.moved=true; render(); updateStatus();
+    }
+    else if(ST.drag.mode==='rotate'){
+      let ang=Math.atan2(w.x-ST.drag.p.x, -(w.y-ST.drag.p.y))*180/Math.PI;
+      if(!e.shiftKey && e.pointerType!=='touch') ang=Math.round(ang/5)*5;   // touch handle = free rotation
+      ST.drag.p.rot=((ang%360)+360)%360; render(); updateStatus();
+    }
+    else if(ST.drag.mode==='marquee'){
+      ST.marquee.x1=w.x; ST.marquee.y1=w.y;
+      const bx0=Math.min(ST.marquee.x0,ST.marquee.x1), by0=Math.min(ST.marquee.y0,ST.marquee.y1);
+      const bx1=Math.max(ST.marquee.x0,ST.marquee.x1), by1=Math.max(ST.marquee.y0,ST.marquee.y1);
+      const B=ST.marquee.base;
+      ST.selected=B.pieces.slice();
+      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p) || !planVisible(p)) return; const b=pieceAABB(p);
+        if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) ST.selected.push(p.id); });
+      ST.selTexts=B.texts.slice();
+      ST.texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !ST.selTexts.includes(t.id)) ST.selTexts.push(t.id); });
+      ST.selImages=B.imgs.slice();
+      ST.images.forEach(im=>{ if(!layerEditable(im)) return; if(im.x-im.w/2<=bx1&&im.x+im.w/2>=bx0&&im.y-im.h/2<=by1&&im.y+im.h/2>=by0 && !ST.selImages.includes(im.id)) ST.selImages.push(im.id); });
+      ST.selStrokes=B.strokes.slice();
+      ST.strokes.forEach(s=>{ if(!layerEditable(s)) return; const bb=strokeBBox(s);
+        if(bb && bb.minx<=bx1&&bb.maxx>=bx0&&bb.miny<=by1&&bb.maxy>=by0 && ST.selStrokes.indexOf(s)===-1) ST.selStrokes.push(s); });
+      // grouped items pull their whole group in - but only from visible layers
+      expandGroups();
+      render(); updateStatus();
+    }
+    else if(ST.drag.mode==='imgresize'){
+      let nw=ST.drag.ow+(w.x-ST.drag.startW.x); nw=Math.max(GRID, nw);
+      ST.drag.im.w=nw; ST.drag.im.h=nw/ST.drag.ar; ST.drag.moved=true; render();
+    }
+    else if(ST.drag.mode==='strokeresize'){
+      // scale about the bbox top-left corner; x and y scale independently
+      const bb=ST.drag.bb, dx0=ST.drag.startW.x-bb.minx, dy0=ST.drag.startW.y-bb.miny;
+      const fx=dx0>4 ? Math.max(0.05,(w.x-bb.minx)/dx0) : 1;
+      const fy=dy0>4 ? Math.max(0.05,(w.y-bb.miny)/dy0) : 1;
+      ST.drag.s.pts.forEach((pt,k)=>{ pt.x=bb.minx+(ST.drag.pts0[k].x-bb.minx)*fx;
+        pt.y=bb.miny+(ST.drag.pts0[k].y-bb.miny)*fy; });
+      delete ST.drag.s._ipts;
+      ST.drag.moved=true; render();
+    }
+    else if(ST.drag.mode==='draw'){
+      const last=ST.drag.s.pts[ST.drag.s.pts.length-1];
+      if(Math.hypot(w.x-last.x,w.y-last.y)>1.5){ ST.drag.s.pts.push({x:w.x,y:w.y}); render(); }
+    }
+    else if(ST.drag.mode==='erase'){ eraseAt(w); }
+    else if(ST.drag.mode==='tapplace'){
+      ST.drag.w=w;
+      if(!ST.drag.moved && Math.hypot(sc.x-ST.drag.ss.x, sc.y-ST.drag.ss.y)>10) ST.drag.moved=true;
+      // dragging: ghost rides above the finger so it isn't hidden under it -
+      // its lowest edge clears the finger whatever the rotation; it stays at
+      // that offset spot on lift, and a tap anywhere confirms it there
+      if(ST.drag.moved){ ST.hover={x:w.x, y:w.y-ghostDrop()-40/ST.view.scale}; render(); }
+      else if(ST.drag.prev) ST.hover=ST.drag.prev;            // mere tap wiggle: ghost stays put
+    }
+  } else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)) render();  // ghost follows cursor
+  updateCursor(w);
+});
+cv.addEventListener('pointerup', ()=>{
+  if(ST.drag){
+    if(ST.drag.mode==='tapplace' && !ST.drag.moved){   // only a plain tap places
+      const w=ST.drag.w;
+      if(ST.drag.kind==='text'){ clearSelection(); addText(w); }
+      else if(ST.drag.kind==='sym'){ if(SYMBOLS[ST.tool]) placeSymbolAt(w); }
+      else{
+        // any tap confirms the ghost where it sits (aiming by tap is too
+        // imprecise on touch - drag aims, tap commits)
+        const at={x:ST.hover.x, y:ST.hover.y};
+        if(ST.drag.kind==='stamp' && ST.activeStamp) placeStampAt(at);
+        else if(ST.drag.kind==='piece' && CATALOG[ST.tool]) placePieceAt(at);
+      }
+    }
+    if(ST.drag.mode==='gmove' && ST.drag.moved){
+      ST.drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });
+      ST.drag.ts.forEach(it=>{ delete it.t._ix; delete it.t._iy; });
+      ST.drag.ss.forEach(it=>{ delete it.s._ipts; });
+    }
+    if(ST.drag.mode==='gmove' && ST.drag.moved && ST.drag.touch) ST.pendingMove=true;   // confirmed by the next tap
+    else if((ST.drag.mode==='gmove'&&ST.drag.moved)||ST.drag.mode==='rotate'||ST.drag.mode==='draw'||(ST.drag.mode==='erase'&&ST.drag.erased)
+      || (ST.drag.mode==='imgresize'&&ST.drag.moved) || (ST.drag.mode==='strokeresize'&&ST.drag.moved)) snapshot();
+  }
+  ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move'); render();
+});
+// double-click a text label to edit it
+cv.addEventListener('dblclick', e=>{
+  const w=evtW(e); const tt=hitText(w);
+  if(tt){ clearSelection(); clearOverlaySel(); ST.selTexts=[tt.id]; render(); openTextEditor(tt, false); }
+});
+// right-click (and touch long-press) opens the context menu for whatever is
+// under the cursor - see openCtx
+cv.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+  if(ST.drag || ST.pinch || tpts.size) return;   // mid-gesture: not a menu
+  openCtx(e);
+});
+// Trackpads send a pinch as ctrl+wheel, and a two-finger swipe as a plain wheel
+// with a horizontal component or fractional steps. A mouse wheel sends neither,
+// so it keeps its zoom behaviour until a trackpad actually shows up.
+function noteTrackpad(e){
+  if(e.ctrlKey || e.deltaX!==0) ST.trackpad=true;
+  else if(e.deltaMode===0 && e.deltaY!==0 && Math.abs(e.deltaY)<50 && !Number.isInteger(e.deltaY)) ST.trackpad=true;
+}
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  noteTrackpad(e);
+  if(ST.trackpad && !e.ctrlKey){                 // two-finger swipe: pan the camera
+    ST.view.ox-=e.deltaX; ST.view.oy-=e.deltaY;
+    render(); updateStatus(); persist(); return;
+  }
+  const sc=evtS(e), before=screenToWorld(sc.x,sc.y);
+  // pinch reports a continuous delta, a wheel notch a fixed step
+  const f = e.ctrlKey ? Math.exp(-e.deltaY*0.01) : (e.deltaY<0?1.12:1/1.12);
+  ST.view.scale=Math.min(6,Math.max(0.15,ST.view.scale*f));
+  const after=screenToWorld(sc.x,sc.y);
+  ST.view.ox+=(after.x-before.x)*ST.view.scale; ST.view.oy+=(after.y-before.y)*ST.view.scale;
+  render(); updateStatus(); persist();
+}, {passive:false});
+
 /* ===== pdf.js ===== */
 // Minimal PDF writer, just enough to be a real document: a catalog, a page
 // tree, one page per schematic sheet and an xref table. Each sheet goes in
@@ -2509,12 +3361,19 @@ function fitPreview(tries){
   pz.z=Math.max(0.05, Math.min(w/c.width, h/c.height, 1));
   pz.x=0; pz.y=0; applyPZ();
 }
-function zoomBy(k, ax, ay){
+// named for the preview, not just "zoom": the board exports a zoomBy of its own
+// and in the single-file build every module shares one scope
+function prevZoom(k, ax, ay){
   const c=prevCanvas(); if(!c) return;
   const nz=Math.max(0.05, Math.min(6, pz.z*k));
   const r=nz/pz.z;
   pz.x = ax - r*(ax - pz.x); pz.y = ay - r*(ay - pz.y); pz.z = nz;
   applyPZ();
+}
+// WASD reaches whichever viewport is in front; the board asks first
+function previewPanBy(dx, dy){
+  if($('exp-modal').hidden || !prevCanvas()) return false;
+  pz.x+=dx; pz.y+=dy; applyPZ(); return true;
 }
 // which sheets exist, which are ticked, and which one is on screen
 function renderSheetList(){
@@ -2594,324 +3453,59 @@ $('exp-bg').onclick=closeExp;
 $('exp-modal').addEventListener('change', expFromForm);
 $('exp-name').addEventListener('input', expFromForm);
 $('exp-name').addEventListener('keydown', e=>e.stopPropagation());
-$('exp-zoom-in').onclick=()=>zoomBy(1.25,0,0);
-$('exp-zoom-out').onclick=()=>zoomBy(1/1.25,0,0);
+$('exp-zoom-in').onclick=()=>prevZoom(1.25,0,0);
+$('exp-zoom-out').onclick=()=>prevZoom(1/1.25,0,0);
 $('exp-zoom-fit').onclick=()=>fitPreview();
-$('exp-prev-box').addEventListener('wheel', e=>{
-  if(!prevCanvas()) return;
-  e.preventDefault();
-  const r=e.currentTarget.getBoundingClientRect();
-  zoomBy(e.deltaY<0?1.12:1/1.12, e.clientX-r.left-r.width/2, e.clientY-r.top-r.height/2);
-}, {passive:false});
-$('exp-prev-box').addEventListener('pointerdown', e=>{
-  const box=e.currentTarget; if(!prevCanvas()) return;
-  box.classList.add('panning');
-  const sx=e.clientX-pz.x, sy=e.clientY-pz.y;
-  try{ box.setPointerCapture(e.pointerId); }catch(_){}
-  const move=ev=>{ pz.x=ev.clientX-sx; pz.y=ev.clientY-sy; applyPZ(); };
-  const up=()=>{ box.classList.remove('panning');
-    box.removeEventListener('pointermove', move); box.removeEventListener('pointerup', up);
-    box.removeEventListener('pointercancel', up); };
-  box.addEventListener('pointermove', move);
-  box.addEventListener('pointerup', up);
-  box.addEventListener('pointercancel', up);
-});
-$('exp-run').onclick=runExport;
+// The preview is a viewport like the board, so it answers to the same gestures:
+// a mouse wheel zooms in notches, a trackpad's two-finger swipe pans and its
+// pinch zooms continuously, one finger or a held button drags, two fingers
+// pinch, and WASD pans while the dialog is up.
+(function(){
+  const box=$('exp-prev-box');
+  const anchor=e=>{ const r=box.getBoundingClientRect();
+    return [e.clientX-r.left-r.width/2, e.clientY-r.top-r.height/2]; };
+  box.addEventListener('wheel', e=>{
+    if(!prevCanvas()) return;
+    e.preventDefault();
+    noteTrackpad(e);
+    if(ST.trackpad && !e.ctrlKey){ pz.x-=e.deltaX; pz.y-=e.deltaY; applyPZ(); return; }
+    const [ax,ay]=anchor(e);
+    prevZoom(e.ctrlKey ? Math.exp(-e.deltaY*0.01) : (e.deltaY<0?1.12:1/1.12), ax, ay);
+  }, {passive:false});
 
-/* ===== planpanel.js ===== */
-// ---------------- Build Plan panel (stage + builder tags) --------------------
-const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-function planEntries(kind){ return kind==='stage'?ST.stages:ST.builders; }
-function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; }
-function setPlanActive(kind, id){
-  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  if(E) E.visible=true;                 // never leave the active tag filtered out
-  if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
-  else ST.curBuilderId=id;
-  render(); renderPlanPanel(); persist();
-}
-function addPlanEntry(kind){
-  const arr=planEntries(kind), col=nextPlanColor();
-  const E = kind==='stage'
-    ? {id:ST.stageUid++,   name:'Stage '+(arr.length+1),   color:col, visible:true}
-    : {id:ST.builderUid++, name:'Builder '+(arr.length+1), color:col, visible:true};
-  arr.push(E); setPlanActive(kind, E.id); snapshot();
-}
-// removing a tag untags its pieces; it never deletes anything from the board
-function delPlanEntry(kind, id){
-  const arr=planEntries(kind), i=arr.findIndex(e=>e.id===id); if(i<0) return;
-  arr.splice(i,1);
-  ST.pieces.forEach(p=>{ if(kind==='stage'){ if(p.st===id) p.st=null; } else if(p.bd===id) p.bd=null; });
-  if(planActive(kind)===id){ if(kind==='stage') ST.curStageId=null; else ST.curBuilderId=null; }
-  snapshot(); render(); renderPlanPanel();
-}
-// re-tag whatever is selected with one specific stage / builder (null = untag).
-// The context menu is the only way in: a piece is tagged where it lives, not
-// from a panel that has to be open and pointed at the right row first.
-function setPlanOnSel(kind, id){
-  const items=selectedPieces();
-  if(!items.length){ flashToast('Select some pieces first'); return; }
-  items.forEach(p=>{ if(kind==='stage') p.st=id; else p.bd=id; });
-  const E = id==null ? null : (kind==='stage'?stageById(id):builderById(id));
-  flashToast(items.length+' piece'+(items.length>1?'s':'')+' → '+(E?E.name:'General'));
-  snapshot(); render(); renderPlanPanel();
-}
-// the one value shared by every item, or undefined when they disagree
-function commonVal(items, key){
-  if(!items.length) return undefined;
-  const v = items[0][key]==null ? null : items[0][key];
-  return items.every(it=>(it[key]==null?null:it[key])===v) ? v : undefined;
-}
-// move the whole selection onto another layer; a layer belongs to a floor, so
-// pieces follow that floor too rather than drawing at the wrong height
-function moveSelToLayer(id){
-  const L=layerById(id); if(!L) return;
-  const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
-  if(!all.length){ flashToast('Select something first'); return; }
-  all.forEach(it=>{ it.ly=id; });
-  ps.forEach(p=>{ p.l=L.floor||0; });
-  if(ST.selLayers.indexOf(id)===-1) ST.selLayers.push(id);
-  snapshot(); render(); renderLayerPanel(); updateStatus();
-  flashToast(all.length+' item'+(all.length>1?'s':'')+' → '+L.name);
-}
-function planRename(E, nameEl){
-  const inp=document.createElement('input'); inp.type='text'; inp.className='pl-rename'; inp.value=E.name;
-  inp.onclick=e=>e.stopPropagation();
-  let done=false;
-  const finish=keep=>{ if(done)return; done=true; if(keep){ const v=inp.value.trim(); if(v) E.name=v; }
-    snapshot(); renderPlanPanel(); };
-  inp.onkeydown=e=>{ e.stopPropagation();
-    if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } };
-  inp.onblur=()=>finish(true);
-  nameEl.replaceWith(inp); inp.focus(); inp.select();
-}
-// E === null builds the "General" bucket row (filterable, not editable)
-// The modal is configuration only: it adds, renames, recolours and removes
-// tags. Which stage and builder are *active*, and which are hidden, are board
-// decisions, so they live on the board readout instead.
-function buildPlanRow(kind, E){
-  const id = E?E.id:null;
-  const vis = E ? E.visible : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
-  const row=document.createElement('div');
-  row.className='pl-row'+(vis?'':' off');
-  row.dataset.kind=kind; row.dataset.id = E?String(E.id):'';
-  row.title = E ? 'Double-click the name to rename'
-                : 'Work with no '+kind+' of its own - it shows in every view';
-  let dot;
-  if(E){
-    dot=document.createElement('input'); dot.type='color'; dot.className='pl-dot'; dot.value=E.color;
-    dot.title='Tag colour';
-    dot.onclick=ev=>ev.stopPropagation();
-    dot.oninput=()=>{ E.color=dot.value; render(); };
-    dot.onchange=()=>{ E.color=dot.value; snapshot(); render(); };
-  } else { dot=document.createElement('span'); dot.className='pl-dot plain'; }
-  const name=document.createElement('span'); name.className='pl-name';
-  name.textContent = E ? E.name : 'General';
-  if(E && E.note) name.title=E.note;
-  if(E) name.ondblclick=ev=>{ ev.stopPropagation(); planRename(E, name); };
-  const n=document.createElement('span'); n.className='pl-n'; n.textContent=planCount(kind,id);
-  row.appendChild(dot); row.appendChild(name); row.appendChild(n);
-  // a stage carries a free-text purpose, written here and carried onto its
-  // export sheet - nothing is pre-filled, the crew says what the stage is for
-  if(E && kind==='stage'){
-    const note=document.createElement('input');
-    note.type='text'; note.className='pl-note'; note.maxLength=90;
-    note.placeholder='What happens in this stage?';
-    note.value=E.note||'';
-    note.title='Shown on this stage\'s export sheet';
-    note.onclick=ev=>ev.stopPropagation();
-    note.ondblclick=ev=>ev.stopPropagation();
-    note.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ ev.preventDefault(); note.blur(); } };
-    note.oninput=()=>{ const v=note.value.trim(); if(v) E.note=v; else delete E.note; };
-    note.onchange=()=>{ snapshot(); persist(); };
-    row.appendChild(note);
-  }
-  if(E){
-    const x=document.createElement('button'); x.className='pl-ic x'; x.innerHTML=PL_X;
-    x.title='Remove this tag (its pieces fall back to General)';
-    x.onclick=ev=>{ ev.stopPropagation(); delPlanEntry(kind, E.id); };
-    row.appendChild(x);
-  }
-  return row;
-}
-function renderPlanPanel(){
-  const sl=$('stage-list'), bl=$('builder-list'); if(!sl||!bl) return;
-  ensurePlan();
-  sl.innerHTML=''; ST.stages.forEach(s=>sl.appendChild(buildPlanRow('stage',s)));
-  sl.appendChild(buildPlanRow('stage',null));
-  bl.innerHTML=''; ST.builders.forEach(b=>bl.appendChild(buildPlanRow('builder',b)));
-  bl.appendChild(buildPlanRow('builder',null));
-  updatePlanApply();
-}
-// runs from updateStatus, so the tallies keep up with placing / deleting without
-// rebuilding the rows (which would kill an in-progress rename)
-// The Build Plan editor is a modal of its own now: it is a place you go to set
-// the plan up, not something to keep parked in the side panel next to Layers.
-function openPlanModal(){
-  const m=$('plan-modal'); if(!m) return;
-  m.hidden=false; renderPlanPanel();
-}
-function closePlanModal(){ const m=$('plan-modal'); if(m) m.hidden=true; }
-// stage stepper: General sits at the head of the cycle - it is where a piece
-// with no stage lives, and selecting it shows the whole build
-function stageCycle(){ return [null].concat(ST.stages.map(s=>s.id)); }
-function stageAt(dir){
-  const cyc=stageCycle(), i=cyc.indexOf(ST.curStageId==null?null:ST.curStageId);
-  const j=(i<0?0:i)+dir;
-  return (j<0 || j>=cyc.length) ? undefined : cyc[j];
-}
-function stepStage(dir){
-  const id=stageAt(dir);
-  if(id!==undefined) setPlanActive('stage', id);
-}
-
-// ---- board HUD: what is being built right now, and who is on it ------------
-// The rail says which structure is armed; this says which stage and builder it
-// will be stamped with, and how the work already in that stage divides between
-// builders. It sits on the board so neither answer needs the panel open, and a
-// builder row is a shortcut to making that builder active.
-const PH_PREV='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
-const PH_NEXT='<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>';
-const PH_EDIT='<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>';
-const PH_FOLD='<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>';
-let hudSig=null;
-// show / hide everything carrying one tag. The General bucket has no entry
-// of its own, so its switch lives on the plan flags instead.
-function tagVisible(kind, E){
-  return E ? E.visible!==false : (kind==='stage'?ST.showNoStage:ST.showNoBuilder);
-}
-function toggleTag(kind, E){
-  const vis=tagVisible(kind,E);
-  if(E) E.visible=!vis;
-  else if(kind==='stage') ST.showNoStage=!vis; else ST.showNoBuilder=!vis;
-  pruneSelToPlan(); render(); renderPlanPanel(); updateStatus(); persist();
-}
-function hudBuilders(){
-  return ST.builders.map(b=>({id:b.id, name:b.name, color:b.color}))
-    .concat([{id:null, name:'General', color:null}]);
-}
-function renderPlanHud(){
-  const el=$('plan-hud'); if(!el) return;
-  ensurePlan();
-  const S = ST.curStageId==null ? null : stageById(ST.curStageId);
-  const rows=hudBuilders();
-  // the rows only get rebuilt when the tags themselves change, so the counts
-  // below can refresh on every status tick without churning the DOM
-  const sig=[S?S.id+S.name+S.color:'none', rows.map(r=>r.id+'|'+r.name+'|'+r.color).join(',')].join('#');
-  if(sig!==hudSig){
-    hudSig=sig; el.innerHTML='';
-    const head=document.createElement('div'); head.className='ph-stage';
-    const mkBtn=(cls,svg,title,fn)=>{
-      const b=document.createElement('button'); b.className='ph-btn '+cls;
-      b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
-    };
-    head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
-    const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
-    if(S) dot.style.background=S.color;
-    const nm=document.createElement('span'); nm.className='ph-name';
-    nm.textContent = S?S.name:'General';
-    nm.title='The stage new pieces are tagged with';
-    head.appendChild(dot); head.appendChild(nm);
-    head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
-    head.appendChild(mkBtn('ph-eye ph-seye', EYE_ON, 'Hide this stage on the board',
-      ()=>toggleTag('stage', ST.curStageId==null?null:stageById(ST.curStageId))));
-    head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
-    head.appendChild(mkBtn('ph-fold', PH_FOLD, 'Hide the board readout', ()=>setHudOpen(false)));
-    el.appendChild(head);
-    const sub=document.createElement('div'); sub.className='ph-sub';
-    const lab=document.createElement('span'); lab.className='ph-sublab';
-    // General is the whole build, so counting "in this stage" there would read 0
-    // while the board plainly shows everything
-    lab.textContent = S ? 'In this stage' : 'On the board';
-    const tot=document.createElement('span'); tot.className='ph-n ph-total';
-    sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
-    rows.forEach(r=>{
-      const b=document.createElement('div'); b.className='ph-row';
-      b.dataset.id = r.id==null ? '' : String(r.id);
-      b.title = 'Make '+r.name+' the active builder, and pick out what they have in this stage';
-      const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
-      if(r.color) d.style.background=r.color;
-      const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
-      const c=document.createElement('span'); c.className='ph-n';
-      const eye=document.createElement('button'); eye.className='ph-eye';
-      eye.onclick=ev=>{ ev.stopPropagation();
-        toggleTag('builder', r.id==null?null:builderById(r.id)); };
-      b.appendChild(d); b.appendChild(t); b.appendChild(c); b.appendChild(eye);
-      b.onclick=()=>{
-        // General is the "every hand" row, so picking it drops the filter
-        // rather than narrowing the board down to untagged work
-        ST.hlBuilder = (r.id==null || ST.hlBuilder===r.id) ? undefined : r.id;
-        setPlanActive('builder', r.id);
-      };
-      el.appendChild(b);
-    });
-  }
-  const prev=el.querySelector('.ph-prev'), next=el.querySelector('.ph-next');
-  if(prev) prev.disabled = stageAt(-1)===undefined;
-  if(next) next.disabled = stageAt(1)===undefined;
-  const paintEye=(btn, vis)=>{
-    if(!btn || btn.dataset.on===String(vis)) return;
-    btn.dataset.on=String(vis); btn.innerHTML=vis?EYE_ON:EYE_OFF;
-    btn.title = vis?'Hide these on the board':'Show these again';
+  const pts=new Map(); let drag=null, grip=null;
+  const pair=()=>{ const a=[...pts.values()];
+    return {d:Math.max(1,Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y)),
+            mx:(a[0].x+a[1].x)/2, my:(a[0].y+a[1].y)/2}; };
+  box.addEventListener('pointerdown', e=>{
+    if(!prevCanvas()) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    try{ box.setPointerCapture(e.pointerId); }catch(_){}
+    if(pts.size===2){ drag=null; const p=pair(); grip={...p, z:pz.z, x:pz.x, y:pz.y}; }
+    else if(pts.size===1){ drag={sx:e.clientX-pz.x, sy:e.clientY-pz.y}; box.classList.add('panning'); }
+  });
+  box.addEventListener('pointermove', e=>{
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size>=2 && grip){
+      const p=pair(), r=box.getBoundingClientRect();
+      const ax=grip.mx-r.left-r.width/2, ay=grip.my-r.top-r.height/2;
+      const nz=Math.max(0.05, Math.min(6, grip.z*(p.d/grip.d))), s=nz/grip.z;
+      pz.z=nz;
+      pz.x = ax - s*(ax-grip.x) + (p.mx-grip.mx);
+      pz.y = ay - s*(ay-grip.y) + (p.my-grip.my);
+      applyPZ();
+    } else if(drag){ pz.x=e.clientX-drag.sx; pz.y=e.clientY-drag.sy; applyPZ(); }
+  });
+  const end=e=>{
+    pts.delete(e.pointerId);
+    if(pts.size<2) grip=null;
+    if(!pts.size){ drag=null; box.classList.remove('panning'); }
   };
-  const curS = ST.curStageId==null ? null : stageById(ST.curStageId);
-  const sVis = tagVisible('stage', curS);
-  paintEye(el.querySelector('.ph-seye'), sVis);
-  const st=el.querySelector('.ph-stage'); if(st) st.classList.toggle('off', !sVis);
-  const cur = ST.curStageId==null ? null : ST.curStageId;
-  const inStage = cur===null ? ST.pieces.slice()
-                             : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
-  const tot=el.querySelector('.ph-total');
-  if(tot){ const v=inStage.length+(inStage.length===1?' piece':' pieces');
-    if(tot.textContent!==v) tot.textContent=v; }
-  const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
-  el.querySelectorAll('.ph-row').forEach(row=>{
-    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
-    const v = String(inStage.filter(p=>(p.bd==null?null:p.bd)===id).length);
-    const c = row.querySelector('.ph-n');
-    if(c && c.textContent!==v) c.textContent=v;
-    row.classList.toggle('on', curB===id);
-    row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
-    const bVis=tagVisible('builder', id==null?null:builderById(id));
-    paintEye(row.querySelector('.ph-eye'), bVis);
-    row.classList.toggle('off', !bVis);
-  });
-}
-function updatePlanApply(){
-  document.querySelectorAll('#stage-list .pl-row, #builder-list .pl-row').forEach(row=>{
-    const n=row.querySelector('.pl-n'); if(!n) return;
-    const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
-    const v=String(planCount(row.dataset.kind, id));
-    if(n.textContent!==v) n.textContent=v;
-  });
-  renderPlanHud();
-}
-// the readout collapses to its own toggle, and the choice is remembered
-function setHudOpen(on){
-  const h=$('board-hud'); if(!h) return;
-  h.classList.toggle('off', !on);
-  try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
-}
-$('hud-show').onclick=()=>setHudOpen(true);
-$('plan-close').onclick=closePlanModal;
-$('plan-bg').onclick=closePlanModal;
-$('plan-addstage').onclick=()=>addPlanEntry('stage');
-$('plan-addbuilder').onclick=()=>addPlanEntry('builder');
-
-/* ===== svg.js ===== */
-// Inline SVG markup for the tool tiles. No dependencies of its own, so any
-// module can pull an icon in without dragging the rail's wiring along - and
-// without forming an import cycle back through it.
-const GRIP_SVG='<svg viewBox="0 0 16 16"><circle cx="5.5" cy="4" r="1.3"/><circle cx="10.5" cy="4" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="10.5" cy="12" r="1.3"/></svg>';
-const TOOL_ICONS = {
-  select:'<svg viewBox="0 0 24 24"><path d="M5 3l7 17 2.2-6.5L21 11z"/></svg>',
-  draw:'<svg viewBox="0 0 24 24"><path d="M15 4l5 5L9 20l-5 1 1-5z"/><path d="M13 6l5 5"/></svg>',
-  erase:'<svg viewBox="0 0 24 24"><path d="M4 15l7-7 6 6-5 5H8z"/><path d="M9 20h11"/><path d="M11 8l6 6"/></svg>',
-  pan:'<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 8l-4 4 4 4M16 8l4 4-4 4M8 4l4-1 4 1M8 20l4 1 4-1"/></svg>',
-  eyedrop:'<svg viewBox="0 0 24 24"><path d="M15.5 4.5l4 4M17.6 2.4a2.1 2.1 0 0 1 3 3l-3.1 3.1 1 1-2 2-1-1L8 18.9 4.4 20l1.1-3.6 7.4-7.4-1-1 2-2 1 1z"/></svg>',
-  text:'<svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>',
-  image:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>',
-};
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', end);
+})();
+$('exp-run').onclick=runExport;
 
 /* ===== rail.js ===== */
 // ---------------- build rail UI
@@ -3750,563 +4344,6 @@ function buildRecent(){
   });
 }
 
-/* ===== ctxmenu.js ===== */
-// ---------------- canvas context menu ---------------------------------------
-// One place for everything you can do to a piece: the edit ops, the eyedropper,
-// its stage / builder tags, the layer it sits on, and what it actually is. It
-// replaces the old right-click-is-always-an-eyedropper gesture (the eyedropper
-// is a tool in the rail now) and the Build Plan panel's "apply to selection"
-// buttons, which made you aim a panel row at a board selection from far away.
-const CTX_IC={
-  eyedrop:TOOL_ICONS.eyedrop, select:TOOL_ICONS.select, pan:TOOL_ICONS.pan,
-  rotate:'<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg>',
-  mirror:'<svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg>',
-  copy:'<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg>',
-  del:'<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
-  group:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg>',
-  ungroup:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg>',
-  snap:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>',
-  pen:'<svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21l-6 1 1-6z"/><path d="M12.5 5.5l6 6"/></svg>',
-  none:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>',
-};
-// pick a piece's type + orientation and go straight into placing more of it
-function eyedropPiece(p){
-  if(!p || !CATALOG[p.type]) return false;
-  ST.placeRot=((Math.round(p.rot||0)%360)+360)%360; ST.placeFlip=!!p.flip;
-  setTool(p.type); flashToast('Picked '+CATALOG[p.type].name);
-  return true;
-}
-function ctxClose(){ const el=$('ctx'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; } }
-function ctxSub(host, label){
-  const d=document.createElement('div'); d.className='ctx-sub'; d.textContent=label;
-  host.appendChild(d); return d;
-}
-function ctxRow(label, icon, fn, opts){
-  opts=opts||{};
-  const b=document.createElement('button');
-  b.className='ctx-row'+(opts.danger?' danger':'');
-  b.innerHTML=(icon||'')+'<span>'+label+'</span>';
-  if(opts.title) b.title=opts.title;
-  b.disabled=!!opts.off;
-  b.onclick=()=>{ ctxClose(); fn(); };
-  return b;
-}
-// a tag row: one chip per option, the current one lit. A mixed selection lights
-// nothing, so picking a chip is always an unambiguous "make it this".
-// A tag reads as one line: what the selection carries now, and a pencil that
-// turns that line into a picker. Laying every stage, builder and layer out as
-// chips made the menu as tall as the whole plan and buried the one fact you
-// opened it for. A mixed selection says so, and picking still applies to all.
-function ctxPick(host, label, items, cur, onPick){
-  ctxSub(host, label);
-  const wrap=document.createElement('div'); wrap.className='ctx-pick';
-  let open=false;
-  const draw=()=>{
-    wrap.innerHTML='';
-    const it = cur===undefined ? null : items.find(x=>x.id===cur);
-    const row=document.createElement('div'); row.className='ctx-cur-row';
-    const dot=document.createElement('span');
-    dot.className='ctx-dot'+((it&&it.color)?'':' plain');
-    if(it&&it.color) dot.style.background=it.color;
-    const nm=document.createElement('span'); nm.className='ctx-cur';
-    nm.textContent = cur===undefined ? 'Mixed' : (it?it.name:'General');
-    nm.title=nm.textContent;
-    const pen=document.createElement('button'); pen.className='ctx-pen'+(open?' on':'');
-    pen.innerHTML=CTX_IC.pen;
-    pen.title=(open?'Close the ':'Change the ')+label.toLowerCase();
-    pen.onclick=ev=>{ ev.stopPropagation(); open=!open; draw(); };
-    row.appendChild(dot); row.appendChild(nm); row.appendChild(pen);
-    wrap.appendChild(row);
-    if(!open) return;
-    // the list is the app's own, not the browser's: it carries each tag's colour
-    // and marks the one in force, which a native <select> cannot do
-    const list=document.createElement('div'); list.className='ctx-list';
-    items.forEach(o=>{
-      const b=document.createElement('button');
-      b.className='ctx-opt'+(cur!==undefined && o.id===cur ? ' on' : '');
-      const d=document.createElement('span');
-      d.className='ctx-dot'+(o.color?'':' plain');
-      if(o.color) d.style.background=o.color;
-      const s=document.createElement('span'); s.className='ctx-optname'; s.textContent=o.name;
-      b.appendChild(d); b.appendChild(s);
-      b.onclick=ev=>{ ev.stopPropagation(); ctxClose(); onPick(o.id); };
-      list.appendChild(b);
-    });
-    wrap.appendChild(list);
-    ctxFit();
-    list.scrollIntoView({block:'nearest'});   // if the card itself had to scroll
-  };
-  draw(); host.appendChild(wrap);
-}
-function ctxSelLabel(ps, ims, ts, ss){
-  const n=ps.length+ims.length+ts.length+ss.length;
-  if(n!==1) return n+' items selected';
-  if(ps.length) return (CATALOG[ps[0].type]||{name:'Piece'}).name;
-  return ims.length?'Image overlay':ts.length?'Label':'Drawing';
-}
-function openCtx(e){
-  const el=$('ctx'); if(!el) return;
-  const w=evtW(e), hit=hitPiece(w.x,w.y);
-  // right-clicking outside the selection retargets it to what is under the
-  // cursor; inside it, the whole selection stays the subject
-  if(hit && !isSel(hit.id)){
-    clearSelection(); clearOverlaySel(); ST.selected=[hit.id]; expandGroups();
-    render(); updateStatus();
-  }
-  const {ps,ims,ts,ss}=selItemObjs(), all=[...ps,...ims,...ts,...ss];
-  el.innerHTML=''; el.hidden=false;
-  if(all.length){
-    const head=document.createElement('div'); head.className='ctx-head';
-    const t=document.createElement('div'); t.className='ctx-title';
-    t.textContent=ctxSelLabel(ps,ims,ts,ss); head.appendChild(t);
-    const L=layerById(itemLayerId(all[0]));
-    const floors=[...new Set(ps.map(pieceLayer))];
-    const gids=[...new Set(all.map(it=>it.g).filter(g=>g!=null))];
-    const m=document.createElement('div'); m.className='ctx-meta';
-    m.innerHTML='Layer &middot; '+((L&&all.every(it=>itemLayerId(it)===L.id))?L.name:'mixed')+'<br>'
-      +'Floor &middot; '+(floors.length===1?floorName(floors[0]):(floors.length?'mixed':'&mdash;'))+'<br>'
-      +'Group &middot; '+(gids.length===1?('#'+gids[0]+' · '+all.length+' items'):(gids.length?'mixed':'none'));
-    head.appendChild(m); el.appendChild(head);
-
-    // The eyedropper copies one structure's type and rotation, so it only means
-    // anything when the selection speaks with a single voice: one piece, or
-    // several of the same type. Mixed types have no one structure to pick, so
-    // the row greys out and Duplicate is what still applies to the whole set.
-    const types=[...new Set(ps.map(p=>p.type))];
-    if(types.length){
-      const pick = types.length===1 ? ((hit && hit.type===types[0]) ? hit : ps[0]) : null;
-      el.appendChild(ctxRow('Pick this structure', CTX_IC.eyedrop, ()=>eyedropPiece(pick),
-        {off:!pick, title: pick ? 'Place more of these, at this rotation'
-                                : 'Selection mixes '+types.length+' structure types - duplicate it instead'}));
-    }
-    const grid=document.createElement('div'); grid.className='ctx-grid';
-    grid.appendChild(ctxRow('Rotate', CTX_IC.rotate, ()=>rotateGroup(rotStep()), {off:!hasRotSel()}));
-    grid.appendChild(ctxRow('Mirror', CTX_IC.mirror, mirrorGroup, {off:!hasRotSel()}));
-    grid.appendChild(ctxRow('Duplicate', CTX_IC.copy, duplicateSel, {off:!ps.length}));
-    grid.appendChild(ctxRow('Delete', CTX_IC.del, deleteSel, {danger:true}));
-    grid.appendChild(ctxRow('Group', CTX_IC.group, groupSel, {off:all.length<2}));
-    grid.appendChild(ctxRow('Ungroup', CTX_IC.ungroup, ungroupSel, {off:!gids.length}));
-    el.appendChild(grid);
-
-    if(ps.length){
-      ensurePlan();
-      const un=[{id:null, name:'General'}];
-      ctxPick(el, 'Stage', un.concat(ST.stages.map(s=>({id:s.id,name:s.name,color:s.color}))),
-        commonVal(ps,'st'), id=>setPlanOnSel('stage',id));
-      ctxPick(el, 'Builder', un.concat(ST.builders.map(b=>({id:b.id,name:b.name,color:b.color}))),
-        commonVal(ps,'bd'), id=>setPlanOnSel('builder',id));
-    }
-    const curLy = all.every(it=>itemLayerId(it)===itemLayerId(all[0])) ? itemLayerId(all[0]) : undefined;
-    ctxPick(el, 'Layer', zOrder().slice().reverse().map(l=>({id:l.id, name:l.name+' · '+floorName(l.floor||0)})),
-      curLy, moveSelToLayer);
-  } else {
-    ctxSub(el,'Tools');
-    const grid=document.createElement('div'); grid.className='ctx-grid';
-    grid.appendChild(ctxRow('Select', CTX_IC.select, ()=>{ ST.userPickedTool=true; setTool('select'); }));
-    grid.appendChild(ctxRow('Pan', CTX_IC.pan, ()=>{ ST.userPickedTool=true; setTool('pan'); }));
-    grid.appendChild(ctxRow('Eyedrop', CTX_IC.eyedrop, ()=>{ ST.userPickedTool=true; setTool('eyedrop'); }));
-    grid.appendChild(ctxRow('Snap: '+(ST.snapOn?'on':'off'), CTX_IC.snap, toggleSnap));
-    el.appendChild(grid);
-    ctxSub(el,'Board');
-    el.appendChild(ctxRow('Deselect everything', CTX_IC.none, ()=>{
-      clearSelection(); clearOverlaySel(); render(); updateStatus(); }, {off:!anySelected()}));
-  }
-  const rc=stage.getBoundingClientRect();
-  el.style.left=(e.clientX-rc.left)+'px';
-  el.style.top=(e.clientY-rc.top)+'px';
-  ctxFit();
-}
-// Keep the card on screen - on open, and again whenever a picker expands it,
-// since a list unfolding downwards would otherwise run off the bottom edge.
-function ctxFit(){
-  const el=$('ctx'); if(!el || el.hidden) return;
-  const bw=el.offsetWidth, bh=el.offsetHeight;
-  const x=Math.min(parseFloat(el.style.left)||0, stage.clientWidth-bw-8);
-  const y=Math.min(parseFloat(el.style.top)||0, stage.clientHeight-bh-8);
-  el.style.left=Math.max(8,x)+'px'; el.style.top=Math.max(8,y)+'px';
-}
-// any click outside, any Escape, any zoom closes it
-document.addEventListener('pointerdown', e=>{
-  const el=$('ctx'); if(el && !el.hidden && !el.contains(e.target)) ctxClose();
-}, true);
-window.addEventListener('keydown', e=>{ if(e.key==='Escape') ctxClose(); }, true);
-cv.addEventListener('wheel', ctxClose, {passive:true});
-
-/* ===== touch.js ===== */
-// ---------------- touch: two-finger pinch zoom / pan (capture on stage runs
-// before the canvas handlers, so a second finger hijacks any single-finger
-// gesture into a pinch without desktop code ever seeing it)
-const tpts = new Map();     // active touch pointers on the canvas (screen coords)
-stage.addEventListener('pointerdown', e=>{
-  if(e.pointerType!=='touch' || e.target!==cv) return;
-  tpts.set(e.pointerId, {x:e.clientX, y:e.clientY});
-  if(tpts.size===2){ e.preventDefault(); e.stopPropagation(); beginPinch(); }
-  else if(tpts.size>2){ e.stopPropagation(); }
-}, true);
-function beginPinch(){
-  if(ST.drag){   // roll back whatever the first finger started
-    if(ST.drag.mode==='draw') ST.strokes.pop();
-    else if(ST.drag.mode==='gmove'){
-      ST.drag.ps.forEach(it=>{ it.p.x=it.ox; it.p.y=it.oy; });
-      ST.drag.ims.forEach(it=>{ it.im.x=it.ox; it.im.y=it.oy; });
-      ST.drag.ts.forEach(it=>{ it.t.x=it.ox; it.t.y=it.oy; });
-      ST.drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x; pt.y=it.pts[k].y; }); });
-    }
-    else if(ST.drag.mode==='imgresize'){ ST.drag.im.w=ST.drag.ow; ST.drag.im.h=ST.drag.ow/ST.drag.ar; }
-    ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move');
-  }
-  for(const id of tpts.keys()){ try{ cv.setPointerCapture(id); }catch(_){} }
-  const [a,b]=[...tpts.values()];
-  ST.pinch={d:Math.max(10,Math.hypot(a.x-b.x,a.y-b.y)), cx:(a.x+b.x)/2, cy:(a.y+b.y)/2,
-    scale:ST.view.scale, ox:ST.view.ox, oy:ST.view.oy};
-  render();
-}
-stage.addEventListener('pointermove', e=>{
-  if(e.pointerType!=='touch') return;
-  if(tpts.has(e.pointerId)) tpts.set(e.pointerId, {x:e.clientX, y:e.clientY});
-  if(!ST.pinch || tpts.size<2) return;
-  e.stopPropagation();
-  const rc=cv.getBoundingClientRect();
-  const [a,b]=[...tpts.values()];
-  const d=Math.max(10,Math.hypot(a.x-b.x,a.y-b.y));
-  const cx=(a.x+b.x)/2-rc.left, cy=(a.y+b.y)/2-rc.top;
-  const ns=Math.min(6, Math.max(0.15, ST.pinch.scale*(d/ST.pinch.d)));
-  // keep the world point that was under the start midpoint glued to the current midpoint
-  const wx=((ST.pinch.cx-rc.left)-ST.pinch.ox)/ST.pinch.scale, wy=((ST.pinch.cy-rc.top)-ST.pinch.oy)/ST.pinch.scale;
-  ST.view.scale=ns; ST.view.ox=cx-wx*ns; ST.view.oy=cy-wy*ns;
-  render(); updateStatus();
-}, true);
-function endTouch(e){
-  if(e.pointerType!=='touch') return;
-  tpts.delete(e.pointerId);
-  if(ST.pinch){ e.stopPropagation(); if(tpts.size<2){ ST.pinch=null; persist(); } }
-  else if(e.type==='pointercancel' && ST.drag){   // OS stole the touch: drop the gesture
-    ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move'); render();
-  }
-}
-stage.addEventListener('pointerup', endTouch, true);
-stage.addEventListener('pointercancel', endTouch, true);
-
-/* ===== pointer.js ===== */
-function evtW(e){ const rc=cv.getBoundingClientRect(); return screenToWorld(e.clientX-rc.left,e.clientY-rc.top); }
-function evtS(e){ const rc=cv.getBoundingClientRect(); return {x:e.clientX-rc.left,y:e.clientY-rc.top}; }
-
-// distance from point to a line segment
-function segDist(px,py,ax,ay,bx,by){
-  const dx=bx-ax, dy=by-ay, l2=dx*dx+dy*dy;
-  let t = l2 ? ((px-ax)*dx+(py-ay)*dy)/l2 : 0; t=Math.max(0,Math.min(1,t));
-  return Math.hypot(px-(ax+t*dx), py-(ay+t*dy));
-}
-// erase any free-draw strokes under the cursor
-function eraseAt(w){
-  let changed=false;
-  for(let i=ST.strokes.length-1;i>=0;i--){
-    const s=ST.strokes[i], th=s.width/2 + 9/ST.view.scale;
-    let hit=false;
-    if(s.pts.length<2){ hit=Math.hypot(w.x-s.pts[0].x, w.y-s.pts[0].y)<th; }
-    else for(let k=1;k<s.pts.length;k++){
-      if(segDist(w.x,w.y, s.pts[k-1].x,s.pts[k-1].y, s.pts[k].x,s.pts[k].y)<th){ hit=true; break; } }
-    if(hit){ ST.strokes.splice(i,1); changed=true; }
-  }
-  if(changed){ if(ST.drag) ST.drag.erased=true; render(); }
-}
-
-// world distance from the ghost's center to its lowest edge, for the current
-// rotation - so the touch-drag offset always lifts the whole piece above the
-// finger, even for long pieces rotated vertical
-function ghostDrop(){
-  const half=(type,rot)=>{ const c=CATALOG[type], r=(rot||0)*Math.PI/180;
-    return (Math.abs(Math.sin(r))*c.w*GRID + Math.abs(Math.cos(r))*c.h*GRID)/2; };
-  if(CATALOG[ST.tool]) return half(ST.tool,ST.placeRot);
-  if(ST.tool==='stamp' && ST.activeStamp){ let m=GRID/2;
-    stampInstance(ST.activeStamp,0,0,ST.placeRot,ST.placeFlip).forEach(ip=>{ m=Math.max(m, ip.y + half(ip.type,ip.rot)); });
-    return m; }
-  return GRID/2;
-}
-
-function placeSymbolAt(w){
-  const cx=ST.snapOn?Math.round(w.x/SNAP)*SNAP:w.x, cy=ST.snapOn?Math.round(w.y/SNAP)*SNAP:w.y;
-  const s={pts:SYMBOLS[ST.tool](cx,cy,GRID), color:ST.drawColor, width:ST.drawWidth, ly:ST.curLayerId};
-  ST.strokes.push(s);
-  clearSelection(); clearOverlaySel(); ST.selStrokes=[s];   // selected, ready to move/resize
-  editNewOverlay();
-  snapshot(); render(); updateStatus();
-}
-
-function placeStampAt(w){
-  const inst=stampInstance(ST.activeStamp, w.x, w.y, ST.placeRot, ST.placeFlip);
-  // every part must be a legal placement (support + no overlap + inside a FOB area)
-  for(const ip of inst){ const err=placeError(ip.type, ip.x, ip.y, ip.rot, ST.curLayer); if(err){ flashToast(err); return; } }
-  ensureFloorLayer();
-  const gid = inst.length>1 ? ST.groupUid++ : undefined;   // a multi-piece stamp lands as one Group
-  const nn=inst.map(ip=>({id:ST.uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:ST.curLayer, ly:ST.curLayerId, g:gid, st:ST.curStageId, bd:ST.curBuilderId}));
-  ST.pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
-}
-function placePieceAt(w){
-  const c=snapCenter(ST.tool,ST.placeRot,w.x,w.y);
-  const err=placeError(ST.tool,c.x,c.y,ST.placeRot,ST.curLayer);
-  if(err){ flashToast(err); return; }
-  ensureFloorLayer();
-  const np={id:ST.uid++,type:ST.tool,x:c.x,y:c.y,rot:ST.placeRot,flip:ST.placeFlip,l:ST.curLayer,ly:ST.curLayerId,st:ST.curStageId,bd:ST.curBuilderId};
-  ST.pieces.push(np); clearSelection(); clearOverlaySel(); snapshot(); render(); updateStatus();
-}
-
-cv.addEventListener('pointerdown', e=>{
-  if(e.button===2) return;                 // right-click handled by contextmenu
-  try{ cv.setPointerCapture(e.pointerId); }catch(_){}
-  const w=evtW(e), sc=evtS(e);
-  // a floating touch move is waiting: this tap just drops it where it sits
-  if(ST.pendingMove){ commitPendingMove(); ST.drag={mode:'placed'}; render(); updateStatus(); return; }
-  if(e.button===1 || ST.spaceDown || ST.tool==='pan'){
-    ST.drag={mode:'pan',sx:sc.x,sy:sc.y,ox:ST.view.ox,oy:ST.view.oy}; stage.classList.add('c-panning'); return;
-  }
-  if(ST.tool==='eyedrop'){
-    const h=hitPiece(w.x,w.y);
-    if(!h || !eyedropPiece(h)) flashToast('Nothing to pick there');
-    ST.drag={mode:'placed'}; return;
-  }
-  if(ST.tool==='draw'){
-    const s={pts:[{x:w.x,y:w.y}],color:ST.drawColor,width:ST.drawWidth,ly:ST.curLayerId};
-    ST.strokes.push(s); ST.drag={mode:'draw',s}; render(); return;
-  }
-  if(ST.tool==='erase'){ ST.drag={mode:'erase',erased:false}; eraseAt(w); return; }
-  // touch: a drag only aims the ghost; a plain tap places it (on the ghost =
-  // confirm its aimed spot, elsewhere = place right there). Mouse places on press.
-  if(ST.tool==='stamp' && ST.activeStamp){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'stamp', w, ss:sc, moved:false, prev:{x:ST.hover.x,y:ST.hover.y}}; return; }
-    placeStampAt(w); ST.drag={mode:'placed'}; return;
-  }
-  if(CATALOG[ST.tool]){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'piece', w, ss:sc, moved:false, prev:{x:ST.hover.x,y:ST.hover.y}}; return; }
-    placePieceAt(w); ST.drag={mode:'placed'}; return;
-  }
-  if(SYMBOLS[ST.tool]){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'sym', w, ss:sc, moved:false}; return; }
-    placeSymbolAt(w); ST.drag={mode:'placed'}; return;
-  }
-  if(ST.tool==='text'){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'text', w, ss:sc, moved:false}; return; }
-    clearSelection(); addText(w); ST.drag={mode:'placed'}; return;
-  }
-  // --- select tool ---
-  const singlePieceSel = ST.selected.length===1 && !ST.selImages.length && !ST.selTexts.length && !ST.selStrokes.length;
-  const singleImgSel   = ST.selImages.length===1 && !ST.selected.length && !ST.selTexts.length && !ST.selStrokes.length;
-  // rotate handle (single piece only)
-  if(singlePieceSel){
-    const sel=ST.pieces.find(p=>p.id===ST.selected[0]);
-    if(sel){ const hs=handleXY(sel); const hss=worldToScreen(hs.x,hs.y);
-      if(Math.hypot(hss.x-sc.x,hss.y-sc.y)<=13){ ST.drag={mode:'rotate',p:sel}; return; } }
-  }
-  // image resize handle (single image only)
-  if(singleImgSel){ const im=ST.images.find(i=>i.id===ST.selImages[0]);
-    if(im){ const h=worldToScreen(im.x+im.w/2, im.y+im.h/2);
-      if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){ ST.drag={mode:'imgresize', im, ar:im.w/im.h, startW:{x:w.x,y:w.y}, ow:im.w, moved:false}; return; } } }
-  // drawing/symbol resize handle (single stroke only)
-  const singleStrokeSel = ST.selStrokes.length===1 && !ST.selected.length && !ST.selImages.length && !ST.selTexts.length;
-  if(singleStrokeSel){ const s=ST.selStrokes[0], bb=strokeBBox(s);
-    if(bb){ const h=worldToScreen(bb.maxx, bb.maxy);
-      if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){
-        ST.drag={mode:'strokeresize', s, bb, startW:{x:w.x,y:w.y},
-          pts0:s.pts.map(pt=>({x:pt.x,y:pt.y})), moved:false}; return; } } }
-  const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-  // hit test top -> bottom: text, piece, drawing, image
-  const tHit=hitText(w);
-  const pHit=tHit?null:hitPiece(w.x,w.y);
-  const sHit=(tHit||pHit)?null:hitStroke(w);
-  const iHit=(tHit||pHit||sHit)?null:hitImage(w);
-  if(tHit||pHit||sHit||iHit){
-    const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
-    const wasSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
-    if(additive){
-      if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
-      else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
-      else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
-      else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
-    } else if(!wasSel){
-      clearSelection(); clearOverlaySel();
-      if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id]; else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
-    }
-    expandGroups();   // clicking any grouped item selects its whole group
-    const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
-    if(nowSel){ startGroupMove(w, pHit||null); ST.drag.touch=(e.pointerType==='touch'); }
-    render(); updateStatus(); return;
-  }
-  // empty ground => rubber-band multi-select (pieces + overlays + drawings)
-  if(!additive){ clearSelection(); clearOverlaySel(); }
-  ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
-    base:{pieces:ST.selected.slice(), texts:ST.selTexts.slice(), imgs:ST.selImages.slice(), strokes:ST.selStrokes.slice()}};
-  ST.drag={mode:'marquee'};
-  render(); updateStatus();
-});
-// lowest world edge of everything in a move, from the positions it started at
-function selBottomAtStart(d){
-  let bot=-Infinity;
-  d.ps.forEach(it=>{ const b=pieceAABB({type:it.p.type, x:it.ox, y:it.oy, rot:it.p.rot}); bot=Math.max(bot,b.maxy); });
-  d.ims.forEach(it=>{ bot=Math.max(bot, it.oy+it.im.h/2); });
-  d.ts.forEach(it=>{ const b=textBox(it.t); bot=Math.max(bot, it.oy+b.h/2); });
-  d.ss.forEach(it=>{ it.pts.forEach(pt=>{ bot=Math.max(bot, pt.y); }); });
-  return bot===-Infinity ? d.startW.y : bot;
-}
-// A touch move finishes like a placement: the finger lift leaves the selection
-// floating where it was dragged, and the next tap anywhere commits it.
-function commitPendingMove(){ if(ST.pendingMove){ ST.pendingMove=false; snapshot(); } }
-function startGroupMove(w, primary){
-  ST.drag={ mode:'gmove', primary: primary||null,
-    pox: primary?primary.x:0, poy: primary?primary.y:0, anchor:null,
-    startW:{x:w.x,y:w.y}, moved:false,
-    ps: selectedPieces().map(p=>({p,ox:p.x,oy:p.y})),
-    ims: ST.images.filter(i=>ST.selImages.includes(i.id)).map(im=>({im,ox:im.x,oy:im.y})),
-    ts: ST.texts.filter(t=>ST.selTexts.includes(t.id)).map(t=>({t,ox:t.x,oy:t.y})),
-    ss: ST.strokes.filter(s=>ST.selStrokes.indexOf(s)!==-1).map(s=>({s,pts:s.pts.map(pt=>({x:pt.x,y:pt.y}))})) };
-  if(!primary){
-    if(ST.drag.ims[0]) ST.drag.anchor={ox:ST.drag.ims[0].ox, oy:ST.drag.ims[0].oy};
-    else if(ST.drag.ts[0]) ST.drag.anchor={ox:ST.drag.ts[0].ox, oy:ST.drag.ts[0].oy};
-    else if(ST.drag.ss[0]) ST.drag.anchor={ox:ST.drag.ss[0].pts[0].x, oy:ST.drag.ss[0].pts[0].y};
-  }
-  stage.classList.add('c-move');
-}
-cv.addEventListener('pointermove', e=>{
-  const w=evtW(e), sc=evtS(e); ST.hover=w;
-  if(ST.drag){
-    if(ST.drag.mode==='pan'){ ST.view.ox=ST.drag.ox+(sc.x-ST.drag.sx); ST.view.oy=ST.drag.oy+(sc.y-ST.drag.sy); render(); }
-    else if(ST.drag.mode==='gmove'){
-      // move the whole selection (pieces + images + texts + drawings) as one
-      let rawdx=w.x-ST.drag.startW.x, rawdy=w.y-ST.drag.startW.y;
-      // on touch, once the drag really starts, lift the selection clear of the
-      // finger so it stays visible - measured once so it doesn't drift
-      if(ST.drag.touch){
-        if(!ST.drag.lifted && Math.hypot(rawdx,rawdy)*ST.view.scale>8){
-          ST.drag.lifted=true;
-          ST.drag.lift=(selBottomAtStart(ST.drag)-ST.drag.startW.y)+40/ST.view.scale;
-        }
-        if(ST.drag.lifted) rawdy-=ST.drag.lift;
-      }
-      let ddx=rawdx, ddy=rawdy;
-      if(ST.drag.primary){ const s=snapCenter(ST.drag.primary.type, ST.drag.primary.rot, ST.drag.pox+rawdx, ST.drag.poy+rawdy);
-        ddx=s.x-ST.drag.pox; ddy=s.y-ST.drag.poy; }
-      else if(ST.snapOn && ST.drag.anchor){ ddx=Math.round((ST.drag.anchor.ox+rawdx)/SNAP)*SNAP-ST.drag.anchor.ox;
-        ddy=Math.round((ST.drag.anchor.oy+rawdy)/SNAP)*SNAP-ST.drag.anchor.oy; }
-      ST.drag.ps.forEach(it=>{ it.p.x=it.ox+ddx; it.p.y=it.oy+ddy; });
-      ST.drag.ims.forEach(it=>{ it.im.x=it.ox+ddx; it.im.y=it.oy+ddy; });
-      ST.drag.ts.forEach(it=>{ it.t.x=it.ox+ddx; it.t.y=it.oy+ddy; });
-      ST.drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x+ddx; pt.y=it.pts[k].y+ddy; }); });
-      ST.drag.moved=true; render(); updateStatus();
-    }
-    else if(ST.drag.mode==='rotate'){
-      let ang=Math.atan2(w.x-ST.drag.p.x, -(w.y-ST.drag.p.y))*180/Math.PI;
-      if(!e.shiftKey && e.pointerType!=='touch') ang=Math.round(ang/5)*5;   // touch handle = free rotation
-      ST.drag.p.rot=((ang%360)+360)%360; render(); updateStatus();
-    }
-    else if(ST.drag.mode==='marquee'){
-      ST.marquee.x1=w.x; ST.marquee.y1=w.y;
-      const bx0=Math.min(ST.marquee.x0,ST.marquee.x1), by0=Math.min(ST.marquee.y0,ST.marquee.y1);
-      const bx1=Math.max(ST.marquee.x0,ST.marquee.x1), by1=Math.max(ST.marquee.y0,ST.marquee.y1);
-      const B=ST.marquee.base;
-      ST.selected=B.pieces.slice();
-      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p) || !planVisible(p)) return; const b=pieceAABB(p);
-        if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) ST.selected.push(p.id); });
-      ST.selTexts=B.texts.slice();
-      ST.texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !ST.selTexts.includes(t.id)) ST.selTexts.push(t.id); });
-      ST.selImages=B.imgs.slice();
-      ST.images.forEach(im=>{ if(!layerEditable(im)) return; if(im.x-im.w/2<=bx1&&im.x+im.w/2>=bx0&&im.y-im.h/2<=by1&&im.y+im.h/2>=by0 && !ST.selImages.includes(im.id)) ST.selImages.push(im.id); });
-      ST.selStrokes=B.strokes.slice();
-      ST.strokes.forEach(s=>{ if(!layerEditable(s)) return; const bb=strokeBBox(s);
-        if(bb && bb.minx<=bx1&&bb.maxx>=bx0&&bb.miny<=by1&&bb.maxy>=by0 && ST.selStrokes.indexOf(s)===-1) ST.selStrokes.push(s); });
-      // grouped items pull their whole group in - but only from visible layers
-      expandGroups();
-      render(); updateStatus();
-    }
-    else if(ST.drag.mode==='imgresize'){
-      let nw=ST.drag.ow+(w.x-ST.drag.startW.x); nw=Math.max(GRID, nw);
-      ST.drag.im.w=nw; ST.drag.im.h=nw/ST.drag.ar; ST.drag.moved=true; render();
-    }
-    else if(ST.drag.mode==='strokeresize'){
-      // scale about the bbox top-left corner; x and y scale independently
-      const bb=ST.drag.bb, dx0=ST.drag.startW.x-bb.minx, dy0=ST.drag.startW.y-bb.miny;
-      const fx=dx0>4 ? Math.max(0.05,(w.x-bb.minx)/dx0) : 1;
-      const fy=dy0>4 ? Math.max(0.05,(w.y-bb.miny)/dy0) : 1;
-      ST.drag.s.pts.forEach((pt,k)=>{ pt.x=bb.minx+(ST.drag.pts0[k].x-bb.minx)*fx;
-        pt.y=bb.miny+(ST.drag.pts0[k].y-bb.miny)*fy; });
-      delete ST.drag.s._ipts;
-      ST.drag.moved=true; render();
-    }
-    else if(ST.drag.mode==='draw'){
-      const last=ST.drag.s.pts[ST.drag.s.pts.length-1];
-      if(Math.hypot(w.x-last.x,w.y-last.y)>1.5){ ST.drag.s.pts.push({x:w.x,y:w.y}); render(); }
-    }
-    else if(ST.drag.mode==='erase'){ eraseAt(w); }
-    else if(ST.drag.mode==='tapplace'){
-      ST.drag.w=w;
-      if(!ST.drag.moved && Math.hypot(sc.x-ST.drag.ss.x, sc.y-ST.drag.ss.y)>10) ST.drag.moved=true;
-      // dragging: ghost rides above the finger so it isn't hidden under it -
-      // its lowest edge clears the finger whatever the rotation; it stays at
-      // that offset spot on lift, and a tap anywhere confirms it there
-      if(ST.drag.moved){ ST.hover={x:w.x, y:w.y-ghostDrop()-40/ST.view.scale}; render(); }
-      else if(ST.drag.prev) ST.hover=ST.drag.prev;            // mere tap wiggle: ghost stays put
-    }
-  } else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)) render();  // ghost follows cursor
-  updateCursor(w);
-});
-cv.addEventListener('pointerup', ()=>{
-  if(ST.drag){
-    if(ST.drag.mode==='tapplace' && !ST.drag.moved){   // only a plain tap places
-      const w=ST.drag.w;
-      if(ST.drag.kind==='text'){ clearSelection(); addText(w); }
-      else if(ST.drag.kind==='sym'){ if(SYMBOLS[ST.tool]) placeSymbolAt(w); }
-      else{
-        // any tap confirms the ghost where it sits (aiming by tap is too
-        // imprecise on touch - drag aims, tap commits)
-        const at={x:ST.hover.x, y:ST.hover.y};
-        if(ST.drag.kind==='stamp' && ST.activeStamp) placeStampAt(at);
-        else if(ST.drag.kind==='piece' && CATALOG[ST.tool]) placePieceAt(at);
-      }
-    }
-    if(ST.drag.mode==='gmove' && ST.drag.moved){
-      ST.drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });
-      ST.drag.ts.forEach(it=>{ delete it.t._ix; delete it.t._iy; });
-      ST.drag.ss.forEach(it=>{ delete it.s._ipts; });
-    }
-    if(ST.drag.mode==='gmove' && ST.drag.moved && ST.drag.touch) ST.pendingMove=true;   // confirmed by the next tap
-    else if((ST.drag.mode==='gmove'&&ST.drag.moved)||ST.drag.mode==='rotate'||ST.drag.mode==='draw'||(ST.drag.mode==='erase'&&ST.drag.erased)
-      || (ST.drag.mode==='imgresize'&&ST.drag.moved) || (ST.drag.mode==='strokeresize'&&ST.drag.moved)) snapshot();
-  }
-  ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move'); render();
-});
-// double-click a text label to edit it
-cv.addEventListener('dblclick', e=>{
-  const w=evtW(e); const tt=hitText(w);
-  if(tt){ clearSelection(); clearOverlaySel(); ST.selTexts=[tt.id]; render(); openTextEditor(tt, false); }
-});
-// right-click (and touch long-press) opens the context menu for whatever is
-// under the cursor - see openCtx
-cv.addEventListener('contextmenu', e=>{
-  e.preventDefault();
-  if(ST.drag || ST.pinch || tpts.size) return;   // mid-gesture: not a menu
-  openCtx(e);
-});
-// Trackpads send a pinch as ctrl+wheel, and a two-finger swipe as a plain wheel
-// with a horizontal component or fractional steps. A mouse wheel sends neither,
-// so it keeps its zoom behaviour until a trackpad actually shows up.
-function noteTrackpad(e){
-  if(e.ctrlKey || e.deltaX!==0) ST.trackpad=true;
-  else if(e.deltaMode===0 && e.deltaY!==0 && Math.abs(e.deltaY)<50 && !Number.isInteger(e.deltaY)) ST.trackpad=true;
-}
-cv.addEventListener('wheel', e=>{
-  e.preventDefault();
-  noteTrackpad(e);
-  if(ST.trackpad && !e.ctrlKey){                 // two-finger swipe: pan the camera
-    ST.view.ox-=e.deltaX; ST.view.oy-=e.deltaY;
-    render(); updateStatus(); persist(); return;
-  }
-  const sc=evtS(e), before=screenToWorld(sc.x,sc.y);
-  // pinch reports a continuous delta, a wheel notch a fixed step
-  const f = e.ctrlKey ? Math.exp(-e.deltaY*0.01) : (e.deltaY<0?1.12:1/1.12);
-  ST.view.scale=Math.min(6,Math.max(0.15,ST.view.scale*f));
-  const after=screenToWorld(sc.x,sc.y);
-  ST.view.ox+=(after.x-before.x)*ST.view.scale; ST.view.oy+=(after.y-before.y)*ST.view.scale;
-  render(); updateStatus(); persist();
-}, {passive:false});
-
 /* ===== tools.js ===== */
 // ---------------- tool selection
 function setTool(t){
@@ -4660,11 +4697,16 @@ function panStep(now){
   const dt = Math.min(0.05, (now - ST.panLast)/1000); ST.panLast = now;
   if(!panKeys.size){ ST.panRAF = 0; persist(); return; }
   const step = PAN_SPEED * dt;
-  if(panKeys.has('a')) ST.view.ox += step;
-  if(panKeys.has('d')) ST.view.ox -= step;
-  if(panKeys.has('w')) ST.view.oy += step;
-  if(panKeys.has('s')) ST.view.oy -= step;
-  render(); updateStatus();
+  let dx=0, dy=0;
+  if(panKeys.has('a')) dx += step;
+  if(panKeys.has('d')) dx -= step;
+  if(panKeys.has('w')) dy += step;
+  if(panKeys.has('s')) dy -= step;
+  // the export preview is a viewport too, and it is the one in front when open
+  if(!previewPanBy(dx, dy)){
+    ST.view.ox += dx; ST.view.oy += dy;
+    render(); updateStatus();
+  }
   ST.panRAF = requestAnimationFrame(panStep);
 }
 

@@ -1,7 +1,7 @@
 import { deleteSel, duplicateSel, mirrorGroup, rotStep, rotateGroup, stepPlaceRot } from './actions.js';
 import { CATALOG, SYMBOLS } from './catalog.js';
 import { $, GRID, stage } from './dom.js';
-import { closeExp } from './exporter.js';
+import { closeExp, previewPanBy } from './exporter.js';
 import { pieceLayer } from './floors.js';
 import { groupSel, ungroupSel } from './groups.js';
 import { persist, redo, snapshot, undo } from './history.js';
@@ -77,10 +77,15 @@ export function panStep(now){
   const dt = Math.min(0.05, (now - ST.panLast)/1000); ST.panLast = now;
   if(!panKeys.size){ ST.panRAF = 0; persist(); return; }
   const step = PAN_SPEED * dt;
-  if(panKeys.has('a')) ST.view.ox += step;
-  if(panKeys.has('d')) ST.view.ox -= step;
-  if(panKeys.has('w')) ST.view.oy += step;
-  if(panKeys.has('s')) ST.view.oy -= step;
-  render(); updateStatus();
+  let dx=0, dy=0;
+  if(panKeys.has('a')) dx += step;
+  if(panKeys.has('d')) dx -= step;
+  if(panKeys.has('w')) dy += step;
+  if(panKeys.has('s')) dy -= step;
+  // the export preview is a viewport too, and it is the one in front when open
+  if(!previewPanBy(dx, dy)){
+    ST.view.ox += dx; ST.view.oy += dy;
+    render(); updateStatus();
+  }
   ST.panRAF = requestAnimationFrame(panStep);
 }

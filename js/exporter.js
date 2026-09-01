@@ -6,6 +6,7 @@ import { LAYER_OFF, drawLayer, layerColor, layerOff, lowCounts, lowStyle, maskPi
 import { drawText, textBox } from './overlays.js';
 import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, planVisible, stageIndex, stageOf, tagInk } from './plan.js';
 import { cssVar } from './render.js';
+import { noteTrackpad } from './pointer.js';
 import { ST } from './state.js';
 import { buildPdf } from './pdf.js';
 import { flashToast, saveFile } from './topbar.js';
@@ -575,12 +576,19 @@ function fitPreview(tries){
   pz.z=Math.max(0.05, Math.min(w/c.width, h/c.height, 1));
   pz.x=0; pz.y=0; applyPZ();
 }
-function zoomBy(k, ax, ay){
+// named for the preview, not just "zoom": the board exports a zoomBy of its own
+// and in the single-file build every module shares one scope
+function prevZoom(k, ax, ay){
   const c=prevCanvas(); if(!c) return;
   const nz=Math.max(0.05, Math.min(6, pz.z*k));
   const r=nz/pz.z;
   pz.x = ax - r*(ax - pz.x); pz.y = ay - r*(ay - pz.y); pz.z = nz;
   applyPZ();
+}
+// WASD reaches whichever viewport is in front; the board asks first
+export function previewPanBy(dx, dy){
+  if($('exp-modal').hidden || !prevCanvas()) return false;
+  pz.x+=dx; pz.y+=dy; applyPZ(); return true;
 }
 // which sheets exist, which are ticked, and which one is on screen
 export function renderSheetList(){
@@ -660,26 +668,56 @@ $('exp-bg').onclick=closeExp;
 $('exp-modal').addEventListener('change', expFromForm);
 $('exp-name').addEventListener('input', expFromForm);
 $('exp-name').addEventListener('keydown', e=>e.stopPropagation());
-$('exp-zoom-in').onclick=()=>zoomBy(1.25,0,0);
-$('exp-zoom-out').onclick=()=>zoomBy(1/1.25,0,0);
+$('exp-zoom-in').onclick=()=>prevZoom(1.25,0,0);
+$('exp-zoom-out').onclick=()=>prevZoom(1/1.25,0,0);
 $('exp-zoom-fit').onclick=()=>fitPreview();
-$('exp-prev-box').addEventListener('wheel', e=>{
-  if(!prevCanvas()) return;
-  e.preventDefault();
-  const r=e.currentTarget.getBoundingClientRect();
-  zoomBy(e.deltaY<0?1.12:1/1.12, e.clientX-r.left-r.width/2, e.clientY-r.top-r.height/2);
-}, {passive:false});
-$('exp-prev-box').addEventListener('pointerdown', e=>{
-  const box=e.currentTarget; if(!prevCanvas()) return;
-  box.classList.add('panning');
-  const sx=e.clientX-pz.x, sy=e.clientY-pz.y;
-  try{ box.setPointerCapture(e.pointerId); }catch(_){}
-  const move=ev=>{ pz.x=ev.clientX-sx; pz.y=ev.clientY-sy; applyPZ(); };
-  const up=()=>{ box.classList.remove('panning');
-    box.removeEventListener('pointermove', move); box.removeEventListener('pointerup', up);
-    box.removeEventListener('pointercancel', up); };
-  box.addEventListener('pointermove', move);
-  box.addEventListener('pointerup', up);
-  box.addEventListener('pointercancel', up);
-});
+// The preview is a viewport like the board, so it answers to the same gestures:
+// a mouse wheel zooms in notches, a trackpad's two-finger swipe pans and its
+// pinch zooms continuously, one finger or a held button drags, two fingers
+// pinch, and WASD pans while the dialog is up.
+(function(){
+  const box=$('exp-prev-box');
+  const anchor=e=>{ const r=box.getBoundingClientRect();
+    return [e.clientX-r.left-r.width/2, e.clientY-r.top-r.height/2]; };
+  box.addEventListener('wheel', e=>{
+    if(!prevCanvas()) return;
+    e.preventDefault();
+    noteTrackpad(e);
+    if(ST.trackpad && !e.ctrlKey){ pz.x-=e.deltaX; pz.y-=e.deltaY; applyPZ(); return; }
+    const [ax,ay]=anchor(e);
+    prevZoom(e.ctrlKey ? Math.exp(-e.deltaY*0.01) : (e.deltaY<0?1.12:1/1.12), ax, ay);
+  }, {passive:false});
+
+  const pts=new Map(); let drag=null, grip=null;
+  const pair=()=>{ const a=[...pts.values()];
+    return {d:Math.max(1,Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y)),
+            mx:(a[0].x+a[1].x)/2, my:(a[0].y+a[1].y)/2}; };
+  box.addEventListener('pointerdown', e=>{
+    if(!prevCanvas()) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    try{ box.setPointerCapture(e.pointerId); }catch(_){}
+    if(pts.size===2){ drag=null; const p=pair(); grip={...p, z:pz.z, x:pz.x, y:pz.y}; }
+    else if(pts.size===1){ drag={sx:e.clientX-pz.x, sy:e.clientY-pz.y}; box.classList.add('panning'); }
+  });
+  box.addEventListener('pointermove', e=>{
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size>=2 && grip){
+      const p=pair(), r=box.getBoundingClientRect();
+      const ax=grip.mx-r.left-r.width/2, ay=grip.my-r.top-r.height/2;
+      const nz=Math.max(0.05, Math.min(6, grip.z*(p.d/grip.d))), s=nz/grip.z;
+      pz.z=nz;
+      pz.x = ax - s*(ax-grip.x) + (p.mx-grip.mx);
+      pz.y = ay - s*(ay-grip.y) + (p.my-grip.my);
+      applyPZ();
+    } else if(drag){ pz.x=e.clientX-drag.sx; pz.y=e.clientY-drag.sy; applyPZ(); }
+  });
+  const end=e=>{
+    pts.delete(e.pointerId);
+    if(pts.size<2) grip=null;
+    if(!pts.size){ drag=null; box.classList.remove('panning'); }
+  };
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', end);
+})();
 $('exp-run').onclick=runExport;
