@@ -526,8 +526,10 @@
     stroke-linecap:round; stroke-linejoin:round;}
   .ph-total{margin-left:auto;}
   /* the supply figure trails its own count, dimmer: the piece tally is what you
-     scan, the bill is what you check */
-  .ph-sup{min-width:34px; text-align:right; opacity:.6;}
+     scan, the bill is what you check. Both spell out what they count, so both
+     hold their width and the builder's name is what gives way. */
+  .ph-n{flex:none; white-space:nowrap;}
+  .ph-sup{text-align:right; opacity:.6;}
   .ph-list{display:flex; flex-direction:column; gap:2px;}
   .ph-bchip, .ph-scount{display:none;}
   /* Phone sizing comes after every .ph- rule above: same specificity, later wins. */

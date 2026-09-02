@@ -277,11 +277,14 @@ export function renderPlanHud(){
   const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
   el.querySelectorAll('.ph-row').forEach(row=>{
     const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    // both columns name what they count: a bare number and a number with an
+    // "s" stuck on it were two figures side by side that said nothing about
+    // being different kinds of thing
     const mine = inStage.filter(p=>(p.bd==null?null:p.bd)===id);
-    const v = String(mine.length);
+    const v = mine.length+(mine.length===1?' piece':' pieces');
     const c = row.querySelector('.ph-n:not(.ph-sup)');
     if(c && c.textContent!==v) c.textContent=v;
-    const s = row.querySelector('.ph-sup'), sv = supplySum(mine)+'s';
+    const s = row.querySelector('.ph-sup'), sv = supplySum(mine)+' supplies';
     if(s && s.textContent!==sv) s.textContent=sv;
     row.classList.toggle('on', curB===id);
     row.classList.toggle('lit', id==null ? ST.hlBuilder===undefined : ST.hlBuilder===id);
