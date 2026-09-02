@@ -313,9 +313,15 @@ export function setHudOpen(on){
 // the top edge. The published value carries its own gap, so zero means zero.
 const hudBox=$('board-hud'), hudPane=$('plan-hud');
 if(hudBox && hudPane && window.ResizeObserver){
+  // Two measures, because two things hang off this corner and they are not
+  // blocked by the same thing. Done is centred, so only the bar itself is ever
+  // in its way - folded, that is nothing. Undo / redo sit on the leading edge,
+  // where the chevron that reopens the bar lives, so they clear the whole box.
   const publish=()=>{
     const h=Math.round(hudPane.getBoundingClientRect().height);
+    const box=Math.round(hudBox.getBoundingClientRect().height);
     stage.style.setProperty('--hud-h', (h ? h+8 : 0)+'px');
+    stage.style.setProperty('--hud-box', (box ? box+8 : 0)+'px');
   };
   const ro=new ResizeObserver(publish);
   ro.observe(hudBox); ro.observe(hudPane);
