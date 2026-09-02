@@ -303,14 +303,22 @@ export function setHudOpen(on){
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
 }
 // The Done chip and the draw options hang below the plan bar, whose height is
-// not a constant: one row or two as the builder chip wraps, or just its own
-// chevron once folded. Publishing what it actually measures keeps them clear of
-// it instead of guessing a number that goes stale.
-const hudBox=$('board-hud');
-if(hudBox && window.ResizeObserver){
-  new ResizeObserver(()=>{
-    stage.style.setProperty('--hud-h', Math.round(hudBox.getBoundingClientRect().height)+'px');
-  }).observe(hudBox);
+// not a constant: one row or two as the builder chip wraps, or nothing at all
+// once folded away. Publishing what it actually measures keeps them clear of it
+// instead of guessing a number that goes stale.
+//
+// It measures the bar itself, not the box around it. Folded, that box still
+// reports the height of the chevron that reopens it - but the chevron sits in
+// the corner and Done is centred, so nothing is in Done's way and it belongs at
+// the top edge. The published value carries its own gap, so zero means zero.
+const hudBox=$('board-hud'), hudPane=$('plan-hud');
+if(hudBox && hudPane && window.ResizeObserver){
+  const publish=()=>{
+    const h=Math.round(hudPane.getBoundingClientRect().height);
+    stage.style.setProperty('--hud-h', (h ? h+8 : 0)+'px');
+  };
+  const ro=new ResizeObserver(publish);
+  ro.observe(hudBox); ro.observe(hudPane);
 }
 $('hud-show').onclick=()=>setHudOpen(true);
 document.addEventListener('pointerdown', e=>{
