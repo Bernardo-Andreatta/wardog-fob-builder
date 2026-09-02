@@ -316,7 +316,11 @@
   /* fullscreen mode: hide the whole rail; the chevron tab brings it back */
   .app.rail-off .rail, .app.rail-off .rail-resize{display:none;}
   .app.rail-off{grid-template-columns:0 1fr;}
-  #rail-toggle{position:absolute; left:0; top:50%; transform:translateY(-50%); z-index:9;
+  /* z 13, over the plan card (12): the card grows down the board's leading
+     edge with the crew, and at nine builders it was covering the tab that
+     collapses the rail - a control you could see through nothing and reach
+     through nothing. */
+  #rail-toggle{position:absolute; left:0; top:50%; transform:translateY(-50%); z-index:13;
     background:var(--panel); border:1px solid var(--line); border-left:none;
     border-radius:0 8px 8px 0; padding:16px 3px; display:flex; align-items:center;
     color:var(--muted); box-shadow:0 4px 16px var(--shadow);}
@@ -569,25 +573,40 @@
 
   /* Board HUD: the stage being built, and how its work splits between builders.
      It is also the view control - the board shows the stage it names. */
-  .plan-hud{padding:7px 8px; min-width:174px; max-width:210px;
-    background:var(--panel); border:1px solid var(--line); border-radius:9px;
-    box-shadow:0 4px 16px var(--shadow); display:flex; flex-direction:column; gap:2px;}
-  .ph-stage{display:flex; align-items:center; gap:5px; padding:1px 3px 6px;
-    border-bottom:1px solid var(--line); margin-bottom:3px;}
+  /* 210px was not a width, it was a squeeze: the tally wrapped onto three
+     lines under its own label, and a builder called anything took an ellipsis.
+     The phone had already worked out the shape - close and edit at the two
+     ends, the stage between them, the bill on its own line - so the card takes
+     that and spends the room a desktop has on saying things once. */
+  .plan-hud{padding:8px 10px 9px; min-width:264px; max-width:300px;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    box-shadow:0 6px 22px var(--shadow); display:flex; flex-direction:column; gap:2px;}
+  .ph-stage{display:flex; align-items:center; gap:5px; padding:0 0 7px;
+    border-bottom:1px solid var(--line); margin-bottom:5px;}
+  /* the ends belong to the panel, the middle to the stage */
+  .ph-stage .ph-fold{order:-1; margin-right:auto;}
+  .ph-stage .ph-edit{margin-left:auto;}
   .ph-stage .ph-name{font-family:var(--font-disp); text-transform:uppercase;
-    letter-spacing:.06em; font-size:11.5px; font-weight:600; color:var(--ink);}
-  .ph-sub{display:flex; align-items:center; gap:6px;
-    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
-    font-size:9px; color:var(--accent); font-weight:600; padding:1px 3px 2px;}
-  .ph-row{display:flex; align-items:center; gap:6px; width:100%; padding:3px 4px;
-    border:1px solid transparent; border-radius:5px; background:none; cursor:pointer;
-    color:var(--muted); font-size:11px; text-align:left;}
+    letter-spacing:.06em; font-size:12px; font-weight:600; color:var(--ink);
+    flex:0 1 auto; min-width:0;}
+  /* label and bill on one line, one at each end - it used to wrap into three */
+  .ph-sub{display:flex; align-items:baseline; gap:8px; white-space:nowrap;
+    font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
+    font-size:9px; color:var(--accent); font-weight:600; padding:0 2px 6px;}
+  .ph-sublab{flex:none;}
+  .ph-row{display:flex; align-items:center; gap:8px; width:100%; padding:4px 5px;
+    border:1px solid transparent; border-radius:6px; background:none; cursor:pointer;
+    color:var(--muted); font-size:11.5px; text-align:left;}
   .ph-row:hover{border-color:var(--line); color:var(--ink);}
   .ph-row.on{border-color:var(--accent); color:var(--accent);}
   /* lit = this builder's work in this stage is spotlit on the board */
   .ph-row.lit{background:var(--accent-soft); box-shadow:inset 2px 0 0 var(--accent);}
   .ph-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .ph-n{font-family:var(--font-mono); font-size:10px; opacity:.72;}
+  /* the two figures line up down the list instead of drifting with the names */
+  .ph-row .ph-n{flex:none; text-align:right;}
+  .ph-row .ph-n:not(.ph-sup){min-width:58px;}
+  .ph-row .ph-sup{min-width:70px;}
   .ph-dot{width:8px; height:8px; border-radius:50%; flex:none;}
   .ph-dot.plain{border:1px solid var(--line);}
   /* stage stepper + the way into the Build Plan editor */
@@ -604,7 +623,9 @@
      hold their width and the builder's name is what gives way. */
   .ph-n{flex:none; white-space:nowrap;}
   .ph-sup{text-align:right; opacity:.6;}
-  .ph-list{display:flex; flex-direction:column; gap:2px;}
+  /* a big crew used to push the card down the board; it scrolls instead */
+  .ph-list{max-height:44vh; overflow-y:auto;
+    display:flex; flex-direction:column; gap:2px;}
   .ph-bchip, .ph-scount{display:none;}
   /* Phone sizing comes after every .ph- rule above: same specificity, later wins. */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
