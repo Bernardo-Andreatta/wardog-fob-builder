@@ -354,6 +354,12 @@ export function renderExport(job, B){
     for(let x=B.bx;x<=B.bx+B.bw*GRID;x+=GRID*4){ g.moveTo(x,B.minY); g.lineTo(x,B.maxY); }
     for(let y=B.by;y<=B.by+B.bh*GRID;y+=GRID*4){ g.moveTo(B.minX,y); g.lineTo(B.maxX,y); }
     g.stroke();
+    // The lines stop short of the far edges - they are drawn up to but not on
+    // maxX and maxY - so where the last band is a sliver the squares ran out
+    // before the margin did and the sheet read as cropped. This closes it: the
+    // grid ends on a line, the way every other band does.
+    g.strokeStyle=cssVar('--grid-major'); g.lineWidth=1;
+    g.strokeRect(B.minX, B.minY, B.maxX-B.minX, B.maxY-B.minY);
   }
   if(ST.expCfg.notes){
     ST.images.forEach(im=>{ if(im._img&&im._img.complete) g.drawImage(im._img, im.x-im.w/2, im.y-im.h/2, im.w, im.h); });

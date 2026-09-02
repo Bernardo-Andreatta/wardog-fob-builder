@@ -863,6 +863,9 @@
   .exp-tab:hover{color:var(--ink);}
   .exp-tab.on{color:var(--accent); border-bottom-color:var(--accent);}
   .exp-filepane{display:flex; flex-direction:column; gap:12px; padding:4px 0 8px;}
+  /* a display of their own beats the hidden attribute, so the tab that is not
+     showing has to be told again - both panes were on screen at once */
+  .exp-filepane[hidden], .exp-body[hidden], .exp-foot[hidden]{display:none;}
   .exp-body{display:grid; grid-template-columns:250px 1fr; gap:18px; flex:1; min-height:0;}
   .exp-side{display:flex; flex-direction:column; gap:10px; min-height:0; overflow-y:auto; padding-right:4px;}
   .exp-side h4{margin:4px 0 0;}
