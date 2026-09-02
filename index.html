@@ -703,7 +703,10 @@
   .exp-body{display:grid; grid-template-columns:250px 1fr; gap:18px; flex:1; min-height:0;}
   .exp-side{display:flex; flex-direction:column; gap:10px; min-height:0; overflow-y:auto; padding-right:4px;}
   .exp-side h4{margin:4px 0 0;}
-  .exp-sheets{display:flex; flex-direction:column; border:1px solid var(--line);
+  /* flex:none or the list is the thing that gives when the column runs short -
+     and since the rounded corners clip it, the sheets squeezed off the bottom
+     were not scrollable to, just gone. The column scrolls instead. */
+  .exp-sheets{display:flex; flex-direction:column; flex:none; border:1px solid var(--line);
     border-radius:8px; overflow:hidden; background:var(--panel-2);}
   .exp-sheet{display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px;
     border:0; border-bottom:1px solid var(--line); background:none; color:var(--muted);
@@ -762,8 +765,11 @@
     border-radius:6px; padding:5px 8px; font-size:12px; font-family:var(--font-ui);}
   .exp-foot .exp-count{order:3; margin-left:auto;}
   @media (max-width:860px){
-    .exp-body{grid-template-columns:1fr; overflow-y:auto;}
-    .exp-side{overflow:visible;}
+    /* Stacked, the two halves have to push the column open rather than sit in
+       rows the grid squeezed shut: min-height:0 let the sheet list collapse to
+       nothing and spill over the preview instead of scrolling with it. */
+    .exp-body{grid-template-columns:1fr; grid-auto-rows:min-content; overflow-y:auto;}
+    .exp-side{overflow:visible; min-height:min-content;}
     .exp-prev-box{min-height:300px;}
   }
   /* On a narrow screen the footer and the preview bar have more in them than

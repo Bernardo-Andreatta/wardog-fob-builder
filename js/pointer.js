@@ -1,5 +1,5 @@
 import { CATALOG, SYMBOLS } from './catalog.js';
-import { editNewOverlay } from './tools.js';
+import { editNewOverlay, setTool } from './tools.js';
 import { eyedropPiece, openCtx } from './ctxmenu.js';
 import { GRID, cv, isCoarse, stage } from './dom.js';
 import { pieceLayer, placeError } from './floors.js';
@@ -71,6 +71,28 @@ export function placeStampAt(w){
   const nn=inst.map(ip=>({id:ST.uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:ST.curLayer, ly:ST.curLayerId, g:gid, st:ST.curStageId, bd:ST.curBuilderId}));
   ST.pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
+// the hold's payoff: drop the pan, arm Select, and either take the piece under
+// the finger or open a marquee from that spot
+const PAN_HOLD_MS=380, PAN_HOLD_SLOP=10;
+export function cancelPanHold(){
+  if(ST.drag && ST.drag.hold){ clearTimeout(ST.drag.hold); ST.drag.hold=0; }
+}
+function holdToSelect(w){
+  if(!ST.drag || ST.drag.mode!=='pan' || ST.pinch || tpts.size>1) return;
+  ST.drag.hold=0;
+  stage.classList.remove('c-panning');
+  ST.userPickedTool=true; setTool('select');
+  clearSelection(); clearOverlaySel();
+  const hit=hitPiece(w.x,w.y);
+  if(hit){ ST.selected=[hit.id]; expandGroups(); ST.drag={mode:'placed'}; }
+  else{
+    ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
+      base:{pieces:[], texts:[], imgs:[], strokes:[]}};
+    ST.drag={mode:'marquee'};
+  }
+  try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
+  render(); updateStatus();
+}
 export function placePieceAt(w){
   const c=snapCenter(ST.tool,ST.placeRot,w.x,w.y);
   const err=placeError(ST.tool,c.x,c.y,ST.placeRot,ST.curLayer);
@@ -87,7 +109,16 @@ cv.addEventListener('pointerdown', e=>{
   // a floating touch move is waiting: this tap just drops it where it sits
   if(ST.pendingMove){ commitPendingMove(); ST.drag={mode:'placed'}; render(); updateStatus(); return; }
   if(e.button===1 || ST.spaceDown || ST.tool==='pan'){
-    ST.drag={mode:'pan',sx:sc.x,sy:sc.y,ox:ST.view.ox,oy:ST.view.oy}; stage.classList.add('c-panning'); return;
+    ST.drag={mode:'pan',sx:sc.x,sy:sc.y,ox:ST.view.ox,oy:ST.view.oy}; stage.classList.add('c-panning');
+    // A finger that stays put on the map wants the thing under it, not the map:
+    // hold and the pan becomes a selection - the piece you are pressing, or an
+    // empty patch you can drag out into a marquee. Moving first cancels it, so
+    // an ordinary pan never trips the hold.
+    if(e.pointerType==='touch'){
+      ST.drag.hsx=sc.x; ST.drag.hsy=sc.y;
+      ST.drag.hold=setTimeout(()=>holdToSelect(w), PAN_HOLD_MS);
+    }
+    return;
   }
   if(ST.tool==='eyedrop'){
     const h=hitPiece(w.x,w.y);
@@ -102,11 +133,11 @@ cv.addEventListener('pointerdown', e=>{
   // touch: a drag only aims the ghost; a plain tap places it (on the ghost =
   // confirm its aimed spot, elsewhere = place right there). Mouse places on press.
   if(ST.tool==='stamp' && ST.activeStamp){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'stamp', w, ss:sc, moved:false, prev:{x:ST.hover.x,y:ST.hover.y}}; return; }
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'stamp', w, ss:sc, moved:false}; ST.hover=w; render(); return; }
     placeStampAt(w); ST.drag={mode:'placed'}; return;
   }
   if(CATALOG[ST.tool]){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'piece', w, ss:sc, moved:false, prev:{x:ST.hover.x,y:ST.hover.y}}; return; }
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'piece', w, ss:sc, moved:false}; ST.hover=w; render(); return; }
     placePieceAt(w); ST.drag={mode:'placed'}; return;
   }
   if(SYMBOLS[ST.tool]){
@@ -197,7 +228,10 @@ export function startGroupMove(w, primary){
 cv.addEventListener('pointermove', e=>{
   const w=evtW(e), sc=evtS(e); ST.hover=w;
   if(ST.drag){
-    if(ST.drag.mode==='pan'){ ST.view.ox=ST.drag.ox+(sc.x-ST.drag.sx); ST.view.oy=ST.drag.oy+(sc.y-ST.drag.sy); render(); }
+    if(ST.drag.mode==='pan'){
+      if(ST.drag.hold && Math.hypot(sc.x-ST.drag.hsx, sc.y-ST.drag.hsy)>PAN_HOLD_SLOP) cancelPanHold();
+      ST.view.ox=ST.drag.ox+(sc.x-ST.drag.sx); ST.view.oy=ST.drag.oy+(sc.y-ST.drag.sy); render();
+    }
     else if(ST.drag.mode==='gmove'){
       // move the whole selection (pieces + images + texts + drawings) as one
       let rawdx=w.x-ST.drag.startW.x, rawdy=w.y-ST.drag.startW.y;
@@ -271,24 +305,23 @@ cv.addEventListener('pointermove', e=>{
       // its lowest edge clears the finger whatever the rotation; it stays at
       // that offset spot on lift, and a tap anywhere confirms it there
       if(ST.drag.moved){ ST.hover={x:w.x, y:w.y-ghostDrop()-40/ST.view.scale}; render(); }
-      else if(ST.drag.prev) ST.hover=ST.drag.prev;            // mere tap wiggle: ghost stays put
+      else ST.hover=w;                       // still a tap: the ghost is the finger
     }
   } else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)) render();  // ghost follows cursor
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
+  cancelPanHold();
   if(ST.drag){
-    if(ST.drag.mode==='tapplace' && !ST.drag.moved){   // only a plain tap places
-      const w=ST.drag.w;
-      if(ST.drag.kind==='text'){ clearSelection(); addText(w); }
-      else if(ST.drag.kind==='sym'){ if(SYMBOLS[ST.tool]) placeSymbolAt(w); }
-      else{
-        // any tap confirms the ghost where it sits (aiming by tap is too
-        // imprecise on touch - drag aims, tap commits)
-        const at={x:ST.hover.x, y:ST.hover.y};
-        if(ST.drag.kind==='stamp' && ST.activeStamp) placeStampAt(at);
-        else if(ST.drag.kind==='piece' && CATALOG[ST.tool]) placePieceAt(at);
-      }
+    // Two ways to place, and the finger picks which. A tap is a quick drop:
+    // the piece lands where you touched. A drag is the aimed one: the ghost
+    // rides clear of the finger so you can see the fit, and lands where it sat.
+    if(ST.drag.mode==='tapplace'){
+      const w=ST.drag.w, at = ST.drag.moved ? {x:ST.hover.x, y:ST.hover.y} : w;
+      if(ST.drag.kind==='text'){ if(!ST.drag.moved){ clearSelection(); addText(w); } }
+      else if(ST.drag.kind==='sym'){ if(SYMBOLS[ST.tool]) placeSymbolAt(at); }
+      else if(ST.drag.kind==='stamp' && ST.activeStamp) placeStampAt(at);
+      else if(ST.drag.kind==='piece' && CATALOG[ST.tool]) placePieceAt(at);
     }
     if(ST.drag.mode==='gmove' && ST.drag.moved){
       ST.drag.ps.forEach(it=>{ delete it.p._ix; delete it.p._iy; });

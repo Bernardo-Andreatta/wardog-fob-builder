@@ -24,6 +24,7 @@ export function beginPinch(){
       ST.drag.ss.forEach(it=>{ it.s.pts.forEach((pt,k)=>{ pt.x=it.pts[k].x; pt.y=it.pts[k].y; }); });
     }
     else if(ST.drag.mode==='imgresize'){ ST.drag.im.w=ST.drag.ow; ST.drag.im.h=ST.drag.ow/ST.drag.ar; }
+    if(ST.drag.hold) clearTimeout(ST.drag.hold);
     ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move');
   }
   for(const id of tpts.keys()){ try{ cv.setPointerCapture(id); }catch(_){} }
@@ -52,6 +53,7 @@ export function endTouch(e){
   tpts.delete(e.pointerId);
   if(ST.pinch){ e.stopPropagation(); if(tpts.size<2){ ST.pinch=null; persist(); } }
   else if(e.type==='pointercancel' && ST.drag){   // OS stole the touch: drop the gesture
+    if(ST.drag.hold) clearTimeout(ST.drag.hold);
     ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move'); render();
   }
 }
