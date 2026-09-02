@@ -20,7 +20,6 @@ import { ensureLayers, layerById, migrateLayers } from './layers.js';
 import { renderLayerPanel } from './layerspanel.js';
 import { adoptPlan, cleanPlan, ensurePlan } from './plan.js';
 import { renderPlanPanel, setHudOpen } from './planpanel.js';
-import { commitPendingMove } from './pointer.js';
 import { applySavedOrder, buildRail, buildSwatches, refreshIcons } from './rail.js';
 import { cssVar, render, resize } from './render.js';
 import { clearOverlaySel, clearSelection, hydrateImages, imagesData } from './selection.js';
@@ -122,7 +121,7 @@ export function centerOnContent(){
   const sc=Math.min(2, Math.max(0.2, Math.min(stage.clientWidth/W, stage.clientHeight/H)));
   ST.view.scale=sc; ST.view.ox=stage.clientWidth/2 - cx*sc; ST.view.oy=stage.clientHeight/2 - cy*sc;
 }
-window.addEventListener('beforeunload', ()=>{ try{ commitPendingMove(); persist(); persistStamps(); }catch(e){} });
+window.addEventListener('beforeunload', ()=>{ try{ persist(); persistStamps(); }catch(e){} });
 window.addEventListener('resize', resize);
 // track any stage-box change (rotation, mobile browser chrome, rail collapse)
 if(window.ResizeObserver){ let first=true;

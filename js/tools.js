@@ -2,7 +2,6 @@ import { CATALOG, SYMBOLS } from './catalog.js';
 import { $, COARSE_MQ, isCoarse, stage } from './dom.js';
 import { screenToWorld } from './geometry.js';
 import { highlightRecent } from './icons.js';
-import { commitPendingMove } from './pointer.js';
 import { render } from './render.js';
 import { anySelected, clearOverlaySel, clearSelection } from './selection.js';
 import { ST } from './state.js';
@@ -10,7 +9,6 @@ import { updateStatus } from './status.js';
 
 // ---------------- tool selection
 export function setTool(t){
-  commitPendingMove();                // don't strand a floating move on a tool change
   if(t!=='stamp') ST.activeStamp=null;   // leaving placement drops the ghost
   if(t==='select') ST.lastNavTool=t;
   // picking a tool drops the old selection, so rotate/mirror act on the new

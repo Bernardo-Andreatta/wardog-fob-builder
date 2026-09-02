@@ -46,7 +46,6 @@ export const ST = {
   octx: null,
   drag: null,
   spaceDown: false,
-  pendingMove: false,
   trackpad: false,
   pinch: null,
   panRAF: 0,

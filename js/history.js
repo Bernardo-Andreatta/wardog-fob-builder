@@ -10,7 +10,6 @@ import { updateStatus } from './status.js';
 
 // ---------------- history / persistence
 export function snapshot(){
-  ST.pendingMove=false;   // whatever is being recorded already includes the move
   const s = JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,uid:ST.uid, images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,stages:ST.stages,builders:ST.builders});
   if(ST.history[ST.hidx] === s) return;
   ST.history = ST.history.slice(0, ST.hidx+1);

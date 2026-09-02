@@ -119,8 +119,6 @@ cv.addEventListener('pointerdown', e=>{
   if(e.button===2) return;                 // right-click handled by contextmenu
   try{ cv.setPointerCapture(e.pointerId); }catch(_){}
   const w=evtW(e), sc=evtS(e);
-  // a floating touch move is waiting: this tap just drops it where it sits
-  if(ST.pendingMove){ commitPendingMove(); ST.drag={mode:'placed'}; render(); updateStatus(); return; }
   if(e.button===1 || ST.spaceDown){ startPan(w, sc, e); return; }
   if(ST.tool==='eyedrop'){
     const h=hitPiece(w.x,w.y);
@@ -237,7 +235,6 @@ export function selBottomAtStart(d){
 }
 // A touch move finishes like a placement: the finger lift leaves the selection
 // floating where it was dragged, and the next tap anywhere commits it.
-export function commitPendingMove(){ if(ST.pendingMove){ ST.pendingMove=false; snapshot(); } }
 export function startGroupMove(w, primary){
   ST.drag={ mode:'gmove', primary: primary||null,
     pox: primary?primary.x:0, poy: primary?primary.y:0, anchor:null,
@@ -361,8 +358,10 @@ cv.addEventListener('pointerup', ()=>{
       ST.drag.ts.forEach(it=>{ delete it.t._ix; delete it.t._iy; });
       ST.drag.ss.forEach(it=>{ delete it.s._ipts; });
     }
-    if(ST.drag.mode==='gmove' && ST.drag.moved && ST.drag.touch) ST.pendingMove=true;   // confirmed by the next tap
-    else if((ST.drag.mode==='gmove'&&ST.drag.moved)||ST.drag.mode==='rotate'||ST.drag.mode==='draw'||(ST.drag.mode==='erase'&&ST.drag.erased)
+    // Lifting the finger commits the move. A touch move used to stay floating
+    // until the next tap confirmed it, which meant the tap you made to drop the
+    // selection was spent on the confirmation and you had to tap again.
+    if((ST.drag.mode==='gmove'&&ST.drag.moved)||ST.drag.mode==='rotate'||ST.drag.mode==='draw'||(ST.drag.mode==='erase'&&ST.drag.erased)
       || (ST.drag.mode==='imgresize'&&ST.drag.moved) || (ST.drag.mode==='strokeresize'&&ST.drag.moved)) snapshot();
   }
   ST.drag=null; ST.marquee=null; stage.classList.remove('c-panning','c-move'); render();
