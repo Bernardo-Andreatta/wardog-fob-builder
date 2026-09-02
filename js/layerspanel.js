@@ -177,14 +177,17 @@ $('lp-opacity').onchange=()=>{ snapshot(); };
 // the floating panel carries both sheets; the tab strip swaps which one shows,
 // so Build Plan gets a real panel without adding a second one to the stage
 // the panel is Floors & Layers only now - the build plan has its own modal
+// the width at which the two board panels start fighting over the same space
+export const narrow = ()=>isCoarse() || window.innerWidth<=720;
 export function showPanel(on){
   document.querySelector('.app').classList.toggle('panel-off', !on);
-  // one board panel at a time. Folded inline rather than calling planpanel's
+  // One board panel at a time, but only where they collide: a phone has room
+  // for one, a desktop for both. Folded inline rather than calling planpanel's
   // setHudOpen, which would make these two modules import each other.
   if(on){
     renderLayerPanel();
     const hud=$('board-hud');
-    if(hud && !hud.classList.contains('off')){
+    if(narrow() && hud && !hud.classList.contains('off')){
       hud.classList.add('off');
       try{ localStorage.setItem('wardog-fob-hud','off'); }catch(e){}
     }
@@ -199,7 +202,7 @@ $('lp-close').onclick=()=>showPanel(false);
 document.addEventListener('pointerdown', e=>{
   const app=document.querySelector('.app');
   if(app.classList.contains('panel-off')) return;
-  if(!(isCoarse() || window.innerWidth<=720)) return;
+  if(!narrow()) return;
   if(e.target.closest('#layers-panel, #btn-layers, #panel-toggle')) return;
   showPanel(false);
   if(e.target.id==='board'){ e.preventDefault(); e.stopPropagation(); }
