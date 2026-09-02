@@ -1297,8 +1297,8 @@
 // the spawn vehicle have none, because the game does not charge supplies for
 // them - a vehicle is bought with cash, and the rest are places, not structures.
 const CATALOG = {
-  wall:     {name:'Bremmer Wall', w:1, h:1,   cost:13},
-  shortwall:{name:'Hesco Block',  w:1, h:1,   cost:13},
+  wall:     {name:'Hesco Block',  w:1, h:1,   cost:13},
+  shortwall:{name:'HB Short',     w:1, h:1,   cost:13},
   quadra:   {name:'Hesco Wall',   w:4, h:1,   cost:61},
   bunker:   {name:'Bunker',       w:4, h:4,   cost:81},
   door:     {name:'Door',         w:1, h:1,   cost:19},
@@ -1312,6 +1312,7 @@ const CATALOG = {
   sam:      {name:'Talon SAM',    w:2, h:2,   cost:801},
   spawn:    {name:'M113 APC',     w:2, h:3},
   hedgehog: {name:'Hedgehog',     w:1, h:1,   cost:19},
+  shelter:  {name:'Indirect Fire Shelter', w:5, h:5, cost:81},
   fob:      {name:'FOB',          w:2, h:2,   cost:30},
   helipad:  {name:'Helipad',      w:2, h:2},
   supply:   {name:'Supply Area',  w:2, h:2},
@@ -1328,7 +1329,7 @@ function tallyText(list, short){
   const n=list.length, s=supplySum(list);
   return n+(n===1?' piece':' pieces')+' \u00b7 '+s+(short?'s':' supplies');
 }
-const PIECE_ORDER = ['wall','shortwall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
+const PIECE_ORDER = ['wall','shortwall','quadra','bunker','shelter','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
 const LOGI_ORDER = ['helipad','supply','parking','codetower'];
 const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
 // simple annotation symbols: placed as strokes (point outlines), so they move /
@@ -1406,6 +1407,33 @@ function drawFort(g,W,H,entrance){
   for(let s=0;s<4;s++){ g.save(); g.rotate(s*Math.PI/2); fortEdge(g,S,t,span,gh,types[s]); g.restore(); }
 }
 function drawBunker(g,W,H){ drawFort(g,W,H,'door'); }
+// Indirect fire shelter: a 5x5 ring of hesco block with a door centred on all
+// four sides, roofed over, and five more blocks standing on that roof. The mass
+// overhead is the whole point of it, so it is what the drawing leads with - the
+// roof reads as a hatched lid and the blocks sit on top of the hatch.
+function drawShelter(g,W,H){
+  const S=W/2, cell=GRID, t=GRID*0.16, cc=S-cell/2, span=S-cell, gh=cell*0.5;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{            // corner blocks
+    g.save(); g.translate(sx*cc,sy*cc); drawSingleWall(g,cell,cell); g.restore();
+  });
+  for(let s=0;s<4;s++){                                          // a door on every side
+    g.save(); g.rotate(s*Math.PI/2); fortEdge(g,S,t,span,gh,'door'); g.restore();
+  }
+  // the roof over the interior, hatched so it reads as covered rather than open
+  const r=S-cell;
+  g.save();
+  g.beginPath(); g.rect(-r,-r,2*r,2*r); g.clip();
+  g.globalAlpha=0.42; g.beginPath();
+  for(let d=-2*r; d<=2*r; d+=GRID*0.34){ g.moveTo(d,-r); g.lineTo(d+2*r,r); }
+  g.stroke();
+  g.restore();
+  g.beginPath(); g.rect(-r,-r,2*r,2*r); g.stroke();
+  // five blocks on the roof: one over the middle, one over each corner of it
+  const b=cell*0.66, off=r*0.56;
+  [[0,0],[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([bx,by])=>{
+    g.save(); g.translate(bx*off,by*off); drawSingleWall(g,b,b); g.restore();
+  });
+}
 function drawDoor(g,W,H){
   const open=W*0.62, jamb=(W-open)/2, th=H*0.5;
   g.save(); g.fillStyle=g.strokeStyle;
@@ -1653,7 +1681,7 @@ const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunker, door
   barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower,
   mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh,
   hedgehog:drawHedgehog, fob:drawFOB, helipad:drawHelipad, supply:drawSupply, parking:drawParking,
-  codetower:drawCodeTower, shortwall:drawSingleWall};
+  codetower:drawCodeTower, shortwall:drawSingleWall, shelter:drawShelter};
 
 function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
@@ -1735,7 +1763,7 @@ const ST = {
 // ---------------- layers (experimental "build up")
 // pieces may carry `l` (floor, default 0). Higher floors render offset up and
 // dimmed to fake depth, and may only sit on a wall/bunker base one floor below.
-const BASE_TYPES = ['wall','shortwall','quadra','bunker'];   // what a higher floor can rest on
+const BASE_TYPES = ['wall','shortwall','quadra','bunker','shelter'];   // what a higher floor can rest on
 // short wall / sandbags / barbed read darker ("low"). They snap to the standard
 // floor colour when merged: two of the same type on a cell, or a low piece
 // resting over a short wall. Key groups low pieces sharing a cell on a floor.

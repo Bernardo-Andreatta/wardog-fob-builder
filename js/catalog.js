@@ -3,8 +3,8 @@
 // the spawn vehicle have none, because the game does not charge supplies for
 // them - a vehicle is bought with cash, and the rest are places, not structures.
 export const CATALOG = {
-  wall:     {name:'Bremmer Wall', w:1, h:1,   cost:13},
-  shortwall:{name:'Hesco Block',  w:1, h:1,   cost:13},
+  wall:     {name:'Hesco Block',  w:1, h:1,   cost:13},
+  shortwall:{name:'HB Short',     w:1, h:1,   cost:13},
   quadra:   {name:'Hesco Wall',   w:4, h:1,   cost:61},
   bunker:   {name:'Bunker',       w:4, h:4,   cost:81},
   door:     {name:'Door',         w:1, h:1,   cost:19},
@@ -18,6 +18,7 @@ export const CATALOG = {
   sam:      {name:'Talon SAM',    w:2, h:2,   cost:801},
   spawn:    {name:'M113 APC',     w:2, h:3},
   hedgehog: {name:'Hedgehog',     w:1, h:1,   cost:19},
+  shelter:  {name:'Indirect Fire Shelter', w:5, h:5, cost:81},
   fob:      {name:'FOB',          w:2, h:2,   cost:30},
   helipad:  {name:'Helipad',      w:2, h:2},
   supply:   {name:'Supply Area',  w:2, h:2},
@@ -34,7 +35,7 @@ export function tallyText(list, short){
   const n=list.length, s=supplySum(list);
   return n+(n===1?' piece':' pieces')+' \u00b7 '+s+(short?'s':' supplies');
 }
-export const PIECE_ORDER = ['wall','shortwall','quadra','bunker','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
+export const PIECE_ORDER = ['wall','shortwall','quadra','bunker','shelter','door','barbed','gate','sandbags','hedgehog','tower','mortar','drill','aa','sam','spawn','fob'];
 export const LOGI_ORDER = ['helipad','supply','parking','codetower'];
 export const DRAW_COLORS = ['#e6a51e','#e0574a','#7ec46a','#4aa3e0','#e9ead9','#1a1a14'];
 // simple annotation symbols: placed as strokes (point outlines), so they move /

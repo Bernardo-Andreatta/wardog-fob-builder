@@ -6,7 +6,7 @@ import { ST } from './state.js';
 // ---------------- layers (experimental "build up")
 // pieces may carry `l` (floor, default 0). Higher floors render offset up and
 // dimmed to fake depth, and may only sit on a wall/bunker base one floor below.
-export const BASE_TYPES = ['wall','shortwall','quadra','bunker'];   // what a higher floor can rest on
+export const BASE_TYPES = ['wall','shortwall','quadra','bunker','shelter'];   // what a higher floor can rest on
 // short wall / sandbags / barbed read darker ("low"). They snap to the standard
 // floor colour when merged: two of the same type on a cell, or a low piece
 // resting over a short wall. Key groups low pieces sharing a cell on a floor.

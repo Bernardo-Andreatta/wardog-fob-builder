@@ -52,6 +52,33 @@ export function drawFort(g,W,H,entrance){
   for(let s=0;s<4;s++){ g.save(); g.rotate(s*Math.PI/2); fortEdge(g,S,t,span,gh,types[s]); g.restore(); }
 }
 export function drawBunker(g,W,H){ drawFort(g,W,H,'door'); }
+// Indirect fire shelter: a 5x5 ring of hesco block with a door centred on all
+// four sides, roofed over, and five more blocks standing on that roof. The mass
+// overhead is the whole point of it, so it is what the drawing leads with - the
+// roof reads as a hatched lid and the blocks sit on top of the hatch.
+export function drawShelter(g,W,H){
+  const S=W/2, cell=GRID, t=GRID*0.16, cc=S-cell/2, span=S-cell, gh=cell*0.5;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{            // corner blocks
+    g.save(); g.translate(sx*cc,sy*cc); drawSingleWall(g,cell,cell); g.restore();
+  });
+  for(let s=0;s<4;s++){                                          // a door on every side
+    g.save(); g.rotate(s*Math.PI/2); fortEdge(g,S,t,span,gh,'door'); g.restore();
+  }
+  // the roof over the interior, hatched so it reads as covered rather than open
+  const r=S-cell;
+  g.save();
+  g.beginPath(); g.rect(-r,-r,2*r,2*r); g.clip();
+  g.globalAlpha=0.42; g.beginPath();
+  for(let d=-2*r; d<=2*r; d+=GRID*0.34){ g.moveTo(d,-r); g.lineTo(d+2*r,r); }
+  g.stroke();
+  g.restore();
+  g.beginPath(); g.rect(-r,-r,2*r,2*r); g.stroke();
+  // five blocks on the roof: one over the middle, one over each corner of it
+  const b=cell*0.66, off=r*0.56;
+  [[0,0],[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([bx,by])=>{
+    g.save(); g.translate(bx*off,by*off); drawSingleWall(g,b,b); g.restore();
+  });
+}
 export function drawDoor(g,W,H){
   const open=W*0.62, jamb=(W-open)/2, th=H*0.5;
   g.save(); g.fillStyle=g.strokeStyle;
@@ -299,7 +326,7 @@ export const DRAWERS = {wall:drawSingleWall, quadra:drawQuadra, bunker:drawBunke
   barbed:drawBarbed, gate:drawGate, sandbags:drawSandbags, tower:drawTower,
   mortar:drawMortar, drill:drawDrill, aa:drawAA, sam:drawSAM, spawn:drawSpawnVeh,
   hedgehog:drawHedgehog, fob:drawFOB, helipad:drawHelipad, supply:drawSupply, parking:drawParking,
-  codetower:drawCodeTower, shortwall:drawSingleWall};
+  codetower:drawCodeTower, shortwall:drawSingleWall, shelter:drawShelter};
 
 export function drawPiece(g,p,color,alpha,lw){
   const c=CATALOG[p.type];
