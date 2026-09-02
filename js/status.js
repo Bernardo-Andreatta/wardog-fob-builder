@@ -15,6 +15,10 @@ export function updateStatus(){
   // handle on top stays the free-rotation control)
   updateUndoFab(); updateToolChip(); updatePlanApply();
   const ghost = CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp);
+  // phone: aiming or moving a piece clears the chrome off the board, so the
+  // whole screen is the thing you are aiming at (see .focus-edit)
+  const app=document.querySelector('.app');
+  if(app) app.classList.toggle('focus-edit', isCoarse() && (!!anySelected() || !!ghost));
   const rf=$('rot-fab'); if(rf){
     rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
     rf.classList.toggle('ghost', !!ghost && !anySelected());

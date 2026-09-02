@@ -390,8 +390,28 @@
     .undo-fab .btn svg{width:18px; height:18px;}
     .undo-fab .btn:disabled{opacity:.35; pointer-events:none;}
   }
+  /* Placing or moving a piece, a phone gives the board everything. The chrome
+     is not needed while you aim - you need to see where the piece is going -
+     and on a screen this size every panel is a piece of the map you cannot
+     check. Only the edit bar, undo / redo and Done stay up.
+     Nothing is torn down, just hidden, so Done brings back whatever was open:
+     the layers sheet, the plan bar folded or not, the rail scrolled where you
+     left it. */
+  @media (pointer:coarse){
+    .app.focus-edit .topbar,
+    .app.focus-edit .rail,
+    .app.focus-edit .rail-resize,
+    .app.focus-edit #rail-toggle,
+    .app.focus-edit #panel-toggle,
+    .app.focus-edit .side-panel,
+    .app.focus-edit .board-hud{display:none;}
+    /* landscape keeps the rail as a column, so its track has to close too */
+    .app.focus-edit{grid-template-columns:0 1fr;}
+  }
   /* portrait phones / small tablets: rail becomes a horizontal bottom bar */
   @media (pointer:coarse) and (orientation:portrait) and (max-width:920px){
+    /* portrait stacks instead: one column, and the rail's rows collapse */
+    .app.focus-edit{grid-template-columns:1fr; grid-template-rows:0 1fr 0 0;}
     .app, .app.rail-off{grid-template-columns:1fr; grid-template-rows:auto 1fr auto auto;
       grid-template-areas:"top" "stage" "rail" "status";}
     .topbar{padding:8px 10px; gap:10px; overflow-x:auto;}
