@@ -3,6 +3,7 @@ import { curInk } from './core.js';
 import { $, GRID, ctx } from './dom.js';
 import { DRAWERS, drawPiece, roundRect } from './drawers.js';
 import { LAYER_OFF, _hx, drawLayer, layerColor, layerOff, lowCounts, lowStyle, maskPiece, masksBelow, maxLayer, mixCol, pieceLayer, shortwallCells, swRank } from './floors.js';
+import { floorName } from './layers.js';
 import { drawText, textBox } from './overlays.js';
 import { HATCH_ANGLES, builderOf, drawPlanFill, ensurePlan, stageIndex, stageOf, tagInk } from './plan.js';
 import { cssVar } from './render.js';
@@ -21,7 +22,7 @@ import { flashToast, saveFile } from './topbar.js';
 export const EXP_FIELDS=[
   ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
   ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['zip','exp-zip'],
-  ['pdfPerBuilder','exp-pdf-per-builder']];
+  ['perFloor','exp-per-floor'],['pdfPerBuilder','exp-pdf-per-builder']];
 // The two colour channels are not on/off, they are "on where it says anything".
 // A stage wash on a single-stage sheet colours every piece the same, and so
 // does a builder outline on a single builder's sheet - the ink spends itself
@@ -73,6 +74,29 @@ export function buildName(){ return slug(ST.expCfg.name) || 'fob-build'; }
 // colour channels it paints them with (outline / fill)
 // a tag nothing was built under would only ever render an empty sheet, so it is
 // dropped from the batch (and takes its "all stages / all builders" sheet with it)
+// A build on two floors is two drawings sharing a footprint, and on paper they
+// print on top of each other. Split, each floor is its own sheet: the same
+// subject, one storey at a time. The structure key has no floor to be on, so it
+// is left whole - and a single-floor build is left alone entirely.
+function splitByFloor(jobs){
+  const floors=[...new Set(ST.pieces.map(p=>p.l||0))].sort((a,b)=>a-b);
+  if(floors.length<2) return jobs;
+  const out=[];
+  jobs.forEach(j=>{
+    if(j.kind==='key'){ out.push(j); return; }
+    floors.forEach(fl=>{
+      if(!ST.pieces.some(p=>(p.l||0)===fl && j.inc(p))) return;   // nothing of this on that floor
+      const inc=j.inc, rest=j.rest;
+      out.push(Object.assign({}, j, {
+        file:j.file+'-f'+fl,
+        title:j.title+' · '+floorName(fl),
+        inc:p=>(p.l||0)===fl && inc(p),
+        rest:rest ? (p=>(p.l||0)===fl && rest(p)) : null,
+      }));
+    });
+  });
+  return out;
+}
 export function usedPlan(kind){
   const shown=ST.pieces, key = kind==='stage'?'st':'bd';
   return (kind==='stage'?ST.stages:ST.builders).filter(e=>shown.some(p=>p[key]===e.id));
@@ -128,7 +152,7 @@ export function exportCandidates(){
   }
   if(keyEntries().length)
     jobs.push({file:'structure-key', group:'key', title:'Structure key', kind:'key', inc:all});
-  return jobs;
+  return ST.expCfg.perFloor ? splitByFloor(jobs) : jobs;
 }
 // A sheet the user has never touched follows its group's default, so adding a
 // stage adds its sheet without anyone going back to tick it.
