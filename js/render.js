@@ -35,7 +35,7 @@ export function render(){
   ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
   ctx.setTransform(dpr*ST.view.scale,0,0,dpr*ST.view.scale, dpr*ST.view.ox, dpr*ST.view.oy);
   const colInk=curInk(), colAcc=cssVar('--accent');
-  if(ST.showGrid) drawGrid(cssVar('--grid'), cssVar('--grid-major'));
+  drawGrid(cssVar('--grid'), cssVar('--grid-major'));
   drawFobAreas(colAcc);
   // draw each Photoshop layer bottom -> top; a layer under 100% opacity renders
   // to an offscreen buffer and composites at its opacity (true layer alpha, so

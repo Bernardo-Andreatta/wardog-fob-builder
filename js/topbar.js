@@ -45,14 +45,6 @@ function fabPress(id, fn){
   });
   b.onclick=()=>{ if(fired){ fired=false; return; } fn(); };
 }
-// the grid is a view setting, so it lives with undo / redo rather than with the
-// buttons that act on the piece
-$('fab-grid').onclick=()=>{
-  ST.showGrid=!ST.showGrid;
-  $('fab-grid').classList.toggle('off', !ST.showGrid);
-  try{ localStorage.setItem('wardog-fob-grid', ST.showGrid?'':'off'); }catch(e){}
-  render();
-};
 fabPress('rot-cw', ()=>fabRot(45));
 fabPress('rot-ccw', ()=>fabRot(-45));
 fabPress('fab-mirror', ()=>{
@@ -293,8 +285,15 @@ $('zoom-out').onclick=()=>zoomBy(1/1.2);
 $('zoom-fit').onclick=()=>{ ST.view={ox:stage.clientWidth/2, oy:stage.clientHeight/2, scale:1}; render(); updateStatus(); persist(); };
 
 // snap toggle
-export function toggleSnap(){ ST.snapOn=!ST.snapOn; $('btn-snap').classList.toggle('on',ST.snapOn); render(); updateStatus(); }
+export function toggleSnap(){
+  ST.snapOn=!ST.snapOn;
+  $('btn-snap').classList.toggle('on',ST.snapOn);
+  $('fab-snap').classList.toggle('on',ST.snapOn);   // the rail's copy is out of reach in fullscreen
+  render(); updateStatus();
+}
 $('btn-snap').onclick=toggleSnap;
+$('fab-snap').onclick=toggleSnap;
+$('fab-snap').classList.toggle('on', ST.snapOn);
 
 // ---------------- layers (experimental build-up)
 export function flashToast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false;

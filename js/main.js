@@ -82,8 +82,6 @@ export function init(){
     document.querySelector('.app').classList.toggle('panel-off', hide);
     renderLayerPanel(); })();
   try{ setHudOpen(localStorage.getItem('wardog-fob-hud')!=='off'); }catch(e){}
-  try{ ST.showGrid = localStorage.getItem('wardog-fob-grid')!=='off';
-    $('fab-grid').classList.toggle('off', !ST.showGrid); }catch(e){}
   if(!ST.view.ox && !ST.view.oy){ ST.view.ox=stage.clientWidth/2; ST.view.oy=stage.clientHeight/2; }
   setTool('select');   // the board's own mode: pan, select and move in one
   ST.history=[JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,stages:ST.stages,builders:ST.builders})]; ST.hidx=0;
