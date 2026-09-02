@@ -14,6 +14,7 @@ export const ST = {
   placeRot: 0,
   placeFlip: false,
   snapOn: true,
+  sharedView: false,                        // opened from a shared link: look, do not overwrite
   buildHold: false,                         // phone: stay in the fullscreen build view with no ghost armed
   uid: 1,
   curLayer: 0,                              // active build floor for placement (experimental)

@@ -290,10 +290,18 @@ export async function copyText(text, label){
 }
 $('code-copy').onclick=()=>copyText($('code-out').value, 'Code copied!');
 $('code-copylink').onclick=()=>copyText(buildLink($('code-out').value), 'Link copied!');
+// Loading a code opens it beside what you have rather than on top of it: two
+// builds, two tabs, and the one you were working on still where you left it.
 $('code-load').onclick=async ()=>{
   const msg=$('code-loadmsg'); msg.className='code-msg';
-  try{ const o=await decodeBuild($('code-in').value); loadBuild(o); msg.textContent='Build loaded.';
-    setTimeout(closeCode, 700); }
+  const code=$('code-in').value.trim();
+  try{
+    await decodeBuild(code);                       // reject a bad code before opening anything
+    const w=window.open(buildLink(code), '_blank');
+    if(w){ msg.textContent='Opened in a new tab.'; setTimeout(closeCode, 900); }
+    else { loadBuild(await decodeBuild(code));     // popup blocked: fall back to here
+      msg.textContent='Build loaded here.'; setTimeout(closeCode, 900); }
+  }
   catch(e){ msg.className='code-msg bad'; msg.textContent='Not a valid build code.'; }
 };
 

@@ -1681,6 +1681,7 @@ const ST = {
   placeRot: 0,
   placeFlip: false,
   snapOn: true,
+  sharedView: false,                        // opened from a shared link: look, do not overwrite
   buildHold: false,                         // phone: stay in the fullscreen build view with no ghost armed
   uid: 1,
   curLayer: 0,                              // active build floor for placement (experimental)
@@ -4706,10 +4707,18 @@ async function copyText(text, label){
 }
 $('code-copy').onclick=()=>copyText($('code-out').value, 'Code copied!');
 $('code-copylink').onclick=()=>copyText(buildLink($('code-out').value), 'Link copied!');
+// Loading a code opens it beside what you have rather than on top of it: two
+// builds, two tabs, and the one you were working on still where you left it.
 $('code-load').onclick=async ()=>{
   const msg=$('code-loadmsg'); msg.className='code-msg';
-  try{ const o=await decodeBuild($('code-in').value); loadBuild(o); msg.textContent='Build loaded.';
-    setTimeout(closeCode, 700); }
+  const code=$('code-in').value.trim();
+  try{
+    await decodeBuild(code);                       // reject a bad code before opening anything
+    const w=window.open(buildLink(code), '_blank');
+    if(w){ msg.textContent='Opened in a new tab.'; setTimeout(closeCode, 900); }
+    else { loadBuild(await decodeBuild(code));     // popup blocked: fall back to here
+      msg.textContent='Build loaded here.'; setTimeout(closeCode, 900); }
+  }
   catch(e){ msg.className='code-msg bad'; msg.textContent='Not a valid build code.'; }
 };
 
@@ -5007,7 +5016,7 @@ function restore(s){ const o=JSON.parse(s); ST.pieces=o.pieces; ST.strokes=o.str
   ST.selTexts = ST.selTexts.filter(id=>ST.texts.some(t=>t.id===id));
   ST.selStrokes = ST.selStrokes.filter(s=>ST.strokes.indexOf(s)!==-1);
   render(); updateStatus(); persist(); }
-function persist(){ try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,view:ST.view,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,curLayer:ST.curLayer,layerUid:ST.layerUid,groupUid:ST.groupUid,higherFloorOnTop:ST.higherFloorOnTop,stages:ST.stages,builders:ST.builders,stageUid:ST.stageUid,builderUid:ST.builderUid,curStageId:ST.curStageId,curBuilderId:ST.curBuilderId})); }catch(e){} }
+function persist(){ if(ST.sharedView) return; try{ localStorage.setItem('wardog-fob', JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,view:ST.view,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,curLayer:ST.curLayer,layerUid:ST.layerUid,groupUid:ST.groupUid,higherFloorOnTop:ST.higherFloorOnTop,stages:ST.stages,builders:ST.builders,stageUid:ST.stageUid,builderUid:ST.builderUid,curStageId:ST.curStageId,curBuilderId:ST.curBuilderId})); }catch(e){} }
 
 /* ===== groups.js ===== */
 // ---------------- groups (persistent binding of placed items) -----------------
@@ -5706,6 +5715,11 @@ async function loadSharedHash(){
   const h=(location.hash||'').slice(1);
   if(!/^FOB[123]\./.test(h)) return;
   try{
+    // A shared link is someone else's build arriving in your tab. It gets its
+    // own view and leaves yours where it was: nothing here is written back to
+    // the save slot, so the build you had is still there in every other tab and
+    // the next time you open the app without a link.
+    ST.sharedView=true;
     const o=await decodeBuild(h);
     const map=adoptPlan(o);
     ST.uid=1; ST.pieces=(o.pieces||[]).map(p=>({id:ST.uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0,
@@ -5717,8 +5731,9 @@ async function loadSharedHash(){
     ST.layers=[]; ST.curLayerId=0; ensureLayers(); migrateLayers(); renderLayerPanel(); renderPlanPanel();
     clearSelection(); clearOverlaySel();
     ST.history=[JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,stages:ST.stages,builders:ST.builders})]; ST.hidx=0;
-    centerOnContent(); render(); updateStatus(); persist();
-  }catch(e){ flashToast('That shared link could not be read'); }
+    centerOnContent(); render(); updateStatus();
+    flashToast('Viewing a shared build - your own is untouched');
+  }catch(e){ ST.sharedView=false; flashToast('That shared link could not be read'); }
 }
 // fit the view around all placed content (used when opening a shared link)
 function centerOnContent(){

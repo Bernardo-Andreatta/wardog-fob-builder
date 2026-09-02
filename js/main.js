@@ -94,6 +94,11 @@ export async function loadSharedHash(){
   const h=(location.hash||'').slice(1);
   if(!/^FOB[123]\./.test(h)) return;
   try{
+    // A shared link is someone else's build arriving in your tab. It gets its
+    // own view and leaves yours where it was: nothing here is written back to
+    // the save slot, so the build you had is still there in every other tab and
+    // the next time you open the app without a link.
+    ST.sharedView=true;
     const o=await decodeBuild(h);
     const map=adoptPlan(o);
     ST.uid=1; ST.pieces=(o.pieces||[]).map(p=>({id:ST.uid++,type:p.type,x:p.x,y:p.y,rot:p.rot||0,flip:!!p.flip,l:p.l||0,
@@ -105,8 +110,9 @@ export async function loadSharedHash(){
     ST.layers=[]; ST.curLayerId=0; ensureLayers(); migrateLayers(); renderLayerPanel(); renderPlanPanel();
     clearSelection(); clearOverlaySel();
     ST.history=[JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,stages:ST.stages,builders:ST.builders})]; ST.hidx=0;
-    centerOnContent(); render(); updateStatus(); persist();
-  }catch(e){ flashToast('That shared link could not be read'); }
+    centerOnContent(); render(); updateStatus();
+    flashToast('Viewing a shared build - your own is untouched');
+  }catch(e){ ST.sharedView=false; flashToast('That shared link could not be read'); }
 }
 // fit the view around all placed content (used when opening a shared link)
 export function centerOnContent(){
