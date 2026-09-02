@@ -19,9 +19,23 @@ import { inNavTool, setTool } from './tools.js';
 
 // ---------------- top bar buttons
 $('tool-exit').onclick=()=>{
+  // Done is the one way out of the fullscreen build view, so it drops the hold
+  // as well as whatever is armed or selected
+  const held=ST.buildHold; ST.buildHold=false;
   // with a selection in a nav tool the chip just deselects; otherwise it exits the tool
   if(inNavTool() && anySelected()){ clearSelection(); clearOverlaySel(); render(); updateStatus(); return; }
+  if(held && inNavTool()){ render(); updateStatus(); return; }
   clearSelection(); clearOverlaySel(); setTool(ST.lastNavTool);
+};
+// Putting the ghost down without leaving the build view: you have been placing
+// walls, you want to nudge one you already put down, and stepping out to the
+// full app and back to carry on placing is the long way round. The hold keeps
+// the board fullscreen with nothing armed, so a tap picks up a piece and the
+// kit is one button away when you want the next wall.
+$('fab-hand').onclick=()=>{
+  ST.buildHold=true;
+  clearSelection(); clearOverlaySel();
+  setTool('select');
 };
 export const inGhost=()=>CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp);
 export function fabRot(d){

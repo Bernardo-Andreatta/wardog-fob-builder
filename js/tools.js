@@ -34,7 +34,7 @@ export function setTool(t){
 export function inNavTool(){ return ST.tool==='select'; }
 export function updateToolChip(){
   const ex=$('tool-exit'); if(!ex) return;
-  ex.classList.toggle('show', isCoarse() && (!inNavTool() || !!anySelected()));
+  ex.classList.toggle('show', isCoarse() && (!inNavTool() || !!anySelected() || ST.buildHold));
 }
 
 COARSE_MQ.addEventListener('change', updateToolChip);
