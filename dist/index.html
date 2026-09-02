@@ -166,6 +166,20 @@
     .modal-grid .k{white-space:normal; padding:8px 2px 2px; border-bottom:none;}
     .modal-grid .d{padding:0 2px 8px; border-left:none;}
   }
+  /* Forty-odd rows in a 520px card is a column you scroll past a screenful of
+     empty room on either side of it. This one takes the width it needs and
+     runs the pairs in two columns, so the whole table is in view at once. */
+  @media (min-width:900px){
+    .cmd-card{width:min(1420px,96vw); max-height:92vh; padding:18px 20px;}
+    /* Fixed shares, not auto: the key column never wraps, so left to size
+       itself it took 400px and squeezed the description into six lines, making
+       the table taller than the one-column version it replaced. */
+    .cmd-card .modal-grid{grid-template-columns:0.85fr 1.4fr 0.85fr 1.4fr;
+      column-gap:22px; font-size:12px; line-height:1.3;}
+    .cmd-card .modal-grid .k{padding:3px 10px 3px 2px; white-space:normal;}
+    .cmd-card .modal-grid .d{padding:3px 2px 3px 10px;}
+    .cmd-card h3{margin-bottom:10px;}
+  }
   .modal-grid kbd{font-family:var(--font-mono); background:var(--panel-2); border:1px solid var(--line);
     border-radius:4px; padding:1px 5px; color:var(--accent); font-size:12px;}
   .code-lead{margin:0 0 16px; font-size:12.5px; color:var(--muted); line-height:1.5;}
@@ -1046,7 +1060,7 @@
 
   <div class="modal" id="cmd-modal" hidden>
     <div class="modal-bg" id="cmd-bg"></div>
-    <div class="modal-card" role="dialog" aria-label="Controls">
+    <div class="modal-card cmd-card" role="dialog" aria-label="Controls">
       <button class="x" id="cmd-close" title="Close">&times;</button>
       <h3>Controls &amp; Shortcuts</h3>
       <div class="modal-grid">
