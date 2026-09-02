@@ -3409,13 +3409,54 @@ async function buildPdf(sheets, name, theme){
   const imgs=[];
   for(const s of sheets) imgs.push(await sheetImage(s.canvas));
 
-  // 1 catalog, 2 pages, 3 font, then three objects per sheet
-  const first=4, total=3+sheets.length*3;
+  // 1 catalog, 2 pages, 3 font, 4/5 the contents page, then three per sheet
+  const first=6, total=5+sheets.length*3;
   const pageIds=sheets.map((_,i)=>first+i*3);
+  const idxId=4, idxContent=5;
   putStr('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
-  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
-  obj(2, '<< /Type /Pages /Kids ['+pageIds.map(id=>id+' 0 R').join(' ')+'] /Count '+sheets.length+' >>');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R /PageMode /UseNone >>');
+  obj(2, '<< /Type /Pages /Kids ['+[idxId].concat(pageIds).map(id=>id+' 0 R').join(' ')
+    +'] /Count '+(sheets.length+1)+' >>');
   obj(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+
+  // ---- contents: one line per sheet, each line a link to that page ---------
+  // A batch of sheets is a document, and a document that cannot be navigated is
+  // a pile. The rows are real link annotations, so a click lands on the page -
+  // and the numbers still read as a list if the reader ignores them.
+  {
+    const W=A4[0], H=A4[1];
+    const top=H-MARGIN-46;
+    const room=top-MARGIN-10;
+    const step=Math.min(19, Math.max(11, room/Math.max(1,sheets.length)));
+    const fs=Math.min(11, Math.max(7.5, step*0.62));
+    const rows=[], annots=[];
+    sheets.forEach((s,i)=>{
+      const y=top-step*i;
+      if(y<MARGIN+8) return;                    // more sheets than page: the rest go unlisted
+      const label=(i+1)+'.  '+s.title;
+      const num=String(i+2);                    // the contents page is page 1
+      rows.push('BT /F1 '+fs.toFixed(1)+' Tf '+type+' rg '+(MARGIN+6).toFixed(2)+' '+y.toFixed(2)
+        +' Td '+pdfStr(label)+' Tj ET');
+      rows.push('BT /F1 '+fs.toFixed(1)+' Tf '+type+' rg '+(W-MARGIN-30).toFixed(2)+' '+y.toFixed(2)
+        +' Td '+pdfStr(num)+' Tj ET');
+      annots.push('<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect ['
+        +(MARGIN+4).toFixed(2)+' '+(y-3).toFixed(2)+' '+(W-MARGIN).toFixed(2)+' '+(y+fs).toFixed(2)
+        +'] /Dest ['+(first+i*3)+' 0 R /Fit] >>');
+    });
+    const head='BT /F1 15 Tf '+type+' rg '+MARGIN.toFixed(2)+' '+(H-MARGIN-24).toFixed(2)
+      +' Td '+pdfStr(name ? name+' - contents' : 'Contents')+' Tj ET';
+    const body=enc(
+      paper+' rg 0 0 '+W.toFixed(2)+' '+H.toFixed(2)+' re f\n'
+      +head+'\n'
+      +rule+' RG 0.5 w '+MARGIN.toFixed(2)+' '+(H-MARGIN-32).toFixed(2)+' m '
+      +(W-MARGIN).toFixed(2)+' '+(H-MARGIN-32).toFixed(2)+' l S\n'
+      +rows.join('\n')+'\n');
+    obj(idxId, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W.toFixed(2)+' '+H.toFixed(2)+']'
+      +' /Resources << /Font << /F1 3 0 R >> >>'
+      +' /Annots ['+annots.join(' ')+']'
+      +' /Contents '+idxContent+' 0 R >>');
+    obj(idxContent, '<< /Length '+body.length+' >>', body);
+  }
 
   sheets.forEach((s,i)=>{
     const pid=first+i*3, iid=pid+1, cid=pid+2;
@@ -3426,7 +3467,7 @@ async function buildPdf(sheets, name, theme){
     obj(iid, '<< /Type /XObject /Subtype /Image /Width '+cv.width+' /Height '+cv.height
       +' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter '+im.filter
       +' /Length '+im.data.length+' >>', im.data);
-    const foot=(name?name+'  ·  ':'')+s.title+'  ·  '+(i+1)+' / '+sheets.length;
+    const foot=(name?name+'  ·  ':'')+s.title+'  ·  '+(i+2)+' / '+(sheets.length+1);
     // The page is the board's own paper, not white: the sheet sits on the ground
     // it was drawn on, inside a hairline frame, with a rule above the footer -
     // a blueprint rather than a screenshot pasted onto a white page.
