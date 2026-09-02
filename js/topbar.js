@@ -1,7 +1,7 @@
 import { deleteSel, duplicateSel, mirrorGroup, rotStep, rotateGroup, stepPlaceRot } from './actions.js';
 import { CATALOG } from './catalog.js';
 import { $, GRID, stage } from './dom.js';
-import { openExp } from './exporter.js';
+import { closeExp, openExp } from './exporter.js';
 import { pieceLayer } from './floors.js';
 import { screenToWorld } from './geometry.js';
 import { groupSel, ungroupSel } from './groups.js';
@@ -118,18 +118,26 @@ export function importFile(){
       ST.pieces.forEach(p=>{ p.st=map('stage',p); p.bd=map('builder',p); });
       cleanPlan(); renderPlanPanel();
       if(o.view)ST.view=o.view; ST.uid=Math.max(1,...ST.pieces.map(p=>p.id||0), ...ST.images.map(i=>i.id||0), ...ST.texts.map(t=>t.id||0))+1; clearSelection();
-      snapshot(); render(); updateStatus(); closeFile(); }catch(err){ alert('Could not read that file.'); } };
+      snapshot(); render(); updateStatus(); closeExp(); }catch(err){ alert('Could not read that file.'); } };
     rd.readAsText(f); };
   inp.click();
 }
-export function openFile(){ $('file-modal').hidden=false; }
-export function closeFile(){ $('file-modal').hidden=true; }
-$('btn-file').onclick=openFile;
-$('file-close').onclick=closeFile;
-$('file-bg').onclick=closeFile;
-$('file-export').onclick=()=>{ exportFile(); closeFile(); };
+// Export goes straight to the sheets - the middle dialog asking which kind of
+// export you meant only ever stood between you and the answer. The working file
+// is a tab inside, for the times you want the build back rather than a picture
+// of it.
+export function expTab(file){
+  $('exp-tab-sheets').classList.toggle('on', !file);
+  $('exp-tab-file').classList.toggle('on', file);
+  $('exp-pane-sheets').hidden=file;
+  $('exp-foot').hidden=file;
+  $('exp-pane-file').hidden=!file;
+}
+$('btn-file').onclick=()=>{ expTab(false); openExp(); };
+$('exp-tab-sheets').onclick=()=>expTab(false);
+$('exp-tab-file').onclick=()=>expTab(true);
+$('file-export').onclick=exportFile;
 $('file-import').onclick=importFile;
-$('file-png').onclick=()=>{ closeFile(); openExp(); };
 // ---- shareable build code (base64 of the build JSON) ----
 // Fixed type list for share codes: APPEND-ONLY (indices must never change, or
 // old codes break). Decoupled from PIECE_ORDER so the rail can be reordered.

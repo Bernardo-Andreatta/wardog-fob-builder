@@ -194,7 +194,6 @@ export function showPanel(on){
   }
   try{ localStorage.setItem('wardog-fob-panel', on?'':'off'); }catch(e){}
 }
-$('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));
 $('panel-toggle').onclick=()=>showPanel(true);
 $('lp-close').onclick=()=>showPanel(false);
 // mobile: tapping outside the floating panel dismisses it (a tap on the canvas is
@@ -203,7 +202,7 @@ document.addEventListener('pointerdown', e=>{
   const app=document.querySelector('.app');
   if(app.classList.contains('panel-off')) return;
   if(!narrow()) return;
-  if(e.target.closest('#layers-panel, #btn-layers, #panel-toggle')) return;
+  if(e.target.closest('#layers-panel, #panel-toggle')) return;
   showPanel(false);
   if(e.target.id==='board'){ e.preventDefault(); e.stopPropagation(); }
 }, true);
