@@ -225,7 +225,9 @@ export function renderPlanHud(){
     rows.forEach(r=>{
       const b=document.createElement('div'); b.className='ph-row';
       b.dataset.id = r.id==null ? '' : String(r.id);
-      b.title = 'Make '+r.name+' the active builder, and pick out what they have in this stage';
+      b.title = r.id==null
+        ? 'Show every hand, and leave new work unassigned'
+        : 'Make '+r.name+' the active builder, and pick out what they have in this stage';
       const d=document.createElement('span'); d.className='ph-dot'+(r.color?'':' plain');
       if(r.color) d.style.background=r.color;
       const t=document.createElement('span'); t.className='ph-name'; t.textContent=r.name;
@@ -277,10 +279,14 @@ export function renderPlanHud(){
   const curB = ST.curBuilderId==null ? null : ST.curBuilderId;
   el.querySelectorAll('.ph-row').forEach(row=>{
     const id = row.dataset.id==='' ? null : parseInt(row.dataset.id,10);
+    // General is not a hand of its own - it is the view that shows every hand -
+    // so its row bills the whole stage instead of counting the work no builder
+    // has claimed. The rows below it are the shares; this is the sum.
+    //
     // both columns name what they count: a bare number and a number with an
     // "s" stuck on it were two figures side by side that said nothing about
     // being different kinds of thing
-    const mine = inStage.filter(p=>(p.bd==null?null:p.bd)===id);
+    const mine = id==null ? inStage : inStage.filter(p=>p.bd===id);
     const v = mine.length+(mine.length===1?' piece':' pieces');
     const c = row.querySelector('.ph-n:not(.ph-sup)');
     if(c && c.textContent!==v) c.textContent=v;
