@@ -168,15 +168,17 @@ cv.addEventListener('pointerdown', e=>{
       if(Math.hypot(h.x-sc.x,h.y-sc.y)<=13){
         ST.drag={mode:'strokeresize', s, bb, startW:{x:w.x,y:w.y},
           pts0:s.pts.map(pt=>({x:pt.x,y:pt.y})), moved:false}; return; } } }
+  // A mouse has four other ways to move the camera - WASD, the arrows, space
+  // drag, middle drag - so its left button is free to do the thing it is best
+  // at: press a piece to take it, drag empty ground to rubber-band. A finger
+  // has none of those, so there the drag is the camera and a tap selects.
+  // Shift means "I am selecting" either way, so it takes the mouse's path.
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-  // Shift keeps the old direct behaviour, because a modifier already says "I am
-  // selecting, not navigating": it adds to the selection on a hit and rubber
-  // bands from empty ground, with no hold to wait through.
-  if(additive){ additiveDown(w, e); return; }
-  // Only what is already selected takes the drag. Pressing an unselected piece
-  // pans like anywhere else - it becomes selected on release, if the press
-  // never travelled.
-  if(hitSelection(w)){ startGroupMove(w, hitPiece(w.x,w.y)||null); ST.drag.touch=(e.pointerType==='touch'); render(); updateStatus(); return; }
+  if(!isCoarse() || additive){ selectDown(w, e, additive); return; }
+  // Touch: only what is already selected takes the drag. Pressing an unselected
+  // piece pans like anywhere else - it becomes selected on release, if the
+  // press never travelled.
+  if(hitSelection(w)){ startGroupMove(w, hitPiece(w.x,w.y)||null); ST.drag.touch=true; render(); updateStatus(); return; }
   startPan(w, sc, e);
 });
 // what the press is over, in the order a click resolves them
@@ -203,19 +205,29 @@ export function selectAt(w){
   render(); updateStatus();
   return !!any;
 }
-function additiveDown(w, e){
+// press to take, drag to band: what a pointer with a spare hand expects
+function selectDown(w, e, additive){
   const {tHit,pHit,sHit,iHit,any}=hitAny(w);
   const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
   if(any){
-    if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
-    else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
-    else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
-    else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
+    const wasSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id))
+      || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
+    if(additive){
+      if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
+      else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
+      else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
+      else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
+    } else if(!wasSel){
+      clearSelection(); clearOverlaySel();
+      if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id];
+      else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
+    }
     expandGroups();
     const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
     if(nowSel){ startGroupMove(w, pHit||null); ST.drag.touch=(e.pointerType==='touch'); }
     render(); updateStatus(); return;
   }
+  if(!additive){ clearSelection(); clearOverlaySel(); }
   startMarquee(w);
 }
 export function startMarquee(w){
