@@ -581,11 +581,16 @@
   .plan-hud{padding:8px 10px 9px; min-width:264px; max-width:300px;
     background:var(--panel); border:1px solid var(--line); border-radius:10px;
     box-shadow:0 6px 22px var(--shadow); display:flex; flex-direction:column; gap:2px;}
-  .ph-stage{display:flex; align-items:center; gap:5px; padding:0 0 7px;
-    border-bottom:1px solid var(--line); margin-bottom:5px;}
-  /* the ends belong to the panel, the middle to the stage */
-  .ph-stage .ph-fold{order:-1; margin-right:auto;}
-  .ph-stage .ph-edit{margin-left:auto;}
+  /* Three tracks, so the stepper is centred on the card rather than on
+     whatever happens to sit either side of it: fold at the leading edge, the
+     stage in the middle, the plan editor at the trailing one. */
+  .ph-stage{display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+    gap:5px; padding:0 0 7px; border-bottom:1px solid var(--line); margin-bottom:5px;}
+  .ph-stage .ph-fold{order:-1; justify-self:start;}
+  .ph-stage .ph-edit{justify-self:end;}
+  .ph-mid{display:flex; align-items:center; gap:5px; min-width:0;}
+  /* the word the stepper answers to, on its line and centred with it */
+  .ph-stagelab{padding-right:2px;}
   .ph-stage .ph-name{font-family:var(--font-disp); text-transform:uppercase;
     letter-spacing:.06em; font-size:12px; font-weight:600; color:var(--ink);
     flex:0 1 auto; min-width:0;}
@@ -667,10 +672,12 @@
     /* the stage's own name reads as the heading it is */
     .ph-stage .ph-name{color:var(--ink);}
     .ph-sub{display:none;}                     /* the count rides in the bar */
-    /* the crew's heading belongs in the sheet the crew is in, and the phone has
-       no room for it on the bar - the chip gets a word instead */
+    /* The crew's heading takes a line of its own, at the leading edge, the way
+       the desktop card heads its list. Sharing the line with the chip cost the
+       chip the width it needed, and a builder whose name you cannot read is
+       worse than a line of bar. */
     .ph-crewlab{display:none;}
-    .ph-chiplab{display:inline; align-self:center;}
+    .ph-chiplab{display:block; flex:0 0 100%; text-align:left; padding:2px 2px 0;}
     .ph-lab{font-size:8px; letter-spacing:.1em;}
     /* basis 0 so the chip takes what the tally leaves rather than demanding a
        width of its own: asking for 118px meant a long bill ("6 pieces · 183
@@ -2381,18 +2388,24 @@ function renderPlanHud(){
       const b=document.createElement('button'); b.className='ph-btn '+cls;
       b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
     };
-    // "General" is a real answer for both a stage and a builder, so with
-    // neither chosen the card said it twice with nothing to tell them apart
-    const slab=document.createElement('span'); slab.className='ph-lab'; slab.textContent='Stage';
-    head.appendChild(slab);
-    head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
+    // The stepper is the card's heading, so it sits centred under a word that
+    // says what it names - "General" is a real answer for a stage and for a
+    // builder, and with neither chosen the card was saying it twice.
+    // fold and editor take the two ends; the stage goes in a box of its own so
+    // the grid can centre it against the card, not against its siblings - label
+    // included, since the label is part of what is being centred
+    const mid=document.createElement('div'); mid.className='ph-mid';
+    const slab=document.createElement('span'); slab.className='ph-lab ph-stagelab';
+    slab.textContent='Stage'; mid.appendChild(slab);
+    mid.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
     const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
     if(S) dot.style.background=S.color;
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    head.appendChild(dot); head.appendChild(nm);
-    head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    mid.appendChild(dot); mid.appendChild(nm);
+    mid.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    head.appendChild(mid);
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
       touch?'Close the board readout':'Hide the board readout', ()=>setHudOpen(false)));

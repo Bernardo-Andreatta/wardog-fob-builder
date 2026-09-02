@@ -189,18 +189,24 @@ export function renderPlanHud(){
       const b=document.createElement('button'); b.className='ph-btn '+cls;
       b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
     };
-    // "General" is a real answer for both a stage and a builder, so with
-    // neither chosen the card said it twice with nothing to tell them apart
-    const slab=document.createElement('span'); slab.className='ph-lab'; slab.textContent='Stage';
-    head.appendChild(slab);
-    head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
+    // The stepper is the card's heading, so it sits centred under a word that
+    // says what it names - "General" is a real answer for a stage and for a
+    // builder, and with neither chosen the card was saying it twice.
+    // fold and editor take the two ends; the stage goes in a box of its own so
+    // the grid can centre it against the card, not against its siblings - label
+    // included, since the label is part of what is being centred
+    const mid=document.createElement('div'); mid.className='ph-mid';
+    const slab=document.createElement('span'); slab.className='ph-lab ph-stagelab';
+    slab.textContent='Stage'; mid.appendChild(slab);
+    mid.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
     const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
     if(S) dot.style.background=S.color;
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    head.appendChild(dot); head.appendChild(nm);
-    head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    mid.appendChild(dot); mid.appendChild(nm);
+    mid.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
+    head.appendChild(mid);
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
       touch?'Close the board readout':'Hide the board readout', ()=>setHudOpen(false)));
