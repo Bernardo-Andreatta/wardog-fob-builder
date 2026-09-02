@@ -15,16 +15,20 @@ import { ST } from './state.js';
 export function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 export function resize(){
   const dpr=window.devicePixelRatio||1, w=stage.clientWidth, h=stage.clientHeight;
-  // Whatever was in the middle of the board stays in the middle of it. The
-  // board changes size whenever a panel comes or goes - most sharply when a
-  // phone clears the chrome to aim a piece - and leaving the origin alone would
-  // slide the map out from under the very thing being aimed.
-  const pw=cv._cssW, ph=cv._cssH;
-  if(pw && ph && (pw!==w || ph!==h)){
-    ST.view.ox += (w-pw)/2;
-    ST.view.oy += (h-ph)/2;
+  // What you are looking at stays where it is on the screen. A panel coming or
+  // going does not just resize the board, it moves it: clearing the chrome to
+  // aim a piece takes the top bar away, so the board's own top edge climbs the
+  // viewport and everything drawn in it would climb with it.
+  //
+  // The offset is against the board's corner in viewport space, not its size.
+  // Growing on its own moves nothing - it just uncovers more map - so only the
+  // corner has to be corrected for.
+  const r=stage.getBoundingClientRect(), pl=cv._vpL, pt=cv._vpT;
+  if(pl!=null && (pl!==r.left || pt!==r.top)){
+    ST.view.ox += pl-r.left;
+    ST.view.oy += pt-r.top;
   }
-  cv._cssW=w; cv._cssH=h;
+  cv._vpL=r.left; cv._vpT=r.top;
   cv.width=w*dpr; cv.height=h*dpr; cv.style.width=w+'px'; cv.style.height=h+'px'; cv._dpr=dpr;
   if(!ST.oc){ ST.oc=document.createElement('canvas'); ST.octx=ST.oc.getContext('2d'); }
   ST.oc.width=cv.width; ST.oc.height=cv.height;
