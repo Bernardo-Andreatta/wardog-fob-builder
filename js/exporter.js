@@ -20,7 +20,8 @@ import { flashToast, saveFile } from './topbar.js';
 // options that change how every sheet is drawn.
 export const EXP_FIELDS=[
   ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
-  ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['zip','exp-zip']];
+  ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['zip','exp-zip'],
+  ['pdfPerBuilder','exp-pdf-per-builder']];
 // The two colour channels are not on/off, they are "on where it says anything".
 // A stage wash on a single-stage sheet colours every piece the same, and so
 // does a builder outline on a single builder's sheet - the ink spends itself
@@ -565,12 +566,31 @@ export async function runExport(){
       if(!sheets.length){ flashToast('Nothing rendered'); return; }
       if(lab) lab.textContent='Building PDF';
       await new Promise(r=>requestAnimationFrame(r));
-      // the document is printed on the theme the board is drawn in
-      const doc=await buildPdf(sheets, (ST.expCfg.name||'').trim(), {
-        bg:_hx(cssVar('--canvas-bg')), line:_hx(cssVar('--line')), muted:_hx(cssVar('--muted')) });
+      const theme={bg:_hx(cssVar('--canvas-bg')), line:_hx(cssVar('--line')), muted:_hx(cssVar('--muted'))};
+      const title=(ST.expCfg.name||'').trim();
+      // A PDF cannot be made to filter itself - a reader that runs form script
+      // is the exception, not the rule - so a hand who wants only their own
+      // pages gets their own document instead: what they build, the structure
+      // key to read it by, and the whole build for where it sits.
+      const docs=[{file:name+'.pdf', sheets:sheets, label:'the full set'}];
+      if(ST.expCfg.pdfPerBuilder){
+        usedPlan('builder').forEach(b=>{
+          const mine=sheets.filter((s,i)=>{
+            const g=jobs[i].group;
+            return g==='whole' || g==='key'
+              || ((g==='builder'||g==='pair') && jobs[i].badge && jobs[i].badge.label===b.name);
+          });
+          if(mine.length>1) docs.push({file:name+'-'+slug(b.name)+'.pdf', sheets:mine, label:b.name});
+        });
+      }
       closeExp();
-      await saveFile(name+'.pdf', doc);
-      flashToast(sheets.length+' sheets in '+name+'.pdf');
+      for(const d of docs){
+        if(lab) lab.textContent='Building '+d.label;
+        await saveFile(d.file, await buildPdf(d.sheets, title, theme));
+      }
+      flashToast(docs.length>1
+        ? docs.length+' PDFs: the full set and one per builder'
+        : sheets.length+' sheets in '+name+'.pdf');
       return;
     }
     if(!blobs.length){ flashToast('Nothing rendered'); return; }
