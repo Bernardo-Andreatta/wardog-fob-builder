@@ -15,6 +15,16 @@ import { ST } from './state.js';
 export function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 export function resize(){
   const dpr=window.devicePixelRatio||1, w=stage.clientWidth, h=stage.clientHeight;
+  // Whatever was in the middle of the board stays in the middle of it. The
+  // board changes size whenever a panel comes or goes - most sharply when a
+  // phone clears the chrome to aim a piece - and leaving the origin alone would
+  // slide the map out from under the very thing being aimed.
+  const pw=cv._cssW, ph=cv._cssH;
+  if(pw && ph && (pw!==w || ph!==h)){
+    ST.view.ox += (w-pw)/2;
+    ST.view.oy += (h-ph)/2;
+  }
+  cv._cssW=w; cv._cssH=h;
   cv.width=w*dpr; cv.height=h*dpr; cv.style.width=w+'px'; cv.style.height=h+'px'; cv._dpr=dpr;
   if(!ST.oc){ ST.oc=document.createElement('canvas'); ST.octx=ST.oc.getContext('2d'); }
   ST.oc.width=cv.width; ST.oc.height=cv.height;
@@ -25,7 +35,7 @@ export function render(){
   ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
   ctx.setTransform(dpr*ST.view.scale,0,0,dpr*ST.view.scale, dpr*ST.view.ox, dpr*ST.view.oy);
   const colInk=curInk(), colAcc=cssVar('--accent');
-  drawGrid(cssVar('--grid'), cssVar('--grid-major'));
+  if(ST.showGrid) drawGrid(cssVar('--grid'), cssVar('--grid-major'));
   drawFobAreas(colAcc);
   // draw each Photoshop layer bottom -> top; a layer under 100% opacity renders
   // to an offscreen buffer and composites at its opacity (true layer alpha, so

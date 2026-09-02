@@ -14,6 +14,7 @@ export const ST = {
   placeRot: 0,
   placeFlip: false,
   snapOn: true,
+  showGrid: true,                           // the board's grid, toggled in the phone's fullscreen
   uid: 1,
   curLayer: 0,                              // active build floor for placement (experimental)
   hover: {x:0,y:0},

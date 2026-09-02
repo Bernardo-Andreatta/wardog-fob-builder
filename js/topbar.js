@@ -45,6 +45,14 @@ function fabPress(id, fn){
   });
   b.onclick=()=>{ if(fired){ fired=false; return; } fn(); };
 }
+// the grid is a view setting, so it lives with undo / redo rather than with the
+// buttons that act on the piece
+$('fab-grid').onclick=()=>{
+  ST.showGrid=!ST.showGrid;
+  $('fab-grid').classList.toggle('off', !ST.showGrid);
+  try{ localStorage.setItem('wardog-fob-grid', ST.showGrid?'':'off'); }catch(e){}
+  render();
+};
 fabPress('rot-cw', ()=>fabRot(45));
 fabPress('rot-ccw', ()=>fabRot(-45));
 fabPress('fab-mirror', ()=>{
