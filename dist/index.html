@@ -5124,11 +5124,18 @@ function drawTextSel(t,col){ const b=textBox(t), pad=6/ST.view.scale;
 }
 function hitImage(pt){ for(let i=ST.images.length-1;i>=0;i--){ const im=ST.images[i]; if(!layerEditable(im)) continue;
   if(Math.abs(pt.x-im.x)<=im.w/2 && Math.abs(pt.y-im.y)<=im.h/2) return im; } return null; }
+// A drawing is taken by its box, the same box the selection draws around it -
+// asking for the line itself meant hunting a stroke a pixel or two wide, and
+// meant a square or a circle could only be caught on its outline, never inside
+// where the shape plainly is. Everything else on the board is taken by the
+// ground it covers; this is no different.
 function hitStroke(pt){
-  for(let i=ST.strokes.length-1;i>=0;i--){ const s=ST.strokes[i]; if(!layerEditable(s)) continue; const th=s.width/2 + 9/ST.view.scale;
-    if(s.pts.length<2){ if(Math.hypot(pt.x-s.pts[0].x, pt.y-s.pts[0].y)<th) return s; }
-    else { for(let k=1;k<s.pts.length;k++){
-      if(segDist(pt.x,pt.y, s.pts[k-1].x,s.pts[k-1].y, s.pts[k].x,s.pts[k].y)<th) return s; } }
+  const pad=6/ST.view.scale;
+  for(let i=ST.strokes.length-1;i>=0;i--){ const s=ST.strokes[i];
+    if(!layerEditable(s)) continue;
+    const bb=strokeBBox(s); if(!bb) continue;
+    const g=pad + (s.width||0)/2;
+    if(pt.x>=bb.minx-g && pt.x<=bb.maxx+g && pt.y>=bb.miny-g && pt.y<=bb.maxy+g) return s;
   }
   return null; }
 function imgHandleXY(im){ return {x:im.x+im.w/2, y:im.y+im.h/2}; }
