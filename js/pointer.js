@@ -1,5 +1,5 @@
 import { CATALOG, SYMBOLS } from './catalog.js';
-import { editNewOverlay } from './tools.js';
+import { editNewOverlay, setTool } from './tools.js';
 import { eyedropPiece, openCtx } from './ctxmenu.js';
 import { GRID, cv, isCoarse, stage } from './dom.js';
 import { pieceLayer, placeError } from './floors.js';
@@ -388,6 +388,15 @@ cv.addEventListener('dblclick', e=>{
 cv.addEventListener('contextmenu', e=>{
   e.preventDefault();
   if(ST.pinch || tpts.size>1) return;            // mid-gesture: not a menu
+  // With something in hand the right button puts it down - the same escape the
+  // Esc key gives, on the button your hand is already on. Press it again and
+  // there is nothing in hand, so it is the menu. Mouse only: a finger reaches
+  // this through a long press, which is too easy to trip while aiming, and has
+  // the hand button for the same job.
+  if(!isCoarse() && (CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp) || SYMBOLS[ST.tool]
+     || ST.tool==='draw' || ST.tool==='erase' || ST.tool==='text')){
+    setTool('select'); return;
+  }
   if(isCoarse()){
     // A long-press is the phone's right-click, but the press that raised it has
     // already started a drag - every pointerdown does. Only a press that never

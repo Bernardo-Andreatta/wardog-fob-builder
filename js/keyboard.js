@@ -49,6 +49,7 @@ window.addEventListener('keydown', e=>{
   if(e.key==='v'||e.key==='V') setTool('select');
   if(e.key==='b'||e.key==='B') setTool('draw');
   if(e.key==='e'||e.key==='E') setTool('erase');
+  if(e.key==='i'||e.key==='I') setTool('eyedrop');
   if(e.key===']') setLayer(ST.curLayer+1);
   if(e.key==='[') setLayer(ST.curLayer-1);
   // Arrows nudge a selection, and drive the camera when there is none - the

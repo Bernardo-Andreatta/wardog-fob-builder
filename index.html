@@ -329,6 +329,11 @@
   /* ---- mobile / touch only: desktop (fine pointer) is untouched ---- */
   .tool-exit{display:none;}
   .rot-fab{display:none;}
+  /* board-side stand-ins for controls the phone's fullscreen hides. They live
+     outside .rot-fab, so unlike the rest of that bar they need saying here -
+     inside the coarse block they were simply absent on a mouse, which left
+     them showing. */
+  #fab-snap, .kit-sheet{display:none;}
   .undo-fab{display:none;}
   .touch-only{display:none;}
   @media (pointer:coarse){ .modal-grid .touch-only{display:block;} }
@@ -428,7 +433,6 @@
     /* Snap has one switch, in the rail - which fullscreen takes away. This is
        the same switch with a second face, in the corner opposite undo / redo,
        following the plan bar the way everything on this edge does. */
-    #fab-snap{display:none;}
     .app.focus-edit #fab-snap{display:inline-flex; position:absolute;
       right:14px; left:auto; bottom:auto; top:calc(14px + var(--hud-box,77px));
       transition:top .14s ease; width:44px; height:44px; padding:0;
@@ -1053,7 +1057,8 @@
         <div class="k"><kbd>Click</kbd> a piece &middot; drag it</div><div class="d">Select it &middot; move it. There is no select mode to switch to</div>
         <div class="k">Drag empty ground</div><div class="d">Box-select a group (on touch this pans; hold to box-select)</div>
         <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
-        <div class="k">Right-click a structure &middot; empty ground</div><div class="d">Pick that structure to place more &middot; deselect</div>
+        <div class="k">Right-click while placing</div><div class="d">Put the structure down; right-click again for the menu</div>
+        <div class="k">Right-click a structure &middot; empty ground</div><div class="d">Menu for it &middot; menu for the board</div>
         <div class="k">Place a FOB first</div><div class="d">Each FOB opens a 40&times;40 build area (areas can't overlap); build inside it</div>
         <div class="k">Buildings can't overlap on a floor</div><div class="d">Except sandbags, barbed wire, hedgehog &amp; short walls</div>
         <div class="k">Drag selection &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd></div><div class="d">Move &middot; nudge by grid</div>
@@ -1061,7 +1066,8 @@
         <div class="k"><kbd>F</kbd></div><div class="d">Mirror / flip selection</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>C</kbd></div><div class="d">Duplicate &rarr; reusable stamp</div>
         <div class="k"><kbd>Del</kbd> / <kbd>Backspace</kbd></div><div class="d">Delete selection</div>
-        <div class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd> &middot; <kbd>Space</kbd>-drag &middot; middle-drag</div><div class="d">Pan the camera (arrows pan when nothing is selected)</div>
+        <div class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd></div><div class="d">Pan the camera &middot; arrows pan only when nothing is selected</div>
+        <div class="k"><kbd>Space</kbd>-drag &middot; middle-drag</div><div class="d">Pan the camera from anywhere, mid-gesture</div>
         <div class="k">Scroll</div><div class="d">Zoom</div>
         <div class="k"><kbd>[</kbd> / <kbd>]</kbd></div><div class="d">Build floor down / up (experimental)</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>G</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>G</kbd></div><div class="d">Group &middot; ungroup the selection</div>
@@ -1085,7 +1091,7 @@
         <div class="k">Format: PNG files or PDF</div><div class="d">PNG gives one file per sheet (or a .zip folder with a build-info.txt) &middot; PDF puts every sheet in one document, a page each, fitted to A4 with a footer</div>
         <div class="k">Quality</div><div class="d">Pick px-per-block so big bases stay zoomable</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
-        <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Back to the board &middot; draw &middot; erase tool</div>
+        <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd> &middot; <kbd>I</kbd></div><div class="d">Back to the board &middot; draw &middot; erase &middot; eyedrop</div>
         <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid (Edit &rarr; Snap)</div>
       </div>
     </div>
