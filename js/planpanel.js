@@ -210,7 +210,7 @@ export function renderPlanHud(){
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
     // It shares the chip's line because it answers for the chip: pick a builder
-    // and this is their share, pick Everyone and it is the stage's.
+    // and this is their share, pick General and it is the stage's.
     const scount=document.createElement('span'); scount.className='ph-n ph-scount';
     el.appendChild(scount);
     const sub=document.createElement('div'); sub.className='ph-sub';
@@ -252,8 +252,8 @@ export function renderPlanHud(){
   const inStage = cur===null ? ST.pieces.slice()
                              : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
   // Whoever is in focus is who the tally is about: a builder in view narrows it
-  // to their own hands, Everyone widens it back to the stage. Reading the
-  // stage's bill is therefore what picking Everyone is for.
+  // to their own hands, General widens it back to the stage. Reading the
+  // stage's bill is therefore what picking General is for.
   const FB = ST.hlBuilder===undefined ? null : builderById(ST.hlBuilder);
   const inFocus = FB ? inStage.filter(p=>p.bd===FB.id) : inStage;
   const focusTally = tallyText(inFocus);
@@ -269,7 +269,9 @@ export function renderPlanHud(){
   const chip=el.querySelector('.ph-bchip');
   if(chip){
     const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
-    const nm = ST.hlBuilder===undefined ? 'Everyone' : (b?b.name:'General');
+    // one name for it everywhere: the row in this list, the plan editor, the
+    // context menu and the export sheets all call it General
+    const nm = (ST.hlBuilder===undefined || !b) ? 'General' : b.name;
     const d=chip.querySelector('.ph-dot'), t=chip.querySelector('.ph-name');
     if(t.textContent!==nm) t.textContent=nm;
     d.className='ph-dot'+((b&&b.color)?'':' plain');
