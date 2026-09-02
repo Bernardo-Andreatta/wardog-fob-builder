@@ -378,6 +378,36 @@
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}
     .rot-fab.ghost #fab-copy, .rot-fab.ghost #fab-delete, .rot-fab.ghost #fab-more{display:none;}
+    /* The rail is gone in fullscreen, so while a piece is being aimed the way to
+       reach another one comes to the edit bar - the bar that already holds
+       everything else about placing. Only while placing: with a piece selected
+       the bar's own actions are what you want. */
+    #fab-kit{display:none;}
+    .rot-fab.ghost #fab-kit{display:inline-flex;}
+    /* Picking a structure is a grid you scan, not a list you read, so it opens
+       as a sheet of real icons at thumb size. Same shape as the selection sheet
+       so the two read as one idea. */
+    .kit-sheet{display:none;}
+    .kit-sheet[hidden]{display:none;}
+    .app.focus-edit .kit-sheet:not([hidden]){display:flex; flex-direction:column;
+      position:absolute; left:8px; right:8px; bottom:8px; z-index:31;
+      max-width:520px; max-height:62%; padding:8px;
+      background:var(--panel); border:1px solid var(--line); border-radius:14px;
+      box-shadow:0 -8px 34px var(--shadow);}
+    .kit-head{display:flex; align-items:center; gap:6px; padding:2px 4px 8px;
+      font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.12em;
+      font-size:10px; color:var(--accent); font-weight:600;}
+    .kit-body{overflow-y:auto; min-height:0; -webkit-overflow-scrolling:touch;}
+    .kit-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
+      gap:6px; padding:2px 0 6px;}
+    .kit-tile{display:flex; flex-direction:column; align-items:center; gap:3px;
+      padding:8px 4px; border:1px solid var(--line); border-radius:9px;
+      background:var(--panel-2); color:var(--muted); font-size:9.5px;
+      font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.04em;
+      line-height:1.15; text-align:center; cursor:pointer;}
+    .kit-tile img{width:34px; height:34px; object-fit:contain;}
+    .kit-tile.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+    .kit-cost{font-family:var(--font-mono); font-size:9px; opacity:.7; letter-spacing:0;}
     /* Undo and redo belong on the leading edge, under the plan bar - and under
        the chevron that stands in for it once folded, which is why they follow
        the box and not the bar. Leaving the bottom right frees the whole width
@@ -967,7 +997,9 @@
       <button class="btn" id="fab-ungroup" title="Ungroup"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M12.5 6.5l3 3"/></svg></button>
       <button class="btn danger" id="fab-delete" title="Delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
       <button class="btn" id="fab-more" title="Tag, move and inspect this selection"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+      <button class="btn" id="fab-kit" title="Pick another structure"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><path d="M17.25 13.5v7.5M13.5 17.25h7.5"/></svg></button>
     </div>
+    <div class="kit-sheet" id="kit-sheet" hidden></div>
 
     <div class="zoombar">
       <button class="btn" id="zoom-in" title="Zoom in">+</button>

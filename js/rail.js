@@ -151,6 +151,56 @@ function gripDrag(grid, btn, order, key, gridId){
     grip.addEventListener('pointercancel', stop);
   });
 }
+// Fullscreen takes the rail away, so while a piece is being aimed this is how
+// you reach another one: a sheet of real icons at thumb size, structures first
+// and logistics after, each saying what it costs. Picking one arms it and
+// closes - the sheet is a detour, not a place to stay.
+export function closeKitSheet(){
+  const el=$('kit-sheet'); if(el && !el.hidden){ el.hidden=true; el.innerHTML=''; }
+}
+function kitSection(body, label, order){
+  const h=document.createElement('div'); h.className='kit-head'; h.textContent=label;
+  body.appendChild(h);
+  const g=document.createElement('div'); g.className='kit-grid';
+  order.forEach(type=>{
+    const c=CATALOG[type];
+    const b=document.createElement('button');
+    b.className='kit-tile'+(ST.tool===type?' on':'');
+    b.title=c.name;
+    const img=document.createElement('img'); img.src=makeIcon(type); img.alt=''; img.draggable=false;
+    const nm=document.createElement('span'); nm.textContent=c.name;
+    b.appendChild(img); b.appendChild(nm);
+    if(c.cost){ const s=document.createElement('span'); s.className='kit-cost';
+      s.textContent=c.cost+'s'; b.appendChild(s); }
+    b.onclick=()=>{ ST.placeRot=0; ST.placeFlip=false; setTool(type); closeKitSheet(); };
+    g.appendChild(b);
+  });
+  body.appendChild(g);
+}
+export function openKitSheet(){
+  const el=$('kit-sheet'); if(!el) return;
+  el.hidden=false; el.innerHTML='';
+  const body=document.createElement('div'); body.className='kit-body';
+  el.appendChild(body);
+  kitSection(body, 'Structures', PIECE_ORDER);
+  kitSection(body, 'Logistics', LOGI_ORDER);
+  const done=document.createElement('button'); done.className='sheet-done';
+  done.textContent='Close'; done.onclick=closeKitSheet;
+  el.appendChild(done);
+  body.scrollTop=0;
+}
+$('fab-kit').onclick=ev=>{ ev.stopPropagation();
+  const el=$('kit-sheet');
+  if(el && !el.hidden) closeKitSheet(); else openKitSheet();
+};
+// a tap anywhere else puts it away - and a tap on the board is spent doing
+// that, so dismissing the sheet never also drops a piece
+document.addEventListener('pointerdown', e=>{
+  const el=$('kit-sheet');
+  if(!el || el.hidden || el.contains(e.target) || e.target.closest('#fab-kit')) return;
+  closeKitSheet();
+  if(e.target.id==='board'){ e.preventDefault(); e.stopPropagation(); }
+}, true);
 export function clearDropCues(grid){ grid.querySelectorAll('.drop-here').forEach(x=>x.classList.remove('drop-here')); }
 export function persistOrder(key, order){ try{ localStorage.setItem(key, JSON.stringify(order)); }catch(e){} }
 // reorder an order array to match a saved list, keeping any newly-added types at the end

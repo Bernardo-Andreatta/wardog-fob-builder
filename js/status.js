@@ -19,6 +19,11 @@ export function updateStatus(){
   // whole screen is the thing you are aiming at (see .focus-edit)
   const app=document.querySelector('.app');
   if(app) app.classList.toggle('focus-edit', isCoarse() && (!!anySelected() || !!ghost));
+  // the structure sheet belongs to placement; leaving it takes the sheet too.
+  // Closed here rather than through rail.js, which imports tools.js and would
+  // make the pair a cycle.
+  const kit=$('kit-sheet');
+  if(kit && !kit.hidden && !ghost){ kit.hidden=true; kit.innerHTML=''; }
   const rf=$('rot-fab'); if(rf){
     rf.classList.toggle('show', isCoarse() && (!!anySelected() || !!ghost));
     rf.classList.toggle('ghost', !!ghost && !anySelected());
