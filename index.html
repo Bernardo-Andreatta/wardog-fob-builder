@@ -345,9 +345,15 @@
     .layerbar .lval{font-size:12px; min-width:13px;}
     /* touch has no HTML5 drag-and-drop, so the grip becomes the drag handle
        itself - bigger, and holding its own pointer gestures */
+    /* the grip no longer swallows the gesture on contact - the rail has to stay
+       scrollable through it, so the press has to prove itself first (see
+       gripDrag). Only once the hold arms does the handle take the finger. */
     .piece-tool .grip{width:18px; height:18px; top:1px; left:1px; opacity:.5;
-      touch-action:none; padding:3px; pointer-events:auto;}
+      touch-action:pan-x pan-y; padding:3px; pointer-events:auto;}
     .piece-tool .grip:active{opacity:1; color:var(--accent);}
+    /* armed: the tile lifts a little, so the hold has an answer on screen */
+    .piece-tool.dragging{transform:scale(1.06); transition:transform .12s ease;}
+    .piece-tool.dragging .grip{opacity:1; color:var(--accent);}
     /* both hang off the bottom of the plan bar, whose height JS measures */
     .drawopts{top:calc(14px + var(--hud-h,39px) + 54px);}
     .tool-exit.show{display:inline-flex; position:absolute; left:50%;
@@ -513,19 +519,16 @@
       flex-direction:row; flex-wrap:wrap; align-items:center; position:relative;}
     /* the stage row asks for only what it still holds - stepper, name, count and
        the fold - so the builder chip fits beside it on one line */
-    /* Three rows, because one line could not say whose number it was: the
-       tally sat beside the builder chip and read as the builder's when it is
-       the stage's. Now the panel's own controls take the top, the stage and its
-       bill share the middle, and the crew has the bottom to itself. */
-    .ph-stage{flex:1 1 100%; min-width:0; gap:3px 6px; padding:0; margin:0;
-      border-bottom:none; flex-wrap:wrap;}
-    .ph-stage .ph-fold{order:-3; margin-right:auto;}   /* close, leading edge */
-    .ph-stage .ph-edit{order:-2;}                      /* editor, trailing edge */
-    .ph-stage::after{content:''; order:-1; flex:0 0 100%; height:0;}
-    .ph-scount{order:1;}                    /* after the stepper, not inside it */
-    /* trails the stepper on the stage's own row, against the trailing edge */
+    /* Two rows: the stage and the panel's own controls on top, the crew and
+       their bill below. The tally reads as the chip's because it is - a builder
+       in view narrows it to their hands. */
+    .ph-stage{flex:1 1 100%; min-width:0; gap:3px; padding:0; margin:0;
+      border-bottom:none;}
+    .ph-stage .ph-fold{order:-1; margin-right:auto;}   /* close, leading edge */
+    .ph-stage .ph-edit{margin-left:auto;}              /* editor, trailing edge */
+    /* trails the builder chip, hard against the trailing edge */
     .ph-scount{display:inline; flex:none; margin-left:auto; opacity:.85;
-      white-space:nowrap;}
+      white-space:nowrap; padding-right:2px;}
     .ph-sub{display:none;}                     /* the count rides in the bar */
     /* the chip has to stay readable: given a sliver of the line it shows a dot
        and a caret and no name at all, so it asks for a width it can actually

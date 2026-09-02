@@ -88,35 +88,64 @@ function dropTile(order, key, gridId, src, el, ev){
   fillPieceGrid(gridId, order, key);
 }
 // Touch has no HTML5 drag-and-drop, so on those devices the grip stops being a
-// hint and becomes the handle: press it and slide onto another tile. Only the
+// hint and becomes the handle: hold it, then slide onto another tile. Only the
 // grip starts a reorder, so tapping the tile itself still arms the piece.
+//
+// The hold is the point. Taking the finger on contact meant every swipe that
+// began on a grip was a reorder instead of a scroll, and the grips sit in the
+// corner of every tile - there was nowhere safe to start a swipe. So the press
+// has to stand still for HOLD_MS before it becomes a drag; move sooner and the
+// rail scrolls as though the grip were not there.
+const HOLD_MS=280, HOLD_SLOP=8;
 function gripDrag(grid, btn, order, key, gridId){
   const grip=btn.querySelector('.grip'); if(!grip) return;
   grip.addEventListener('click', e=>{ e.stopPropagation(); e.preventDefault(); });
   grip.addEventListener('pointerdown', e=>{
     if(e.pointerType==='mouse') return;          // mouse keeps the native drag
-    e.preventDefault(); e.stopPropagation();
-    let moved=false;
-    btn.classList.add('dragging');
-    try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+    const sx=e.clientX, sy=e.clientY;
+    let armed=false, moved=false, timer=0;
     const tileUnder=ev=>{
       const el=document.elementFromPoint(ev.clientX, ev.clientY);
       const t=el&&el.closest ? el.closest('.piece-tool') : null;
       return (t && t.parentElement===grid && t!==btn) ? t : null;
     };
-    const move=ev=>{ moved=true; clearDropCues(grid);
-      const t=tileUnder(ev); if(t) t.classList.add('drop-here'); };
-    const end=ev=>{
+    // once armed the finger belongs to the drag, and a non-passive touchmove is
+    // what actually stops the rail scrolling under it
+    const block=ev=>ev.preventDefault();
+    const arm=()=>{
+      armed=true; timer=0;
+      btn.classList.add('dragging');
+      try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+      document.addEventListener('touchmove', block, {passive:false});
+      try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
+    };
+    const move=ev=>{
+      if(!armed){
+        // still deciding: a finger that travels is a swipe, so let it go
+        if(Math.hypot(ev.clientX-sx, ev.clientY-sy)>HOLD_SLOP) stop();
+        return;
+      }
+      moved=true; clearDropCues(grid);
+      const t=tileUnder(ev); if(t) t.classList.add('drop-here');
+    };
+    const stop=()=>{
+      if(timer) clearTimeout(timer); timer=0;
       grip.removeEventListener('pointermove', move);
       grip.removeEventListener('pointerup', end);
-      grip.removeEventListener('pointercancel', end);
+      grip.removeEventListener('pointercancel', stop);
+      document.removeEventListener('touchmove', block, {passive:false});
       btn.classList.remove('dragging'); clearDropCues(grid);
-      const t=moved?tileUnder(ev):null;
+      armed=false;
+    };
+    const end=ev=>{
+      const t=(armed && moved) ? tileUnder(ev) : null;
+      stop();
       if(t) dropTile(order, key, gridId, btn.dataset.tool, t, ev);
     };
+    timer=setTimeout(arm, HOLD_MS);
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', end);
-    grip.addEventListener('pointercancel', end);
+    grip.addEventListener('pointercancel', stop);
   });
 }
 export function clearDropCues(grid){ grid.querySelectorAll('.drop-here').forEach(x=>x.classList.remove('drop-here')); }

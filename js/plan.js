@@ -55,30 +55,40 @@ export function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s)
 // Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
+// Every piece wears its own builder's colour, in focus or not - the General
+// builder is "show me the whole crew", not "show me nobody", so it is the view
+// that reads the roster at a glance. Ghosting is what narrows the board, and it
+// is the only thing that does: a piece out of view keeps its hue and loses its
+// strength, so the colours never lie about who built what.
 export function planColorOf(p, ink, bg){
-  // General is nobody in particular: with no builder in view there is no crew
-  // to pick out, so the outlines drop back to plain ink instead of showing the
-  // whole roster's colours at once
-  const b = ST.hlBuilder===undefined ? null : builderOf(p);
+  const b=builderOf(p);
   let col = b ? tagInk(b.color, bg) : ink;
   if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
   return col;
 }
 // The board shows one stage at a time: what carries it reads normally, each
 // piece in its builder's colour, and the other stages drop back without leaving
-// the board. Pick a builder inside the stage and only their work stays up.
+// the board. Pick a builder inside the stage and only their work stays up -
+// untagged work included, because a hand's view is the hand's own and nothing
+// else. Widening back to the whole stage is what the General builder is for.
 //
-// General is the exception at both ends. Selecting it is not "show me the
-// untagged", it is "show me everything" - and a piece left on General belongs
-// to no stage in particular, so it stands in every stage's view rather than
-// being ghosted out of the one you are working in.
+// Stages keep their own exception: a piece left on General belongs to no stage
+// in particular, so it stands in every stage's view rather than being ghosted
+// out of the one you are working in.
+//
+// What this lights is exactly what the readout counts - see the focus tally in
+// planpanel - so the bill on screen always describes the pieces on screen.
 export function planLit(p){
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const st  = p.st==null ? null : p.st;
   if(cur!==null && st!==null && st!==cur) return false;
   if(ST.hlBuilder===undefined) return true;     // General builder: every hand
-  const bd = p.bd==null ? null : p.bd;
-  return bd===null || bd===ST.hlBuilder;        // General work stands alongside
+  // A hand in focus is that hand's work in the stage you are standing in, and
+  // nothing else - not their work in other stages, and not what they left on
+  // General, which belongs to no stage to begin with. This is exactly the set
+  // the readout bills, so the number on screen describes the pieces on screen.
+  if(cur!==null && st!==cur) return false;
+  return (p.bd==null?null:p.bd) === ST.hlBuilder;
 }
 
 // The fill channel. The outline says *who* (builder); this one says *when*: a

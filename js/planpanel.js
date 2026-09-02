@@ -195,9 +195,7 @@ export function renderPlanHud(){
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    // the tally belongs to the stage, so it sits with the stage's own row
-    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
-    head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
+    head.appendChild(dot); head.appendChild(nm);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
@@ -211,6 +209,10 @@ export function renderPlanHud(){
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
+    // It shares the chip's line because it answers for the chip: pick a builder
+    // and this is their share, pick Everyone and it is the stage's.
+    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
+    el.appendChild(scount);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -247,16 +249,21 @@ export function renderPlanHud(){
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
                              : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
-  // On General this is the whole build's bill; on a stage it is that stage's
-  // share, which is the number a crew is actually handed.
+  // Whoever is in focus is who the tally is about: a builder in view narrows it
+  // to their own hands, Everyone widens it back to the stage. Reading the
+  // stage's bill is therefore what picking Everyone is for.
+  const FB = ST.hlBuilder===undefined ? null : builderById(ST.hlBuilder);
+  const inFocus = FB ? inStage.filter(p=>p.bd===FB.id) : inStage;
+  const focusTally = tallyText(inFocus);
+  const lab=el.querySelector('.ph-sublab');
+  if(lab){ const lv = FB ? FB.name : (cur===null ? 'On the board' : 'In this stage');
+    if(lab.textContent!==lv) lab.textContent=lv; }
   const tot=el.querySelector('.ph-total');
-  if(tot){ const v=tallyText(inStage);
-    if(tot.textContent!==v) tot.textContent=v; }
+  if(tot && tot.textContent!==focusTally) tot.textContent=focusTally;
   // a bare number beside the stage name reads as an id; the noun says what it
   // counts, and agrees with it the way the folded-out readout already does
   const sc=el.querySelector('.ph-scount');
-  if(sc){ const v=tallyText(inStage);
-    if(sc.textContent!==v) sc.textContent=v; }
+  if(sc && sc.textContent!==focusTally) sc.textContent=focusTally;
   const chip=el.querySelector('.ph-bchip');
   if(chip){
     const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);

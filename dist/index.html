@@ -345,9 +345,15 @@
     .layerbar .lval{font-size:12px; min-width:13px;}
     /* touch has no HTML5 drag-and-drop, so the grip becomes the drag handle
        itself - bigger, and holding its own pointer gestures */
+    /* the grip no longer swallows the gesture on contact - the rail has to stay
+       scrollable through it, so the press has to prove itself first (see
+       gripDrag). Only once the hold arms does the handle take the finger. */
     .piece-tool .grip{width:18px; height:18px; top:1px; left:1px; opacity:.5;
-      touch-action:none; padding:3px; pointer-events:auto;}
+      touch-action:pan-x pan-y; padding:3px; pointer-events:auto;}
     .piece-tool .grip:active{opacity:1; color:var(--accent);}
+    /* armed: the tile lifts a little, so the hold has an answer on screen */
+    .piece-tool.dragging{transform:scale(1.06); transition:transform .12s ease;}
+    .piece-tool.dragging .grip{opacity:1; color:var(--accent);}
     /* both hang off the bottom of the plan bar, whose height JS measures */
     .drawopts{top:calc(14px + var(--hud-h,39px) + 54px);}
     .tool-exit.show{display:inline-flex; position:absolute; left:50%;
@@ -513,19 +519,16 @@
       flex-direction:row; flex-wrap:wrap; align-items:center; position:relative;}
     /* the stage row asks for only what it still holds - stepper, name, count and
        the fold - so the builder chip fits beside it on one line */
-    /* Three rows, because one line could not say whose number it was: the
-       tally sat beside the builder chip and read as the builder's when it is
-       the stage's. Now the panel's own controls take the top, the stage and its
-       bill share the middle, and the crew has the bottom to itself. */
-    .ph-stage{flex:1 1 100%; min-width:0; gap:3px 6px; padding:0; margin:0;
-      border-bottom:none; flex-wrap:wrap;}
-    .ph-stage .ph-fold{order:-3; margin-right:auto;}   /* close, leading edge */
-    .ph-stage .ph-edit{order:-2;}                      /* editor, trailing edge */
-    .ph-stage::after{content:''; order:-1; flex:0 0 100%; height:0;}
-    .ph-scount{order:1;}                    /* after the stepper, not inside it */
-    /* trails the stepper on the stage's own row, against the trailing edge */
+    /* Two rows: the stage and the panel's own controls on top, the crew and
+       their bill below. The tally reads as the chip's because it is - a builder
+       in view narrows it to their hands. */
+    .ph-stage{flex:1 1 100%; min-width:0; gap:3px; padding:0; margin:0;
+      border-bottom:none;}
+    .ph-stage .ph-fold{order:-1; margin-right:auto;}   /* close, leading edge */
+    .ph-stage .ph-edit{margin-left:auto;}              /* editor, trailing edge */
+    /* trails the builder chip, hard against the trailing edge */
     .ph-scount{display:inline; flex:none; margin-left:auto; opacity:.85;
-      white-space:nowrap;}
+      white-space:nowrap; padding-right:2px;}
     .ph-sub{display:none;}                     /* the count rides in the bar */
     /* the chip has to stay readable: given a sliver of the line it shows a dot
        and a caret and no name at all, so it asks for a width it can actually
@@ -1910,30 +1913,40 @@ function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s):-1; }
 // Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
 // says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
 // paints the stage on as a wash; untagged pieces stay ink, dimmed.
+// Every piece wears its own builder's colour, in focus or not - the General
+// builder is "show me the whole crew", not "show me nobody", so it is the view
+// that reads the roster at a glance. Ghosting is what narrows the board, and it
+// is the only thing that does: a piece out of view keeps its hue and loses its
+// strength, so the colours never lie about who built what.
 function planColorOf(p, ink, bg){
-  // General is nobody in particular: with no builder in view there is no crew
-  // to pick out, so the outlines drop back to plain ink instead of showing the
-  // whole roster's colours at once
-  const b = ST.hlBuilder===undefined ? null : builderOf(p);
+  const b=builderOf(p);
   let col = b ? tagInk(b.color, bg) : ink;
   if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
   return col;
 }
 // The board shows one stage at a time: what carries it reads normally, each
 // piece in its builder's colour, and the other stages drop back without leaving
-// the board. Pick a builder inside the stage and only their work stays up.
+// the board. Pick a builder inside the stage and only their work stays up -
+// untagged work included, because a hand's view is the hand's own and nothing
+// else. Widening back to the whole stage is what the General builder is for.
 //
-// General is the exception at both ends. Selecting it is not "show me the
-// untagged", it is "show me everything" - and a piece left on General belongs
-// to no stage in particular, so it stands in every stage's view rather than
-// being ghosted out of the one you are working in.
+// Stages keep their own exception: a piece left on General belongs to no stage
+// in particular, so it stands in every stage's view rather than being ghosted
+// out of the one you are working in.
+//
+// What this lights is exactly what the readout counts - see the focus tally in
+// planpanel - so the bill on screen always describes the pieces on screen.
 function planLit(p){
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const st  = p.st==null ? null : p.st;
   if(cur!==null && st!==null && st!==cur) return false;
   if(ST.hlBuilder===undefined) return true;     // General builder: every hand
-  const bd = p.bd==null ? null : p.bd;
-  return bd===null || bd===ST.hlBuilder;        // General work stands alongside
+  // A hand in focus is that hand's work in the stage you are standing in, and
+  // nothing else - not their work in other stages, and not what they left on
+  // General, which belongs to no stage to begin with. This is exactly the set
+  // the readout bills, so the number on screen describes the pieces on screen.
+  if(cur!==null && st!==cur) return false;
+  return (p.bd==null?null:p.bd) === ST.hlBuilder;
 }
 
 // The fill channel. The outline says *who* (builder); this one says *when*: a
@@ -2173,9 +2186,7 @@ function renderPlanHud(){
     const nm=document.createElement('span'); nm.className='ph-name';
     nm.textContent = S?S.name:'General';
     nm.title='The stage new pieces are tagged with';
-    // the tally belongs to the stage, so it sits with the stage's own row
-    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
-    head.appendChild(dot); head.appendChild(nm); head.appendChild(scount);
+    head.appendChild(dot); head.appendChild(nm);
     head.appendChild(mkBtn('ph-next', PH_NEXT, 'Next stage', ()=>stepStage(1)));
     head.appendChild(mkBtn('ph-edit', PH_EDIT, 'Edit stages & builders', openPlanModal));
     head.appendChild(mkBtn('ph-fold', touch?PH_CLOSE:PH_FOLD,
@@ -2189,6 +2200,10 @@ function renderPlanHud(){
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
+    // It shares the chip's line because it answers for the chip: pick a builder
+    // and this is their share, pick Everyone and it is the stage's.
+    const scount=document.createElement('span'); scount.className='ph-n ph-scount';
+    el.appendChild(scount);
     const sub=document.createElement('div'); sub.className='ph-sub';
     const lab=document.createElement('span'); lab.className='ph-sublab';
     // General is the whole build, so counting "in this stage" there would read 0
@@ -2225,16 +2240,21 @@ function renderPlanHud(){
   const cur = ST.curStageId==null ? null : ST.curStageId;
   const inStage = cur===null ? ST.pieces.slice()
                              : ST.pieces.filter(p=>(p.st==null?null:p.st)===cur);
-  // On General this is the whole build's bill; on a stage it is that stage's
-  // share, which is the number a crew is actually handed.
+  // Whoever is in focus is who the tally is about: a builder in view narrows it
+  // to their own hands, Everyone widens it back to the stage. Reading the
+  // stage's bill is therefore what picking Everyone is for.
+  const FB = ST.hlBuilder===undefined ? null : builderById(ST.hlBuilder);
+  const inFocus = FB ? inStage.filter(p=>p.bd===FB.id) : inStage;
+  const focusTally = tallyText(inFocus);
+  const lab=el.querySelector('.ph-sublab');
+  if(lab){ const lv = FB ? FB.name : (cur===null ? 'On the board' : 'In this stage');
+    if(lab.textContent!==lv) lab.textContent=lv; }
   const tot=el.querySelector('.ph-total');
-  if(tot){ const v=tallyText(inStage);
-    if(tot.textContent!==v) tot.textContent=v; }
+  if(tot && tot.textContent!==focusTally) tot.textContent=focusTally;
   // a bare number beside the stage name reads as an id; the noun says what it
   // counts, and agrees with it the way the folded-out readout already does
   const sc=el.querySelector('.ph-scount');
-  if(sc){ const v=tallyText(inStage);
-    if(sc.textContent!==v) sc.textContent=v; }
+  if(sc && sc.textContent!==focusTally) sc.textContent=focusTally;
   const chip=el.querySelector('.ph-bchip');
   if(chip){
     const b = ST.hlBuilder==null ? null : builderById(ST.hlBuilder);
@@ -3835,35 +3855,64 @@ function dropTile(order, key, gridId, src, el, ev){
   fillPieceGrid(gridId, order, key);
 }
 // Touch has no HTML5 drag-and-drop, so on those devices the grip stops being a
-// hint and becomes the handle: press it and slide onto another tile. Only the
+// hint and becomes the handle: hold it, then slide onto another tile. Only the
 // grip starts a reorder, so tapping the tile itself still arms the piece.
+//
+// The hold is the point. Taking the finger on contact meant every swipe that
+// began on a grip was a reorder instead of a scroll, and the grips sit in the
+// corner of every tile - there was nowhere safe to start a swipe. So the press
+// has to stand still for HOLD_MS before it becomes a drag; move sooner and the
+// rail scrolls as though the grip were not there.
+const HOLD_MS=280, HOLD_SLOP=8;
 function gripDrag(grid, btn, order, key, gridId){
   const grip=btn.querySelector('.grip'); if(!grip) return;
   grip.addEventListener('click', e=>{ e.stopPropagation(); e.preventDefault(); });
   grip.addEventListener('pointerdown', e=>{
     if(e.pointerType==='mouse') return;          // mouse keeps the native drag
-    e.preventDefault(); e.stopPropagation();
-    let moved=false;
-    btn.classList.add('dragging');
-    try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+    const sx=e.clientX, sy=e.clientY;
+    let armed=false, moved=false, timer=0;
     const tileUnder=ev=>{
       const el=document.elementFromPoint(ev.clientX, ev.clientY);
       const t=el&&el.closest ? el.closest('.piece-tool') : null;
       return (t && t.parentElement===grid && t!==btn) ? t : null;
     };
-    const move=ev=>{ moved=true; clearDropCues(grid);
-      const t=tileUnder(ev); if(t) t.classList.add('drop-here'); };
-    const end=ev=>{
+    // once armed the finger belongs to the drag, and a non-passive touchmove is
+    // what actually stops the rail scrolling under it
+    const block=ev=>ev.preventDefault();
+    const arm=()=>{
+      armed=true; timer=0;
+      btn.classList.add('dragging');
+      try{ grip.setPointerCapture(e.pointerId); }catch(_){}
+      document.addEventListener('touchmove', block, {passive:false});
+      try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
+    };
+    const move=ev=>{
+      if(!armed){
+        // still deciding: a finger that travels is a swipe, so let it go
+        if(Math.hypot(ev.clientX-sx, ev.clientY-sy)>HOLD_SLOP) stop();
+        return;
+      }
+      moved=true; clearDropCues(grid);
+      const t=tileUnder(ev); if(t) t.classList.add('drop-here');
+    };
+    const stop=()=>{
+      if(timer) clearTimeout(timer); timer=0;
       grip.removeEventListener('pointermove', move);
       grip.removeEventListener('pointerup', end);
-      grip.removeEventListener('pointercancel', end);
+      grip.removeEventListener('pointercancel', stop);
+      document.removeEventListener('touchmove', block, {passive:false});
       btn.classList.remove('dragging'); clearDropCues(grid);
-      const t=moved?tileUnder(ev):null;
+      armed=false;
+    };
+    const end=ev=>{
+      const t=(armed && moved) ? tileUnder(ev) : null;
+      stop();
       if(t) dropTile(order, key, gridId, btn.dataset.tool, t, ev);
     };
+    timer=setTimeout(arm, HOLD_MS);
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', end);
-    grip.addEventListener('pointercancel', end);
+    grip.addEventListener('pointercancel', stop);
   });
 }
 function clearDropCues(grid){ grid.querySelectorAll('.drop-here').forEach(x=>x.classList.remove('drop-here')); }
