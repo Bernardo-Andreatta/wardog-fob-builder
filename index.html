@@ -566,9 +566,15 @@
       border-bottom:none;}
     .ph-stage .ph-fold{order:-1; margin-right:auto;}   /* close, leading edge */
     .ph-stage .ph-edit{margin-left:auto;}              /* editor, trailing edge */
-    /* trails the builder chip, hard against the trailing edge */
-    .ph-scount{display:inline; flex:none; margin-left:auto; opacity:.85;
-      white-space:nowrap; padding-right:2px;}
+    /* Trails the builder chip, hard against the trailing edge - and carries the
+       accent. On the desktop card the tally sits inside .ph-sub, which is
+       accent-coloured; a phone hides that line and folds the tally into the
+       bar, so without this the bar was the one panel with no accent in it. */
+    .ph-scount{display:inline; flex:none; margin-left:auto; white-space:nowrap;
+      padding-right:2px; color:var(--accent); font-weight:600;
+      letter-spacing:.03em;}
+    /* the stage's own name reads as the heading it is */
+    .ph-stage .ph-name{color:var(--ink);}
     .ph-sub{display:none;}                     /* the count rides in the bar */
     /* basis 0 so the chip takes what the tally leaves rather than demanding a
        width of its own: asking for 118px meant a long bill ("6 pieces · 183
@@ -579,6 +585,9 @@
       justify-content:flex-start; padding:5px 8px; font-size:11.5px;
       border:1px solid var(--line); border-radius:7px; background:var(--panel-2);
       color:var(--muted);}
+    /* General is still a choice, so the chip keeps a live edge either way -
+       after the base rule, or that border-color would win on source order */
+    .ph-bchip{border-color:var(--accent-soft);}
     .ph-bchip.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
     .ph-bchip .ph-name{font-size:11.5px;}
     .ph-bchip svg{width:12px; height:12px; flex:none; fill:none; stroke:currentColor;

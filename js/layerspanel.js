@@ -179,7 +179,16 @@ $('lp-opacity').onchange=()=>{ snapshot(); };
 // the panel is Floors & Layers only now - the build plan has its own modal
 export function showPanel(on){
   document.querySelector('.app').classList.toggle('panel-off', !on);
-  if(on) renderLayerPanel();
+  // one board panel at a time. Folded inline rather than calling planpanel's
+  // setHudOpen, which would make these two modules import each other.
+  if(on){
+    renderLayerPanel();
+    const hud=$('board-hud');
+    if(hud && !hud.classList.contains('off')){
+      hud.classList.add('off');
+      try{ localStorage.setItem('wardog-fob-hud','off'); }catch(e){}
+    }
+  }
   try{ localStorage.setItem('wardog-fob-panel', on?'':'off'); }catch(e){}
 }
 $('btn-layers').onclick=()=>showPanel(document.querySelector('.app').classList.contains('panel-off'));

@@ -3,7 +3,7 @@ import { $, isCoarse, stage } from './dom.js';
 import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { layerById } from './layers.js';
-import { renderLayerPanel } from './layerspanel.js';
+import { renderLayerPanel, showPanel } from './layerspanel.js';
 import { builderById, ensurePlan, nextPlanColor, planCount, stageById } from './plan.js';
 import { render } from './render.js';
 import { selectedPieces } from './selection.js';
@@ -311,6 +311,7 @@ export function updatePlanApply(){
 export function setHudOpen(on){
   const h=$('board-hud'); if(!h) return;
   h.classList.toggle('off', !on);
+  if(on) showPanel(false);                           // one board panel at a time
   try{ localStorage.setItem('wardog-fob-hud', on?'':'off'); }catch(e){}
 }
 // The Done chip and the draw options hang below the plan bar, whose height is
