@@ -366,8 +366,14 @@
        strip beside it stays board. The order it produces also earns its keep:
        what you reach for most sits nearest the thumb, and Delete moves away
        from it. */
+    /* The bar spans the board's width so its buttons can spread, but the bar is
+       only a layout box - it is wider and taller than the buttons in it, and
+       while placing a piece half of them are not even rendered. Left taking
+       pointer events, that empty strip swallowed every drag that began there.
+       Only the buttons themselves answer to a finger. */
     .rot-fab.show{position:absolute; left:14px; bottom:14px; right:14px; display:flex;
-      gap:8px; z-index:10; flex-wrap:wrap-reverse;}
+      gap:8px; z-index:10; flex-wrap:wrap-reverse; pointer-events:none;}
+    .rot-fab .btn{pointer-events:auto;}
     .rot-fab .btn{height:44px; min-width:44px; padding:0 10px; justify-content:center;
       background:var(--panel); font-size:12px; gap:4px; box-shadow:0 4px 16px var(--shadow);}
     .rot-fab .btn svg{width:17px; height:17px;}

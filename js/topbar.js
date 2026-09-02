@@ -28,12 +28,25 @@ export function fabRot(d){
   if(hasRotSel()) rotateGroup(d);
   else if(inGhost()){ ST.placeRot=((ST.placeRot+d)%360+360)%360; render(); }
 }
-$('rot-cw').onclick=()=>fabRot(45);
-$('rot-ccw').onclick=()=>fabRot(-45);
-$('fab-mirror').onclick=()=>{
+// Turning a piece while it is being dragged means a second finger arriving in
+// the middle of someone else's gesture, and a click needs a clean down/up pair
+// on the button to fire at all - which that finger does not reliably produce.
+// So mid-drag these act on the press itself, and swallow the click that may or
+// may not follow it.
+function fabPress(id, fn){
+  const b=$(id); let fired=false;
+  b.addEventListener('pointerdown', e=>{
+    if(!ST.drag || ST.drag.mode!=='gmove') return;
+    e.preventDefault(); e.stopPropagation(); fired=true; fn();
+  });
+  b.onclick=()=>{ if(fired){ fired=false; return; } fn(); };
+}
+fabPress('rot-cw', ()=>fabRot(45));
+fabPress('rot-ccw', ()=>fabRot(-45));
+fabPress('fab-mirror', ()=>{
   if(hasRotSel()) mirrorGroup();
   else if(inGhost()){ ST.placeFlip=!ST.placeFlip; render(); }
-};
+});
 $('fab-copy').onclick=()=>duplicateSel();
 $('fab-group').onclick=()=>groupSel();
 $('fab-ungroup').onclick=()=>ungroupSel();
