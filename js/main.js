@@ -27,7 +27,7 @@ import { clearOverlaySel, clearSelection, hydrateImages, imagesData } from './se
 import { persistStamps } from './stamps.js';
 import { ST } from './state.js';
 import { updateStatus } from './status.js';
-import { applyTouchDefault, setTool } from './tools.js';
+import { setTool } from './tools.js';
 import { decodeBuild, flashToast } from './topbar.js';
 
 // ---------------- init
@@ -84,10 +84,7 @@ export function init(){
     renderLayerPanel(); })();
   try{ setHudOpen(localStorage.getItem('wardog-fob-hud')!=='off'); }catch(e){}
   if(!ST.view.ox && !ST.view.oy){ ST.view.ox=stage.clientWidth/2; ST.view.oy=stage.clientHeight/2; }
-  setTool('select');
-  applyTouchDefault();
-  // some browsers settle the pointer type just after scripts run, so re-check
-  requestAnimationFrame(applyTouchDefault);
+  setTool('select');   // the board's own mode: pan, select and move in one
   ST.history=[JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,stages:ST.stages,builders:ST.builders})]; ST.hidx=0;
   resize();
   updateStatus();

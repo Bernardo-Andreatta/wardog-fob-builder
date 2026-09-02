@@ -51,7 +51,7 @@ export const ST = {
   pinch: null,
   panRAF: 0,
   panLast: 0,
-  lastNavTool: 'select',                    // select or pan: what placement flows return to
+  lastNavTool: 'select',                    // what placement flows return to
   dragCtx: null,
   clearArm: false,
   clearTimer: null,

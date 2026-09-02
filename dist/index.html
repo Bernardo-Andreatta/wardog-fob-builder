@@ -943,7 +943,10 @@
         <div class="k touch-only">Pinch / two-finger drag</div><div class="d touch-only">Zoom &middot; pan the camera</div>
         <div class="k touch-only">&times; Done chip</div><div class="d touch-only">Leave the current tool</div>
         <div class="k"><kbd>Click</kbd> a structure, then click the grid</div><div class="d">Place it &middot; repeat to place more</div>
-        <div class="k"><kbd>Click</kbd> / drag empty ground</div><div class="d">Select a piece &middot; box-select a group</div>
+        <div class="k">Drag anywhere</div><div class="d">Pan the camera &mdash; there is no pan mode to switch to</div>
+        <div class="k"><kbd>Click</kbd> a piece &middot; empty ground</div><div class="d">Select it &middot; clear the selection</div>
+        <div class="k">Drag a <em>selected</em> piece</div><div class="d">Move it. Unselected pieces pan, so a drag never moves one by accident</div>
+        <div class="k"><kbd>Shift</kbd>-drag &middot; <span class="touch-only">hold</span> empty ground</div><div class="d">Box-select a group</div>
         <div class="k"><kbd>Shift</kbd>/<kbd>&#8984;</kbd>+click</div><div class="d">Add / remove from selection</div>
         <div class="k">Right-click a structure &middot; empty ground</div><div class="d">Pick that structure to place more &middot; deselect</div>
         <div class="k">Place a FOB first</div><div class="d">Each FOB opens a 40&times;40 build area (areas can't overlap); build inside it</div>
@@ -953,11 +956,11 @@
         <div class="k"><kbd>F</kbd></div><div class="d">Mirror / flip selection</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>C</kbd></div><div class="d">Duplicate &rarr; reusable stamp</div>
         <div class="k"><kbd>Del</kbd> / <kbd>Backspace</kbd></div><div class="d">Delete selection</div>
-        <div class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>Space</kbd>-drag / middle-drag</div><div class="d">Pan the camera</div>
+        <div class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> &middot; <kbd>&larr;&uarr;&darr;&rarr;</kbd> &middot; <kbd>Space</kbd>-drag &middot; middle-drag</div><div class="d">Pan the camera (arrows pan when nothing is selected)</div>
         <div class="k">Scroll</div><div class="d">Zoom</div>
         <div class="k"><kbd>[</kbd> / <kbd>]</kbd></div><div class="d">Build floor down / up (experimental)</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>G</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>G</kbd></div><div class="d">Group &middot; ungroup the selection</div>
-        <div class="k">Layers button (top bar)</div><div class="d">Z-order, visibility &amp; opacity sheets &middot; Select only touches active layers</div>
+        <div class="k">Layers button (top bar)</div><div class="d">Z-order, visibility &amp; opacity sheets &middot; only active layers can be selected</div>
         <div class="k">Layer row: checkbox &middot; <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd> or <kbd>Shift</kbd>-click</div><div class="d">Multi-select layers &rarr; duplicate / delete / opacity together</div>
         <div class="k">Layer row: drag &middot; double-click name</div><div class="d">Reorder z-index &middot; rename in place</div>
         <div class="k">Go up a floor, then place</div><div class="d">Auto-creates a layer for that floor</div>
@@ -977,7 +980,7 @@
         <div class="k">Format: PNG files or PDF</div><div class="d">PNG gives one file per sheet (or a .zip folder with a build-info.txt) &middot; PDF puts every sheet in one document, a page each, fitted to A4 with a footer</div>
         <div class="k">Quality</div><div class="d">Pick px-per-block so big bases stay zoomable</div>
         <div class="k"><kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> &middot; <kbd>Shift</kbd>+<kbd>&#8984;</kbd>+<kbd>Z</kbd></div><div class="d">Undo &middot; redo</div>
-        <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Select &middot; draw &middot; erase tool</div>
+        <div class="k"><kbd>V</kbd> &middot; <kbd>B</kbd> &middot; <kbd>E</kbd></div><div class="d">Back to the board &middot; draw &middot; erase tool</div>
         <div class="k"><kbd>G</kbd></div><div class="d">Toggle snap to grid (Edit &rarr; Snap)</div>
       </div>
     </div>
@@ -1525,7 +1528,7 @@ const ST = {
   pinch: null,
   panRAF: 0,
   panLast: 0,
-  lastNavTool: 'select',                    // select or pan: what placement flows return to
+  lastNavTool: 'select',                    // what placement flows return to
   dragCtx: null,
   clearArm: false,
   clearTimer: null,
@@ -2377,10 +2380,8 @@ $('plan-addbuilder').onclick=()=>addPlanEntry('builder');
 // without forming an import cycle back through it.
 const GRIP_SVG='<svg viewBox="0 0 16 16"><circle cx="5.5" cy="4" r="1.3"/><circle cx="10.5" cy="4" r="1.3"/><circle cx="5.5" cy="8" r="1.3"/><circle cx="10.5" cy="8" r="1.3"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="10.5" cy="12" r="1.3"/></svg>';
 const TOOL_ICONS = {
-  select:'<svg viewBox="0 0 24 24"><path d="M5 3l7 17 2.2-6.5L21 11z"/></svg>',
   draw:'<svg viewBox="0 0 24 24"><path d="M15 4l5 5L9 20l-5 1 1-5z"/><path d="M13 6l5 5"/></svg>',
   erase:'<svg viewBox="0 0 24 24"><path d="M4 15l7-7 6 6-5 5H8z"/><path d="M9 20h11"/><path d="M11 8l6 6"/></svg>',
-  pan:'<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 8l-4 4 4 4M16 8l4 4-4 4M8 4l4-1 4 1M8 20l4 1 4-1"/></svg>',
   eyedrop:'<svg viewBox="0 0 24 24"><path d="M15.5 4.5l4 4M17.6 2.4a2.1 2.1 0 0 1 3 3l-3.1 3.1 1 1-2 2-1-1L8 18.9 4.4 20l1.1-3.6 7.4-7.4-1-1 2-2 1 1z"/></svg>',
   text:'<svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>',
   image:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>',
@@ -2394,7 +2395,7 @@ const TOOL_ICONS = {
 // is a tool in the rail now) and the Build Plan panel's "apply to selection"
 // buttons, which made you aim a panel row at a board selection from far away.
 const CTX_IC={
-  eyedrop:TOOL_ICONS.eyedrop, select:TOOL_ICONS.select, pan:TOOL_ICONS.pan,
+  eyedrop:TOOL_ICONS.eyedrop,
   rotate:'<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg>',
   mirror:'<svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg>',
   copy:'<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg>',
@@ -2582,8 +2583,6 @@ function ctxBody(el, hit, close, opts){
   } else {
     ctxSub(el,'Tools');
     const grid=document.createElement('div'); grid.className='ctx-grid';
-    grid.appendChild(ctxRow('Select', CTX_IC.select, ()=>{ ST.userPickedTool=true; setTool('select'); }));
-    grid.appendChild(ctxRow('Pan', CTX_IC.pan, ()=>{ ST.userPickedTool=true; setTool('pan'); }));
     grid.appendChild(ctxRow('Eyedrop', CTX_IC.eyedrop, ()=>{ ST.userPickedTool=true; setTool('eyedrop'); }));
     grid.appendChild(ctxRow('Snap: '+(ST.snapOn?'on':'off'), CTX_IC.snap, toggleSnap));
     el.appendChild(grid);
@@ -2726,27 +2725,40 @@ function placeStampAt(w){
   const nn=inst.map(ip=>({id:ST.uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:ST.curLayer, ly:ST.curLayerId, g:gid, st:ST.curStageId, bd:ST.curBuilderId}));
   ST.pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
-// the hold's payoff: take the piece under the finger, or open a marquee from
-// that spot. The tool stays on Pan - holding is a way to reach a piece without
-// leaving the mode you navigate in, and the edit bar is what acts on it.
+// The board has one mode, not two. A drag always pans - that is the gesture you
+// use most and the one a map should answer to. Click to take a piece; once it
+// is yours, dragging it moves it. Everything else under the press pans.
+//
+// That order is the safeguard. A piece is never picked up by a press that was
+// meant for the map, because a press only moves what was already selected -
+// dragging across an unselected piece pans straight over it. Selecting is a
+// separate, deliberate click first.
+//
+// Nothing here needed a Pan tool or a Select tool, so neither exists. The
+// keyboard still pans on its own (WASD, arrows with nothing selected, space or
+// middle-drag anywhere), which is what made two modes unnecessary rather than
+// merely inconvenient.
 const PAN_HOLD_MS=380, PAN_HOLD_SLOP=10;
+function startPan(w, sc, e){
+  ST.drag={mode:'pan', sx:sc.x, sy:sc.y, ox:ST.view.ox, oy:ST.view.oy,
+    hsx:sc.x, hsy:sc.y, tapW:w};
+  stage.classList.add('c-panning');
+  // Holding empty ground opens a marquee. It is only for that: a hold over a
+  // piece does nothing special, because letting go of it is already the click
+  // that selects it, and touch has no Shift to rubber-band with.
+  ST.drag.hold=setTimeout(()=>holdToMarquee(w), PAN_HOLD_MS);
+}
 function cancelPanHold(){
   if(ST.drag && ST.drag.hold){ clearTimeout(ST.drag.hold); ST.drag.hold=0; }
 }
-function holdToSelect(w){
+// held still on empty ground: open a marquee to drag out
+function holdToMarquee(w){
   if(!ST.drag || ST.drag.mode!=='pan' || ST.pinch || tpts.size>1) return;
+  if(hitAny(w).any) return;          // over a piece: leave it to the click
   ST.drag.hold=0;
   stage.classList.remove('c-panning');
-  clearSelection(); clearOverlaySel();
-  const hit=hitPiece(w.x,w.y);
-  if(hit){ ST.selected=[hit.id]; expandGroups(); ST.drag={mode:'placed'}; }
-  else{
-    ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
-      base:{pieces:[], texts:[], imgs:[], strokes:[]}};
-    ST.drag={mode:'marquee'};
-  }
+  startMarquee(w);
   try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
-  render(); updateStatus();
 }
 function placePieceAt(w){
   const c=snapCenter(ST.tool,ST.placeRot,w.x,w.y);
@@ -2763,18 +2775,7 @@ cv.addEventListener('pointerdown', e=>{
   const w=evtW(e), sc=evtS(e);
   // a floating touch move is waiting: this tap just drops it where it sits
   if(ST.pendingMove){ commitPendingMove(); ST.drag={mode:'placed'}; render(); updateStatus(); return; }
-  if(e.button===1 || ST.spaceDown || ST.tool==='pan'){
-    ST.drag={mode:'pan',sx:sc.x,sy:sc.y,ox:ST.view.ox,oy:ST.view.oy}; stage.classList.add('c-panning');
-    // A finger that stays put on the map wants the thing under it, not the map:
-    // hold and the pan becomes a selection - the piece you are pressing, or an
-    // empty patch you can drag out into a marquee. Moving first cancels it, so
-    // an ordinary pan never trips the hold.
-    if(e.pointerType==='touch'){
-      ST.drag.hsx=sc.x; ST.drag.hsy=sc.y;
-      ST.drag.hold=setTimeout(()=>holdToSelect(w), PAN_HOLD_MS);
-    }
-    return;
-  }
+  if(e.button===1 || ST.spaceDown){ startPan(w, sc, e); return; }
   if(ST.tool==='eyedrop'){
     const h=hitPiece(w.x,w.y);
     if(!h || !eyedropPiece(h)) flashToast('Nothing to pick there');
@@ -2824,35 +2825,61 @@ cv.addEventListener('pointerdown', e=>{
         ST.drag={mode:'strokeresize', s, bb, startW:{x:w.x,y:w.y},
           pts0:s.pts.map(pt=>({x:pt.x,y:pt.y})), moved:false}; return; } } }
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-  // hit test top -> bottom: text, piece, drawing, image
+  // Shift keeps the old direct behaviour, because a modifier already says "I am
+  // selecting, not navigating": it adds to the selection on a hit and rubber
+  // bands from empty ground, with no hold to wait through.
+  if(additive){ additiveDown(w, e); return; }
+  // Only what is already selected takes the drag. Pressing an unselected piece
+  // pans like anywhere else - it becomes selected on release, if the press
+  // never travelled.
+  if(hitSelection(w)){ startGroupMove(w, hitPiece(w.x,w.y)||null); ST.drag.touch=(e.pointerType==='touch'); render(); updateStatus(); return; }
+  startPan(w, sc, e);
+});
+// what the press is over, in the order a click resolves them
+function hitAny(w){
   const tHit=hitText(w);
   const pHit=tHit?null:hitPiece(w.x,w.y);
   const sHit=(tHit||pHit)?null:hitStroke(w);
   const iHit=(tHit||pHit||sHit)?null:hitImage(w);
-  if(tHit||pHit||sHit||iHit){
-    const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
-    const wasSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
-    if(additive){
-      if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
-      else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
-      else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
-      else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
-    } else if(!wasSel){
-      clearSelection(); clearOverlaySel();
-      if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id]; else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
-    }
-    expandGroups();   // clicking any grouped item selects its whole group
+  return {tHit,pHit,sHit,iHit, any:tHit||pHit||sHit||iHit};
+}
+// true when the point is over something the selection already holds
+function hitSelection(w){
+  const {tHit,pHit,sHit,iHit}=hitAny(w);
+  return !!((pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id))
+    || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&ST.selStrokes.indexOf(sHit)!==-1));
+}
+// pick what is under the point, replacing the selection (null point = clear)
+function selectAt(w){
+  const {tHit,pHit,sHit,iHit,any}=hitAny(w);
+  clearSelection(); clearOverlaySel();
+  if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id];
+  else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
+  if(any) expandGroups();          // taking any grouped item takes its group
+  render(); updateStatus();
+  return !!any;
+}
+function additiveDown(w, e){
+  const {tHit,pHit,sHit,iHit,any}=hitAny(w);
+  const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
+  if(any){
+    if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
+    else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
+    else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
+    else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
+    expandGroups();
     const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
     if(nowSel){ startGroupMove(w, pHit||null); ST.drag.touch=(e.pointerType==='touch'); }
     render(); updateStatus(); return;
   }
-  // empty ground => rubber-band multi-select (pieces + overlays + drawings)
-  if(!additive){ clearSelection(); clearOverlaySel(); }
+  startMarquee(w);
+}
+function startMarquee(w){
   ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
     base:{pieces:ST.selected.slice(), texts:ST.selTexts.slice(), imgs:ST.selImages.slice(), strokes:ST.selStrokes.slice()}};
   ST.drag={mode:'marquee'};
   render(); updateStatus();
-});
+}
 // lowest world edge of everything in a move, from the positions it started at
 function selBottomAtStart(d){
   let bot=-Infinity;
@@ -2966,6 +2993,11 @@ cv.addEventListener('pointermove', e=>{
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
+  // a pan that never went anywhere and never held long enough is a click: it
+  // takes whatever was under it, or clears the board if that was nothing
+  if(ST.drag && ST.drag.mode==='pan' && ST.drag.hold && ST.drag.tapW){
+    selectAt(ST.drag.tapW);
+  }
   cancelPanHold();
   if(ST.drag){
     // Two ways to place, and the finger picks which. A tap is a quick drop:
@@ -3874,7 +3906,10 @@ $('exp-run').onclick=runExport;
 // ---------------- build rail UI
 function buildRail(){
   const tg=$('tool-grid'); tg.innerHTML='';
-  [['pan','Pan'],['select','Select'],['eyedrop','Eyedrop']].forEach(([t,label])=>{
+  // No Pan and no Select: the board is both at once (see pointer.js), so the
+  // only tool that belongs here is the one that actually changes what a press
+  // does.
+  [['eyedrop','Eyedrop']].forEach(([t,label])=>{
     const b=document.createElement('button');
     b.className='tool'; b.dataset.tool=t; b.title=label;
     b.innerHTML=TOOL_ICONS[t]+'<span class="cap">'+label+'</span>';
@@ -4739,7 +4774,7 @@ function buildRecent(){
 function setTool(t){
   commitPendingMove();                // don't strand a floating move on a tool change
   if(t!=='stamp') ST.activeStamp=null;   // leaving placement drops the ghost
-  if(t==='select'||t==='pan') ST.lastNavTool=t;
+  if(t==='select') ST.lastNavTool=t;
   // picking a tool drops the old selection, so rotate/mirror act on the new
   // ghost rather than on whatever was still selected behind it
   else { clearSelection(); clearOverlaySel(); }
@@ -4749,7 +4784,6 @@ function setTool(t){
   $('drawopts').classList.toggle('show', t==='draw'||!!SYMBOLS[t]);
   stage.classList.remove('c-cross','c-pan');
   if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text'||t==='eyedrop'||SYMBOLS[t]) stage.classList.add('c-cross');
-  if(t==='pan') stage.classList.add('c-pan');
   // touch: start the ghost centered on screen so there is always a visible
   // ghost to drag-aim and tap-confirm
   if(isCoarse() && (CATALOG[t] || (t==='stamp'&&ST.activeStamp)))
@@ -4758,24 +4792,19 @@ function setTool(t){
   updateToolChip();
   updateStatus(); render();
 }
-// mobile Done chip: leaves a tool, or clears a selection made with Select/Pan.
-// Pan is a nav mode like Select, so on its own it needs no "finish" action.
-function inNavTool(){ return ST.tool==='select'||ST.tool==='pan'; }
+// mobile Done chip: leaves a placement tool, or clears a selection. 'select' is
+// the board's own mode - panning, selecting and moving all live there - so on
+// its own it has nothing to finish.
+function inNavTool(){ return ST.tool==='select'; }
 function updateToolChip(){
   const ex=$('tool-exit'); if(!ex) return;
   ex.classList.toggle('show', isCoarse() && (!inNavTool() || !!anySelected()));
 }
 
-COARSE_MQ.addEventListener('change', ()=>{ updateToolChip(); applyTouchDefault(); });
-// Touch devices open in Pan rather than Select. Only ever replaces the untouched
-// startup default, so a tool the user picked is never swapped out from under them.
-function applyTouchDefault(){
-  if(isCoarse() && !ST.userPickedTool && ST.tool==='select' && !anySelected()) setTool('pan');
-}
-// images and symbols drop in already selected so they can be positioned; that
-// only works from Select, so switch there while remembering the nav tool the
-// user was in, which Done and the next placement still return to.
-function editNewOverlay(){ const nav=ST.lastNavTool; setTool('select'); ST.lastNavTool=nav; }
+COARSE_MQ.addEventListener('change', updateToolChip);
+// images and symbols drop in already selected so they can be positioned, which
+// means leaving whatever placement tool put them there
+function editNewOverlay(){ setTool('select'); }
 
 /* ===== overlays.js ===== */
 // ---------------- text + image overlays
@@ -5066,6 +5095,16 @@ window.addEventListener('keydown', e=>{
   if(e.key==='e'||e.key==='E') setTool('erase');
   if(e.key===']') setLayer(ST.curLayer+1);
   if(e.key==='[') setLayer(ST.curLayer-1);
+  // Arrows nudge a selection, and drive the camera when there is none - the
+  // board has no Pan tool to fall back on, so the keyboard has to be able to
+  // move it without one.
+  if(!selPs.length && !ST.selImages.length && !ST.selTexts.length && !ST.selStrokes.length
+     && e.key.startsWith('Arrow')){
+    e.preventDefault();
+    const k2={ArrowLeft:'a', ArrowRight:'d', ArrowUp:'w', ArrowDown:'s'}[e.key];
+    if(k2){ panKeys.add(k2); startPanLoop(); }
+    return;
+  }
   if((selPs.length||ST.selImages.length||ST.selTexts.length||ST.selStrokes.length) && e.key.startsWith('Arrow')){
     e.preventDefault(); const d=e.shiftKey?SNAP:(ST.snapOn?GRID:1);
     let dx=0,dy=0;
@@ -5081,6 +5120,8 @@ window.addEventListener('keydown', e=>{
 window.addEventListener('keyup', e=>{
   if(e.code==='Space'){ ST.spaceDown=false; stage.classList.remove('c-pan'); }
   const k=e.key.toLowerCase(); if(k==='w'||k==='a'||k==='s'||k==='d') panKeys.delete(k);
+  const k2={arrowleft:'a', arrowright:'d', arrowup:'w', arrowdown:'s'}[k];
+  if(k2) panKeys.delete(k2);
 });
 window.addEventListener('blur', ()=>{ panKeys.clear(); });
 
@@ -5163,10 +5204,7 @@ function init(){
     renderLayerPanel(); })();
   try{ setHudOpen(localStorage.getItem('wardog-fob-hud')!=='off'); }catch(e){}
   if(!ST.view.ox && !ST.view.oy){ ST.view.ox=stage.clientWidth/2; ST.view.oy=stage.clientHeight/2; }
-  setTool('select');
-  applyTouchDefault();
-  // some browsers settle the pointer type just after scripts run, so re-check
-  requestAnimationFrame(applyTouchDefault);
+  setTool('select');   // the board's own mode: pan, select and move in one
   ST.history=[JSON.stringify({pieces:ST.pieces,strokes:ST.strokes,uid:ST.uid,images:imagesData(),texts:ST.texts,layers:ST.layers,curLayerId:ST.curLayerId,stages:ST.stages,builders:ST.builders})]; ST.hidx=0;
   resize();
   updateStatus();

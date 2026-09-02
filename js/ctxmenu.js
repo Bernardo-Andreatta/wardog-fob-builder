@@ -23,7 +23,7 @@ import { flashToast, toggleSnap } from './topbar.js';
 // is a tool in the rail now) and the Build Plan panel's "apply to selection"
 // buttons, which made you aim a panel row at a board selection from far away.
 export const CTX_IC={
-  eyedrop:TOOL_ICONS.eyedrop, select:TOOL_ICONS.select, pan:TOOL_ICONS.pan,
+  eyedrop:TOOL_ICONS.eyedrop,
   rotate:'<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v5h-5"/></svg>',
   mirror:'<svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7l-4 5 4 5z"/><path d="M16 7l4 5-4 5z"/></svg>',
   copy:'<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1.5 1.5 0 0 1 1.5-1.5H15"/></svg>',
@@ -211,8 +211,6 @@ export function ctxBody(el, hit, close, opts){
   } else {
     ctxSub(el,'Tools');
     const grid=document.createElement('div'); grid.className='ctx-grid';
-    grid.appendChild(ctxRow('Select', CTX_IC.select, ()=>{ ST.userPickedTool=true; setTool('select'); }));
-    grid.appendChild(ctxRow('Pan', CTX_IC.pan, ()=>{ ST.userPickedTool=true; setTool('pan'); }));
     grid.appendChild(ctxRow('Eyedrop', CTX_IC.eyedrop, ()=>{ ST.userPickedTool=true; setTool('eyedrop'); }));
     grid.appendChild(ctxRow('Snap: '+(ST.snapOn?'on':'off'), CTX_IC.snap, toggleSnap));
     el.appendChild(grid);

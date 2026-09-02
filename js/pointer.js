@@ -71,27 +71,40 @@ export function placeStampAt(w){
   const nn=inst.map(ip=>({id:ST.uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:ST.curLayer, ly:ST.curLayerId, g:gid, st:ST.curStageId, bd:ST.curBuilderId}));
   ST.pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
-// the hold's payoff: take the piece under the finger, or open a marquee from
-// that spot. The tool stays on Pan - holding is a way to reach a piece without
-// leaving the mode you navigate in, and the edit bar is what acts on it.
+// The board has one mode, not two. A drag always pans - that is the gesture you
+// use most and the one a map should answer to. Click to take a piece; once it
+// is yours, dragging it moves it. Everything else under the press pans.
+//
+// That order is the safeguard. A piece is never picked up by a press that was
+// meant for the map, because a press only moves what was already selected -
+// dragging across an unselected piece pans straight over it. Selecting is a
+// separate, deliberate click first.
+//
+// Nothing here needed a Pan tool or a Select tool, so neither exists. The
+// keyboard still pans on its own (WASD, arrows with nothing selected, space or
+// middle-drag anywhere), which is what made two modes unnecessary rather than
+// merely inconvenient.
 const PAN_HOLD_MS=380, PAN_HOLD_SLOP=10;
+function startPan(w, sc, e){
+  ST.drag={mode:'pan', sx:sc.x, sy:sc.y, ox:ST.view.ox, oy:ST.view.oy,
+    hsx:sc.x, hsy:sc.y, tapW:w};
+  stage.classList.add('c-panning');
+  // Holding empty ground opens a marquee. It is only for that: a hold over a
+  // piece does nothing special, because letting go of it is already the click
+  // that selects it, and touch has no Shift to rubber-band with.
+  ST.drag.hold=setTimeout(()=>holdToMarquee(w), PAN_HOLD_MS);
+}
 export function cancelPanHold(){
   if(ST.drag && ST.drag.hold){ clearTimeout(ST.drag.hold); ST.drag.hold=0; }
 }
-function holdToSelect(w){
+// held still on empty ground: open a marquee to drag out
+function holdToMarquee(w){
   if(!ST.drag || ST.drag.mode!=='pan' || ST.pinch || tpts.size>1) return;
+  if(hitAny(w).any) return;          // over a piece: leave it to the click
   ST.drag.hold=0;
   stage.classList.remove('c-panning');
-  clearSelection(); clearOverlaySel();
-  const hit=hitPiece(w.x,w.y);
-  if(hit){ ST.selected=[hit.id]; expandGroups(); ST.drag={mode:'placed'}; }
-  else{
-    ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
-      base:{pieces:[], texts:[], imgs:[], strokes:[]}};
-    ST.drag={mode:'marquee'};
-  }
+  startMarquee(w);
   try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
-  render(); updateStatus();
 }
 export function placePieceAt(w){
   const c=snapCenter(ST.tool,ST.placeRot,w.x,w.y);
@@ -108,18 +121,7 @@ cv.addEventListener('pointerdown', e=>{
   const w=evtW(e), sc=evtS(e);
   // a floating touch move is waiting: this tap just drops it where it sits
   if(ST.pendingMove){ commitPendingMove(); ST.drag={mode:'placed'}; render(); updateStatus(); return; }
-  if(e.button===1 || ST.spaceDown || ST.tool==='pan'){
-    ST.drag={mode:'pan',sx:sc.x,sy:sc.y,ox:ST.view.ox,oy:ST.view.oy}; stage.classList.add('c-panning');
-    // A finger that stays put on the map wants the thing under it, not the map:
-    // hold and the pan becomes a selection - the piece you are pressing, or an
-    // empty patch you can drag out into a marquee. Moving first cancels it, so
-    // an ordinary pan never trips the hold.
-    if(e.pointerType==='touch'){
-      ST.drag.hsx=sc.x; ST.drag.hsy=sc.y;
-      ST.drag.hold=setTimeout(()=>holdToSelect(w), PAN_HOLD_MS);
-    }
-    return;
-  }
+  if(e.button===1 || ST.spaceDown){ startPan(w, sc, e); return; }
   if(ST.tool==='eyedrop'){
     const h=hitPiece(w.x,w.y);
     if(!h || !eyedropPiece(h)) flashToast('Nothing to pick there');
@@ -169,35 +171,61 @@ cv.addEventListener('pointerdown', e=>{
         ST.drag={mode:'strokeresize', s, bb, startW:{x:w.x,y:w.y},
           pts0:s.pts.map(pt=>({x:pt.x,y:pt.y})), moved:false}; return; } } }
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-  // hit test top -> bottom: text, piece, drawing, image
+  // Shift keeps the old direct behaviour, because a modifier already says "I am
+  // selecting, not navigating": it adds to the selection on a hit and rubber
+  // bands from empty ground, with no hold to wait through.
+  if(additive){ additiveDown(w, e); return; }
+  // Only what is already selected takes the drag. Pressing an unselected piece
+  // pans like anywhere else - it becomes selected on release, if the press
+  // never travelled.
+  if(hitSelection(w)){ startGroupMove(w, hitPiece(w.x,w.y)||null); ST.drag.touch=(e.pointerType==='touch'); render(); updateStatus(); return; }
+  startPan(w, sc, e);
+});
+// what the press is over, in the order a click resolves them
+function hitAny(w){
   const tHit=hitText(w);
   const pHit=tHit?null:hitPiece(w.x,w.y);
   const sHit=(tHit||pHit)?null:hitStroke(w);
   const iHit=(tHit||pHit||sHit)?null:hitImage(w);
-  if(tHit||pHit||sHit||iHit){
-    const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
-    const wasSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
-    if(additive){
-      if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
-      else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
-      else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
-      else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
-    } else if(!wasSel){
-      clearSelection(); clearOverlaySel();
-      if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id]; else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
-    }
-    expandGroups();   // clicking any grouped item selects its whole group
+  return {tHit,pHit,sHit,iHit, any:tHit||pHit||sHit||iHit};
+}
+// true when the point is over something the selection already holds
+export function hitSelection(w){
+  const {tHit,pHit,sHit,iHit}=hitAny(w);
+  return !!((pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id))
+    || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&ST.selStrokes.indexOf(sHit)!==-1));
+}
+// pick what is under the point, replacing the selection (null point = clear)
+export function selectAt(w){
+  const {tHit,pHit,sHit,iHit,any}=hitAny(w);
+  clearSelection(); clearOverlaySel();
+  if(pHit) ST.selected=[pHit.id]; else if(tHit) ST.selTexts=[tHit.id];
+  else if(iHit) ST.selImages=[iHit.id]; else if(sHit) ST.selStrokes=[sHit];
+  if(any) expandGroups();          // taking any grouped item takes its group
+  render(); updateStatus();
+  return !!any;
+}
+function additiveDown(w, e){
+  const {tHit,pHit,sHit,iHit,any}=hitAny(w);
+  const inStr = s=>ST.selStrokes.indexOf(s)!==-1;
+  if(any){
+    if(pHit){ if(isSel(pHit.id)) ST.selected=ST.selected.filter(id=>id!==pHit.id); else ST.selected.push(pHit.id); }
+    else if(tHit){ if(ST.selTexts.includes(tHit.id)) ST.selTexts=ST.selTexts.filter(id=>id!==tHit.id); else ST.selTexts.push(tHit.id); }
+    else if(iHit){ if(ST.selImages.includes(iHit.id)) ST.selImages=ST.selImages.filter(id=>id!==iHit.id); else ST.selImages.push(iHit.id); }
+    else if(sHit){ if(inStr(sHit)) ST.selStrokes=ST.selStrokes.filter(x=>x!==sHit); else ST.selStrokes.push(sHit); }
+    expandGroups();
     const nowSel = (pHit&&isSel(pHit.id)) || (tHit&&ST.selTexts.includes(tHit.id)) || (iHit&&ST.selImages.includes(iHit.id)) || (sHit&&inStr(sHit));
     if(nowSel){ startGroupMove(w, pHit||null); ST.drag.touch=(e.pointerType==='touch'); }
     render(); updateStatus(); return;
   }
-  // empty ground => rubber-band multi-select (pieces + overlays + drawings)
-  if(!additive){ clearSelection(); clearOverlaySel(); }
+  startMarquee(w);
+}
+export function startMarquee(w){
   ST.marquee={x0:w.x,y0:w.y,x1:w.x,y1:w.y,
     base:{pieces:ST.selected.slice(), texts:ST.selTexts.slice(), imgs:ST.selImages.slice(), strokes:ST.selStrokes.slice()}};
   ST.drag={mode:'marquee'};
   render(); updateStatus();
-});
+}
 // lowest world edge of everything in a move, from the positions it started at
 export function selBottomAtStart(d){
   let bot=-Infinity;
@@ -311,6 +339,11 @@ cv.addEventListener('pointermove', e=>{
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
+  // a pan that never went anywhere and never held long enough is a click: it
+  // takes whatever was under it, or clears the board if that was nothing
+  if(ST.drag && ST.drag.mode==='pan' && ST.drag.hold && ST.drag.tapW){
+    selectAt(ST.drag.tapW);
+  }
   cancelPanHold();
   if(ST.drag){
     // Two ways to place, and the finger picks which. A tap is a quick drop:

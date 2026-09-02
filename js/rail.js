@@ -9,7 +9,10 @@ import { setTool } from './tools.js';
 // ---------------- build rail UI
 export function buildRail(){
   const tg=$('tool-grid'); tg.innerHTML='';
-  [['pan','Pan'],['select','Select'],['eyedrop','Eyedrop']].forEach(([t,label])=>{
+  // No Pan and no Select: the board is both at once (see pointer.js), so the
+  // only tool that belongs here is the one that actually changes what a press
+  // does.
+  [['eyedrop','Eyedrop']].forEach(([t,label])=>{
     const b=document.createElement('button');
     b.className='tool'; b.dataset.tool=t; b.title=label;
     b.innerHTML=TOOL_ICONS[t]+'<span class="cap">'+label+'</span>';

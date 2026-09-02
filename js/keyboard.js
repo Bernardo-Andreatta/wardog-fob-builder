@@ -51,6 +51,16 @@ window.addEventListener('keydown', e=>{
   if(e.key==='e'||e.key==='E') setTool('erase');
   if(e.key===']') setLayer(ST.curLayer+1);
   if(e.key==='[') setLayer(ST.curLayer-1);
+  // Arrows nudge a selection, and drive the camera when there is none - the
+  // board has no Pan tool to fall back on, so the keyboard has to be able to
+  // move it without one.
+  if(!selPs.length && !ST.selImages.length && !ST.selTexts.length && !ST.selStrokes.length
+     && e.key.startsWith('Arrow')){
+    e.preventDefault();
+    const k2={ArrowLeft:'a', ArrowRight:'d', ArrowUp:'w', ArrowDown:'s'}[e.key];
+    if(k2){ panKeys.add(k2); startPanLoop(); }
+    return;
+  }
   if((selPs.length||ST.selImages.length||ST.selTexts.length||ST.selStrokes.length) && e.key.startsWith('Arrow')){
     e.preventDefault(); const d=e.shiftKey?SNAP:(ST.snapOn?GRID:1);
     let dx=0,dy=0;
@@ -66,6 +76,8 @@ window.addEventListener('keydown', e=>{
 window.addEventListener('keyup', e=>{
   if(e.code==='Space'){ ST.spaceDown=false; stage.classList.remove('c-pan'); }
   const k=e.key.toLowerCase(); if(k==='w'||k==='a'||k==='s'||k==='d') panKeys.delete(k);
+  const k2={arrowleft:'a', arrowright:'d', arrowup:'w', arrowdown:'s'}[k];
+  if(k2) panKeys.delete(k2);
 });
 window.addEventListener('blur', ()=>{ panKeys.clear(); });
 
