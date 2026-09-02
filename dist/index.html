@@ -1862,6 +1862,147 @@ function migrateLayers(){
 }
 function allItems(){ return [...ST.pieces,...ST.images,...ST.texts,...ST.strokes]; }
 
+/* ===== plan.js ===== */
+// ---------------- build plan: stages + builders -------------------------------
+// A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
+// a builder answers *who* puts it there. Both are plain tags on a piece (p.st /
+// p.bd), independent of floors and layers, so they survive move / rotate /
+// duplicate and can be re-tagged long after the build is finished.
+// Mid-tone hues on purpose: a pale tag vanishes on the sand-coloured board and
+// a dark one vanishes on the near-black one. tagInk() then nudges whichever is
+// drawn away from the canvas it lands on.
+const PLAN_COLORS=['#c8871a','#2f7fc4','#4e9b3f','#c8402f','#8a5cd6','#149c92','#cc4f86','#4a6fc4'];
+// Stages and builders share the one palette, and a new tag takes the first
+// colour nobody is using - starting from an offset picked per session, so two
+// builds do not both open with the same yellow, then the same blue.
+let colSeed = Math.floor(Math.random()*PLAN_COLORS.length);
+function nextPlanColor(){
+  const used=new Set(ST.stages.concat(ST.builders).map(e=>(e.color||'').toLowerCase()));
+  for(let i=0;i<PLAN_COLORS.length;i++){
+    const c=PLAN_COLORS[(colSeed+i)%PLAN_COLORS.length];
+    if(!used.has(c.toLowerCase())){ colSeed=(colSeed+i+1)%PLAN_COLORS.length; return c; }
+  }
+  const c=PLAN_COLORS[colSeed%PLAN_COLORS.length];
+  colSeed=(colSeed+1)%PLAN_COLORS.length; return c;
+}
+// A tag's stored colour is its identity and never changes; what gets *drawn* is
+// pushed away from the board underneath it, so the same tag stays legible in
+// both themes instead of washing out on one of them.
+function lightBg(bg){ const c=_hx(bg); return (c[0]*0.299+c[1]*0.587+c[2]*0.114) > 140; }
+function tagInk(col, bg){
+  return lightBg(bg) ? mixCol(col,'#241d10',0.28) : mixCol(col,'#fbf7ea',0.22);
+}
+// A build starts with no plan at all - no stages, no builders. Naming them is
+// the crew's call, and pieces stay General until someone does, so nothing on
+// the board is ever tagged with a name nobody chose.
+function ensurePlan(){
+  if(!Array.isArray(ST.stages)) ST.stages=[];
+  if(!Array.isArray(ST.builders)) ST.builders=[];
+  ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
+  ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
+  // both tags start (and stay) General until the user picks one, so a piece is
+  // never silently stamped with a stage / builder nobody chose
+  if(ST.curStageId===undefined) ST.curStageId = null;
+  if(ST.curBuilderId===undefined) ST.curBuilderId = null;
+  if(ST.curStageId!=null && !stageById(ST.curStageId)) ST.curStageId = null;
+  if(ST.curBuilderId!=null && !builderById(ST.curBuilderId)) ST.curBuilderId = null;
+}
+function stageById(id){ return ST.stages.find(s=>s.id===id)||null; }
+function builderById(id){ return ST.builders.find(b=>b.id===id)||null; }
+function stageOf(p){ return p.st==null?null:stageById(p.st); }
+function builderOf(p){ return p.bd==null?null:builderById(p.bd); }
+function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s):-1; }
+// Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
+// says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
+// paints the stage on as a wash; untagged pieces stay ink, dimmed.
+// Every piece wears its own builder's colour, in focus or not - the General
+// builder is "show me the whole crew", not "show me nobody", so it is the view
+// that reads the roster at a glance. Ghosting is what narrows the board, and it
+// is the only thing that does: a piece out of view keeps its hue and loses its
+// strength, so the colours never lie about who built what.
+function planColorOf(p, ink, bg){
+  const b=builderOf(p);
+  let col = b ? tagInk(b.color, bg) : ink;
+  if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
+  return col;
+}
+// The board shows one stage at a time: what carries it reads normally, each
+// piece in its builder's colour, and the other stages drop back without leaving
+// the board. Pick a builder inside the stage and only their work stays up -
+// untagged work included, because a hand's view is the hand's own and nothing
+// else. Widening back to the whole stage is what the General builder is for.
+//
+// Stages keep their own exception: a piece left on General belongs to no stage
+// in particular, so it stands in every stage's view rather than being ghosted
+// out of the one you are working in.
+//
+// What this lights is exactly what the readout counts - see the focus tally in
+// planpanel - so the bill on screen always describes the pieces on screen.
+function planLit(p){
+  const cur = ST.curStageId==null ? null : ST.curStageId;
+  const st  = p.st==null ? null : p.st;
+  if(cur!==null && st!==null && st!==cur) return false;
+  if(ST.hlBuilder===undefined) return true;     // General builder: every hand
+  // A hand in focus is that hand's work in the stage you are standing in, and
+  // nothing else - not their work in other stages, and not what they left on
+  // General, which belongs to no stage to begin with. This is exactly the set
+  // the readout bills, so the number on screen describes the pieces on screen.
+  if(cur!==null && st!==cur) return false;
+  return (p.bd==null?null:p.bd) === ST.hlBuilder;
+}
+
+// The fill channel. The outline says *who* (builder); this one says *when*: a
+// translucent wash plus a hatch whose angle belongs to that stage, so the two
+// dimensions read at the same time - and the hatch still separates stages in
+// greyscale or for anyone who can't split the colours apart.
+const HATCH_ANGLES=[Math.PI/4, -Math.PI/4, 0, Math.PI/2, Math.PI/8, -Math.PI/8, 3*Math.PI/8, -3*Math.PI/8];
+function drawPlanFill(g, p, col, idx){
+  const c=CATALOG[p.type]; if(!c) return;
+  const w=c.w*GRID, h=c.h*GRID, r=(p.rot||0)*Math.PI/180;
+  const n=HATCH_ANGLES.length, ang=HATCH_ANGLES[((idx%n)+n)%n];
+  g.save();
+  g.translate(p.x,p.y); g.rotate(r);
+  g.beginPath(); g.rect(-w/2,-h/2,w,h); g.clip();
+  g.globalAlpha=0.14; g.fillStyle=col; g.fillRect(-w/2,-h/2,w,h);
+  g.rotate(ang-r);                       // hatch angle is absolute, not per-piece
+  const R=Math.hypot(w,h)/2+GRID/4, step=GRID/3.2;
+  g.globalAlpha=0.42; g.strokeStyle=col; g.lineWidth=1.5; g.lineCap='butt';
+  g.beginPath();
+  for(let d=-R; d<=R; d+=step){ g.moveTo(-R,d); g.lineTo(R,d); }
+  g.stroke();
+  g.restore();
+}
+// the board's own fill pass (export builds its own from the job's fill channel)
+function planFill(g, p, bg){
+  if(!planLit(p)) return;                       // a ghosted piece carries no hatch
+  if(ST.curStageId==null) return;               // General: no stage in view, no wash
+  const s=stageOf(p); if(!s) return;
+  drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
+}
+function planCount(kind, id){
+  return ST.pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
+}
+// share codes and .json files carry their own tag tables: adopt them under fresh
+// local ids and hand back a mapper from a stored tag (index or old id) to the new id
+function adoptPlan(o){
+  const S=(o.stages||[]).map((s,i)=>({id:ST.stageUid++, name:s.name||('Stage '+(i+1)),
+    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], _old:s.id}));
+  const B=(o.builders||[]).map((b,i)=>({id:ST.builderUid++, name:b.name||('Builder '+(i+1)),
+    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], _old:b.id}));
+  if(S.length) ST.stages=S;
+  if(B.length) ST.builders=B;
+  ST.curStageId=undefined; ST.curBuilderId=undefined;
+  ensurePlan();
+  return (kind,p)=>{
+    const arr = kind==='stage'?ST.stages:ST.builders;
+    const idx = kind==='stage'?p._s:p._b, old = kind==='stage'?p.st:p.bd;
+    if(idx){ const e=arr[idx-1]; return e?e.id:null; }          // v3 code: 1-based index
+    if(old!=null){ const e=arr.find(x=>x._old===old); return e?e.id:null; }   // .json: old id
+    return null;
+  };
+}
+function cleanPlan(){ ST.stages.concat(ST.builders).forEach(e=>{ delete e._old; }); }
+
 /* ===== geometry.js ===== */
 // ---------------- geometry
 function snapVal(v){ return ST.snapOn ? Math.round(v/SNAP)*SNAP : v; }
@@ -1894,6 +2035,10 @@ function hitPiece(wx,wy){
   for(const {p} of order){
     if(pieceLayer(p)>ST.curLayer) continue;   // floors above the view are untouchable
     if(!layerEditable(p)) continue;        // hidden/locked layers aren't selectable
+    // The view is the reach: work ghosted out because it belongs to another
+    // stage or another hand is there for context, not to be picked up by
+    // accident while you work on what is lit.
+    if(!planLit(p)) continue;
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
@@ -2071,147 +2216,6 @@ function duplicateSel(){ const items=selectedPieces(); if(!items.length)return;
   startPlacing(st);
 }
 
-/* ===== plan.js ===== */
-// ---------------- build plan: stages + builders -------------------------------
-// A stage answers *when* a piece goes down (early walls -> deployables -> fluff);
-// a builder answers *who* puts it there. Both are plain tags on a piece (p.st /
-// p.bd), independent of floors and layers, so they survive move / rotate /
-// duplicate and can be re-tagged long after the build is finished.
-// Mid-tone hues on purpose: a pale tag vanishes on the sand-coloured board and
-// a dark one vanishes on the near-black one. tagInk() then nudges whichever is
-// drawn away from the canvas it lands on.
-const PLAN_COLORS=['#c8871a','#2f7fc4','#4e9b3f','#c8402f','#8a5cd6','#149c92','#cc4f86','#4a6fc4'];
-// Stages and builders share the one palette, and a new tag takes the first
-// colour nobody is using - starting from an offset picked per session, so two
-// builds do not both open with the same yellow, then the same blue.
-let colSeed = Math.floor(Math.random()*PLAN_COLORS.length);
-function nextPlanColor(){
-  const used=new Set(ST.stages.concat(ST.builders).map(e=>(e.color||'').toLowerCase()));
-  for(let i=0;i<PLAN_COLORS.length;i++){
-    const c=PLAN_COLORS[(colSeed+i)%PLAN_COLORS.length];
-    if(!used.has(c.toLowerCase())){ colSeed=(colSeed+i+1)%PLAN_COLORS.length; return c; }
-  }
-  const c=PLAN_COLORS[colSeed%PLAN_COLORS.length];
-  colSeed=(colSeed+1)%PLAN_COLORS.length; return c;
-}
-// A tag's stored colour is its identity and never changes; what gets *drawn* is
-// pushed away from the board underneath it, so the same tag stays legible in
-// both themes instead of washing out on one of them.
-function lightBg(bg){ const c=_hx(bg); return (c[0]*0.299+c[1]*0.587+c[2]*0.114) > 140; }
-function tagInk(col, bg){
-  return lightBg(bg) ? mixCol(col,'#241d10',0.28) : mixCol(col,'#fbf7ea',0.22);
-}
-// A build starts with no plan at all - no stages, no builders. Naming them is
-// the crew's call, and pieces stay General until someone does, so nothing on
-// the board is ever tagged with a name nobody chose.
-function ensurePlan(){
-  if(!Array.isArray(ST.stages)) ST.stages=[];
-  if(!Array.isArray(ST.builders)) ST.builders=[];
-  ST.stageUid=Math.max(ST.stageUid, ...ST.stages.map(s=>s.id+1));
-  ST.builderUid=Math.max(ST.builderUid, ...ST.builders.map(b=>b.id+1));
-  // both tags start (and stay) General until the user picks one, so a piece is
-  // never silently stamped with a stage / builder nobody chose
-  if(ST.curStageId===undefined) ST.curStageId = null;
-  if(ST.curBuilderId===undefined) ST.curBuilderId = null;
-  if(ST.curStageId!=null && !stageById(ST.curStageId)) ST.curStageId = null;
-  if(ST.curBuilderId!=null && !builderById(ST.curBuilderId)) ST.curBuilderId = null;
-}
-function stageById(id){ return ST.stages.find(s=>s.id===id)||null; }
-function builderById(id){ return ST.builders.find(b=>b.id===id)||null; }
-function stageOf(p){ return p.st==null?null:stageById(p.st); }
-function builderOf(p){ return p.bd==null?null:builderById(p.bd); }
-function stageIndex(p){ const s=stageOf(p); return s?ST.stages.indexOf(s):-1; }
-// Two channels, and they never swap: the OUTLINE says *who* (builder), the FILL
-// says *when* (stage). Colour-by 'stage' therefore leaves the outline neutral and
-// paints the stage on as a wash; untagged pieces stay ink, dimmed.
-// Every piece wears its own builder's colour, in focus or not - the General
-// builder is "show me the whole crew", not "show me nobody", so it is the view
-// that reads the roster at a glance. Ghosting is what narrows the board, and it
-// is the only thing that does: a piece out of view keeps its hue and loses its
-// strength, so the colours never lie about who built what.
-function planColorOf(p, ink, bg){
-  const b=builderOf(p);
-  let col = b ? tagInk(b.color, bg) : ink;
-  if(!planLit(p)) col=mixCol(col,bg,0.78);      // out of view: ghosted, as on a sheet
-  return col;
-}
-// The board shows one stage at a time: what carries it reads normally, each
-// piece in its builder's colour, and the other stages drop back without leaving
-// the board. Pick a builder inside the stage and only their work stays up -
-// untagged work included, because a hand's view is the hand's own and nothing
-// else. Widening back to the whole stage is what the General builder is for.
-//
-// Stages keep their own exception: a piece left on General belongs to no stage
-// in particular, so it stands in every stage's view rather than being ghosted
-// out of the one you are working in.
-//
-// What this lights is exactly what the readout counts - see the focus tally in
-// planpanel - so the bill on screen always describes the pieces on screen.
-function planLit(p){
-  const cur = ST.curStageId==null ? null : ST.curStageId;
-  const st  = p.st==null ? null : p.st;
-  if(cur!==null && st!==null && st!==cur) return false;
-  if(ST.hlBuilder===undefined) return true;     // General builder: every hand
-  // A hand in focus is that hand's work in the stage you are standing in, and
-  // nothing else - not their work in other stages, and not what they left on
-  // General, which belongs to no stage to begin with. This is exactly the set
-  // the readout bills, so the number on screen describes the pieces on screen.
-  if(cur!==null && st!==cur) return false;
-  return (p.bd==null?null:p.bd) === ST.hlBuilder;
-}
-
-// The fill channel. The outline says *who* (builder); this one says *when*: a
-// translucent wash plus a hatch whose angle belongs to that stage, so the two
-// dimensions read at the same time - and the hatch still separates stages in
-// greyscale or for anyone who can't split the colours apart.
-const HATCH_ANGLES=[Math.PI/4, -Math.PI/4, 0, Math.PI/2, Math.PI/8, -Math.PI/8, 3*Math.PI/8, -3*Math.PI/8];
-function drawPlanFill(g, p, col, idx){
-  const c=CATALOG[p.type]; if(!c) return;
-  const w=c.w*GRID, h=c.h*GRID, r=(p.rot||0)*Math.PI/180;
-  const n=HATCH_ANGLES.length, ang=HATCH_ANGLES[((idx%n)+n)%n];
-  g.save();
-  g.translate(p.x,p.y); g.rotate(r);
-  g.beginPath(); g.rect(-w/2,-h/2,w,h); g.clip();
-  g.globalAlpha=0.14; g.fillStyle=col; g.fillRect(-w/2,-h/2,w,h);
-  g.rotate(ang-r);                       // hatch angle is absolute, not per-piece
-  const R=Math.hypot(w,h)/2+GRID/4, step=GRID/3.2;
-  g.globalAlpha=0.42; g.strokeStyle=col; g.lineWidth=1.5; g.lineCap='butt';
-  g.beginPath();
-  for(let d=-R; d<=R; d+=step){ g.moveTo(-R,d); g.lineTo(R,d); }
-  g.stroke();
-  g.restore();
-}
-// the board's own fill pass (export builds its own from the job's fill channel)
-function planFill(g, p, bg){
-  if(!planLit(p)) return;                       // a ghosted piece carries no hatch
-  if(ST.curStageId==null) return;               // General: no stage in view, no wash
-  const s=stageOf(p); if(!s) return;
-  drawPlanFill(g, p, tagInk(s.color, bg), ST.stages.indexOf(s));
-}
-function planCount(kind, id){
-  return ST.pieces.filter(p=>{ const v = kind==='stage'?p.st:p.bd; return (v==null?null:v)===id; }).length;
-}
-// share codes and .json files carry their own tag tables: adopt them under fresh
-// local ids and hand back a mapper from a stored tag (index or old id) to the new id
-function adoptPlan(o){
-  const S=(o.stages||[]).map((s,i)=>({id:ST.stageUid++, name:s.name||('Stage '+(i+1)),
-    note:s.note||undefined, color:s.color||PLAN_COLORS[i%PLAN_COLORS.length], _old:s.id}));
-  const B=(o.builders||[]).map((b,i)=>({id:ST.builderUid++, name:b.name||('Builder '+(i+1)),
-    color:b.color||PLAN_COLORS[(i+2)%PLAN_COLORS.length], _old:b.id}));
-  if(S.length) ST.stages=S;
-  if(B.length) ST.builders=B;
-  ST.curStageId=undefined; ST.curBuilderId=undefined;
-  ensurePlan();
-  return (kind,p)=>{
-    const arr = kind==='stage'?ST.stages:ST.builders;
-    const idx = kind==='stage'?p._s:p._b, old = kind==='stage'?p.st:p.bd;
-    if(idx){ const e=arr[idx-1]; return e?e.id:null; }          // v3 code: 1-based index
-    if(old!=null){ const e=arr.find(x=>x._old===old); return e?e.id:null; }   // .json: old id
-    return null;
-  };
-}
-function cleanPlan(){ ST.stages.concat(ST.builders).forEach(e=>{ delete e._old; }); }
-
 /* ===== planpanel.js ===== */
 // ---------------- Build Plan panel (stage + builder tags) --------------------
 const PL_X='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -2220,7 +2224,11 @@ function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuilderId; 
 function setPlanActive(kind, id){
   if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
   else ST.curBuilderId=id;
-  render(); renderPlanPanel(); persist();
+  // Changing the view can ghost out work that was selected a moment ago, and a
+  // selection you cannot see is one you can still move by accident. It is
+  // dropped with the view that held it.
+  ST.selected=ST.selected.filter(pid=>{ const p=ST.pieces.find(x=>x.id===pid); return p && planLit(p); });
+  render(); renderPlanPanel(); persist(); updateStatus();
 }
 function addPlanEntry(kind){
   const arr=planEntries(kind), col=nextPlanColor();
@@ -3149,7 +3157,7 @@ cv.addEventListener('pointermove', e=>{
       const bx1=Math.max(ST.marquee.x0,ST.marquee.x1), by1=Math.max(ST.marquee.y0,ST.marquee.y1);
       const B=ST.marquee.base;
       ST.selected=B.pieces.slice();
-      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p)) return; const b=pieceAABB(p);
+      ST.pieces.forEach(p=>{ if(pieceLayer(p)>ST.curLayer || !layerEditable(p) || !planLit(p)) return; const b=pieceAABB(p);
         if(b.minx<=bx1&&b.maxx>=bx0&&b.miny<=by1&&b.maxy>=by0 && !isSel(p.id)) ST.selected.push(p.id); });
       ST.selTexts=B.texts.slice();
       ST.texts.forEach(t=>{ if(!layerEditable(t)) return; if(t.x>=bx0&&t.x<=bx1&&t.y>=by0&&t.y<=by1 && !ST.selTexts.includes(t.id)) ST.selTexts.push(t.id); });

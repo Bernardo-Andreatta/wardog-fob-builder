@@ -4,7 +4,7 @@ import { selItemObjs } from './groups.js';
 import { persist, snapshot } from './history.js';
 import { layerById } from './layers.js';
 import { narrow, renderLayerPanel, showPanel } from './layerspanel.js';
-import { builderById, ensurePlan, nextPlanColor, planCount, stageById } from './plan.js';
+import { builderById, ensurePlan, nextPlanColor, planCount, planLit, stageById } from './plan.js';
 import { render } from './render.js';
 import { selectedPieces } from './selection.js';
 import { ST } from './state.js';
@@ -18,7 +18,11 @@ export function planActive(kind){ return kind==='stage'?ST.curStageId:ST.curBuil
 export function setPlanActive(kind, id){
   if(kind==='stage'){ ST.curStageId=id; ST.hlBuilder=undefined; }   // the spotlight was about the old stage
   else ST.curBuilderId=id;
-  render(); renderPlanPanel(); persist();
+  // Changing the view can ghost out work that was selected a moment ago, and a
+  // selection you cannot see is one you can still move by accident. It is
+  // dropped with the view that held it.
+  ST.selected=ST.selected.filter(pid=>{ const p=ST.pieces.find(x=>x.id===pid); return p && planLit(p); });
+  render(); renderPlanPanel(); persist(); updateStatus();
 }
 export function addPlanEntry(kind){
   const arr=planEntries(kind), col=nextPlanColor();

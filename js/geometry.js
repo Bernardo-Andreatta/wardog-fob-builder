@@ -2,6 +2,7 @@ import { CATALOG } from './catalog.js';
 import { GRID } from './dom.js';
 import { drawLayer, layerOff, pieceLayer, swRank } from './floors.js';
 import { layerEditable, layerZ } from './layers.js';
+import { planLit } from './plan.js';
 import { ST } from './state.js';
 
 // ---------------- geometry
@@ -35,6 +36,10 @@ export function hitPiece(wx,wy){
   for(const {p} of order){
     if(pieceLayer(p)>ST.curLayer) continue;   // floors above the view are untouchable
     if(!layerEditable(p)) continue;        // hidden/locked layers aren't selectable
+    // The view is the reach: work ghosted out because it belongs to another
+    // stage or another hand is there for context, not to be picked up by
+    // accident while you work on what is lit.
+    if(!planLit(p)) continue;
     const off=layerOff(pieceLayer(p)), rad=-p.rot*Math.PI/180, dx=(wx-off.x)-p.x, dy=(wy-off.y)-p.y;
     const lx=dx*Math.cos(rad)-dy*Math.sin(rad), ly=dx*Math.sin(rad)+dy*Math.cos(rad);
     const c=CATALOG[p.type];
