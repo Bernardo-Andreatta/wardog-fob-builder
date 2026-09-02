@@ -1,5 +1,5 @@
 import { CATALOG, SYMBOLS } from './catalog.js';
-import { editNewOverlay, setTool } from './tools.js';
+import { editNewOverlay } from './tools.js';
 import { eyedropPiece, openCtx } from './ctxmenu.js';
 import { GRID, cv, isCoarse, stage } from './dom.js';
 import { pieceLayer, placeError } from './floors.js';
@@ -71,8 +71,9 @@ export function placeStampAt(w){
   const nn=inst.map(ip=>({id:ST.uid++, type:ip.type, x:ip.x, y:ip.y, rot:ip.rot, flip:!!ip.flip, l:ST.curLayer, ly:ST.curLayerId, g:gid, st:ST.curStageId, bd:ST.curBuilderId}));
   ST.pieces.push(...nn); clearSelection(); snapshot(); render(); updateStatus();
 }
-// the hold's payoff: drop the pan, arm Select, and either take the piece under
-// the finger or open a marquee from that spot
+// the hold's payoff: take the piece under the finger, or open a marquee from
+// that spot. The tool stays on Pan - holding is a way to reach a piece without
+// leaving the mode you navigate in, and the edit bar is what acts on it.
 const PAN_HOLD_MS=380, PAN_HOLD_SLOP=10;
 export function cancelPanHold(){
   if(ST.drag && ST.drag.hold){ clearTimeout(ST.drag.hold); ST.drag.hold=0; }
@@ -81,7 +82,6 @@ function holdToSelect(w){
   if(!ST.drag || ST.drag.mode!=='pan' || ST.pinch || tpts.size>1) return;
   ST.drag.hold=0;
   stage.classList.remove('c-panning');
-  ST.userPickedTool=true; setTool('select');
   clearSelection(); clearOverlaySel();
   const hit=hitPiece(w.x,w.y);
   if(hit){ ST.selected=[hit.id]; expandGroups(); ST.drag={mode:'placed'}; }

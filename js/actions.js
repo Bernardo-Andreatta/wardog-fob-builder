@@ -10,6 +10,34 @@ import { updateStatus } from './status.js';
 import { flashToast } from './topbar.js';
 
 // ---------------- actions
+// A move in progress records where every item started and rewrites x/y from
+// those origins on each frame. Turning or mirroring mid-drag therefore fought
+// the drag: the next frame put everything back where the drag had reckoned it
+// should be, undoing the new positions while keeping the new angle. And the
+// rotation itself worked off "ideal" positions captured before the drag, so it
+// swung the selection about a centre it no longer had.
+//
+// So a drag that is still live is re-based afterwards: it forgets the old
+// origins and starts again from where the pieces now are. startW backs off by
+// the touch lift, so the frame after a turn moves nothing on its own.
+function rebaseDrag(){
+  const d=ST.drag; if(!d || d.mode!=='gmove') return;
+  d.startW={x:ST.hover.x, y:ST.hover.y - (d.lifted ? d.lift : 0)};
+  d.ps.forEach(it=>{ it.ox=it.p.x; it.oy=it.p.y; });
+  d.ims.forEach(it=>{ it.ox=it.im.x; it.oy=it.im.y; });
+  d.ts.forEach(it=>{ it.ox=it.t.x; it.oy=it.t.y; });
+  d.ss.forEach(it=>{ it.pts=it.s.pts.map(pt=>({x:pt.x,y:pt.y})); });
+  if(d.primary){ d.pox=d.primary.x; d.poy=d.primary.y; }
+  if(d.anchor && d.ims[0]) d.anchor={ox:d.ims[0].ox, oy:d.ims[0].oy};
+}
+// the ideals belong to wherever the selection sat before the drag started, so a
+// turn mid-drag has to take the positions the drag has put it in instead
+function dropIdealsIfDragging(items, ts, ss){
+  if(!ST.drag || ST.drag.mode!=='gmove') return;
+  items.forEach(p=>{ delete p._ix; delete p._iy; });
+  ts.forEach(t=>{ delete t._ix; delete t._iy; });
+  ss.forEach(s=>{ delete s._ipts; });
+}
 // rigid rotation of the whole selection by +/-90 around its bounding-box center,
 // so the arrangement keeps its shape (connections preserved) at a new angle
 // rotation increment: 45deg while snap is on, finer 5deg while snap is off
@@ -29,6 +57,7 @@ export function rotateGroup(step){
   if(!items.length && !ts.length && !ss.length) return;
   // snap on: rotate to the nearest 45deg cardinal (fixes a freely-rotated object
   // that would otherwise gain 45deg on top of its off-grid angle)
+  dropIdealsIfDragging(items, ts, ss);
   const ref = items[0] || ts[0];
   if(ST.snapOn && ref){
     const r0=ref.rot||0, dir=step<0?-1:1;
@@ -78,6 +107,7 @@ export function rotateGroup(step){
       ss.forEach(s2=>s2.pts.forEach(pt=>{ pt.x+=dx; pt.y+=dy; }));
     }
   }
+  rebaseDrag();
   snapshot(); render(); updateStatus();
 }
 // mirror the whole selection across its bounding-box vertical axis. scale(-1,1)
@@ -95,6 +125,7 @@ export function mirrorGroup(){
   // labels mirror their spot and angle but keep readable glyphs
   ts.forEach(t=>{ t.x=2*cx-t.x; t.rot=((-(t.rot||0))%360+360)%360; delete t._ix; delete t._iy; });
   ss.forEach(s=>{ s.pts.forEach(pt=>{ pt.x=2*cx-pt.x; }); delete s._ipts; });
+  rebaseDrag();                    // mirroring mid-drag fought it the same way
   snapshot(); render(); updateStatus();
 }
 // after removing supports, upper-floor pieces with nothing fully under them

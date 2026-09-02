@@ -62,7 +62,11 @@ export function init(){
       if(saved.stageUid) ST.stageUid=saved.stageUid;
       if(saved.builderUid) ST.builderUid=saved.builderUid;
       if('curStageId' in saved) ST.curStageId=saved.curStageId;
-      if('curBuilderId' in saved) ST.curBuilderId=saved.curBuilderId;
+      // The crew is not restored: a session opens on General, with every hand in
+      // view. Which builder you were last stamping with is a fact about the
+      // sitting you just closed, and reopening onto it silently tags the next
+      // piece with a name nobody chose this time round.
+      ST.curBuilderId=null; ST.hlBuilder=undefined;
       ST.uid=saved.uid||Math.max(1,...ST.pieces.map(p=>p.id||0),...ST.images.map(i=>i.id||0),...ST.texts.map(t=>t.id||0),0)+1; }
   }catch(e){}
   migrateLayers(); ensurePlan(); loadExpCfg();
