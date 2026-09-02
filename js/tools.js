@@ -22,7 +22,7 @@ export function setTool(t){
   if(CATALOG[t]||t==='draw'||t==='erase'||t==='stamp'||t==='text'||t==='eyedrop'||SYMBOLS[t]) stage.classList.add('c-cross');
   // touch: start the ghost centered on screen so there is always a visible
   // ghost to drag-aim and tap-confirm
-  if(isCoarse() && (CATALOG[t] || (t==='stamp'&&ST.activeStamp)))
+  if(isCoarse() && (CATALOG[t] || (t==='stamp'&&ST.activeStamp) || SYMBOLS[t] || t==='text'))
     ST.hover=screenToWorld(stage.clientWidth/2, stage.clientHeight/2);
   // mobile: no Esc / right-click, so surface a "Done" chip to leave the tool
   updateToolChip();

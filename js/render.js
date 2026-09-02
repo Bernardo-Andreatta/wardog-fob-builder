@@ -1,6 +1,6 @@
-import { CATALOG } from './catalog.js';
+import { CATALOG, SYMBOLS } from './catalog.js';
 import { curInk } from './core.js';
-import { GRID, ctx, cv, stage } from './dom.js';
+import { GRID, SNAP, ctx, cv, stage } from './dom.js';
 import { drawPiece } from './drawers.js';
 import { LAYER_OFF, drawLayer, fobArea, fobList, layerColor, layerOff, lowCounts, lowStyle, maskPiece, masksBelow, mixCol, pieceLayer, placeError, shortwallCells, swRank } from './floors.js';
 import { screenToWorld, snapCenter } from './geometry.js';
@@ -90,6 +90,35 @@ export function render(){
     ctx.save(); ctx.translate(goff.x,goff.y);
     drawPiece(ctx,{type:ST.tool,x:c.x,y:c.y,rot:ST.placeRot,flip:ST.placeFlip}, ok?colAcc:colBad, 0.5);
     ctx.restore();
+  }
+  // A shape and a label land the moment you press, so without a ghost you find
+  // out where they went by putting one there. Same preview as a structure gets,
+  // in the ink they will actually be drawn with, snapped the way they will snap.
+  else if(SYMBOLS[ST.tool]){
+    const cx=ST.snapOn?Math.round(ST.hover.x/SNAP)*SNAP:ST.hover.x;
+    const cy=ST.snapOn?Math.round(ST.hover.y/SNAP)*SNAP:ST.hover.y;
+    const pts=SYMBOLS[ST.tool](cx,cy,GRID);
+    ctx.save(); ctx.translate(goff.x,goff.y);
+    ctx.globalAlpha=0.5; ctx.strokeStyle=ST.drawColor; ctx.lineWidth=ST.drawWidth;
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y);
+    ctx.stroke(); ctx.restore();
+  }
+  else if(ST.tool==='text'){
+    // a label has no shape until it has words, so the ghost is the caret's own
+    // box: where the text will start and how tall it will be
+    const h=GRID*0.6, x=ST.hover.x, y=ST.hover.y;
+    ctx.save(); ctx.translate(goff.x,goff.y);
+    ctx.globalAlpha=0.55; ctx.strokeStyle=colAcc; ctx.lineWidth=1.5/ST.view.scale;
+    ctx.beginPath();
+    ctx.moveTo(x, y-h/2); ctx.lineTo(x, y+h/2);                 // the caret
+    ctx.moveTo(x-h*0.22, y-h/2); ctx.lineTo(x+h*0.22, y-h/2);   // its serifs
+    ctx.moveTo(x-h*0.22, y+h/2); ctx.lineTo(x+h*0.22, y+h/2);
+    ctx.stroke();
+    ctx.globalAlpha=0.28; ctx.setLineDash([5/ST.view.scale,4/ST.view.scale]);
+    ctx.strokeRect(x, y-h/2, GRID*2.2, h);                      // the run it will fill
+    ctx.setLineDash([]); ctx.restore();
   }
 }
 // draw one layer's items (images, drawings, floor-sorted pieces, labels) to g

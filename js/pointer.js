@@ -141,11 +141,11 @@ cv.addEventListener('pointerdown', e=>{
     placePieceAt(w); ST.drag={mode:'placed'}; return;
   }
   if(SYMBOLS[ST.tool]){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'sym', w, ss:sc, moved:false}; return; }
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'sym', w, ss:sc, moved:false}; ST.hover=w; render(); return; }
     placeSymbolAt(w); ST.drag={mode:'placed'}; return;
   }
   if(ST.tool==='text'){
-    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'text', w, ss:sc, moved:false}; return; }
+    if(e.pointerType==='touch'){ ST.drag={mode:'tapplace', kind:'text', w, ss:sc, moved:false}; ST.hover=w; render(); return; }
     clearSelection(); addText(w); ST.drag={mode:'placed'}; return;
   }
   // --- select tool ---
@@ -344,7 +344,8 @@ cv.addEventListener('pointermove', e=>{
       if(ST.drag.moved){ ST.hover={x:w.x, y:w.y-ghostDrop()-40/ST.view.scale}; render(); }
       else ST.hover=w;                       // still a tap: the ghost is the finger
     }
-  } else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)) render();  // ghost follows cursor
+  } else if(CATALOG[ST.tool] || (ST.tool==='stamp'&&ST.activeStamp)
+            || SYMBOLS[ST.tool] || ST.tool==='text') render();   // ghost follows cursor
   updateCursor(w);
 });
 cv.addEventListener('pointerup', ()=>{
