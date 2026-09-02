@@ -28,15 +28,19 @@ export function fabRot(d){
   if(hasRotSel()) rotateGroup(d);
   else if(inGhost()){ ST.placeRot=((ST.placeRot+d)%360+360)%360; render(); }
 }
-// Turning a piece while it is being dragged means a second finger arriving in
+// Turning something while it is being dragged means a second finger arriving in
 // the middle of someone else's gesture, and a click needs a clean down/up pair
 // on the button to fire at all - which that finger does not reliably produce.
-// So mid-drag these act on the press itself, and swallow the click that may or
-// may not follow it.
+// So while any drag is under way these act on the press itself, and swallow the
+// click that may or may not follow it.
+//
+// Any drag, not just a move: aiming a new piece or a duplicate holds the ghost
+// under the finger in its own drag mode, and turning it there is exactly when
+// you want to - before it lands, to see whether it fits.
 function fabPress(id, fn){
   const b=$(id); let fired=false;
   b.addEventListener('pointerdown', e=>{
-    if(!ST.drag || ST.drag.mode!=='gmove') return;
+    if(!ST.drag) return;
     e.preventDefault(); e.stopPropagation(); fired=true; fn();
   });
   b.onclick=()=>{ if(fired){ fired=false; return; } fn(); };
