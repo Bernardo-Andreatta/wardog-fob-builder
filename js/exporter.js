@@ -702,8 +702,13 @@ $('exp-zoom-fit').onclick=()=>fitPreview();
   const pair=()=>{ const a=[...pts.values()];
     return {d:Math.max(1,Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y)),
             mx:(a[0].x+a[1].x)/2, my:(a[0].y+a[1].y)/2}; };
+  // touch-action keeps the browser out of it; this keeps anything that slips
+  // past from scrolling the dialog under the finger
+  const blockTouch=e=>{ if(pts.size) e.preventDefault(); };
+  box.addEventListener('touchmove', blockTouch, {passive:false});
   box.addEventListener('pointerdown', e=>{
     if(!prevCanvas()) return;
+    if(e.pointerType==='touch') e.preventDefault();
     pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
     try{ box.setPointerCapture(e.pointerId); }catch(_){}
     if(pts.size===2){ drag=null; const p=pair(); grip={...p, z:pz.z, x:pz.x, y:pz.y}; }

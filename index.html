@@ -751,9 +751,12 @@
     border-radius:6px; background:var(--panel-2); color:var(--muted); font-size:12px;
     font-family:var(--font-mono);}
   .exp-zoom button:hover{border-color:var(--accent); color:var(--accent);}
+  /* the preview owns its gestures: without this the browser also read a drag as
+     the dialog scrolling and a pinch as zooming the page, so the sheet and the
+     screen moved together */
   .exp-prev-box{position:relative; flex:1; min-height:min(52vh,420px); background:var(--canvas-bg);
     border:1px solid var(--line); border-radius:8px; overflow:hidden; cursor:grab;
-    display:flex; align-items:center; justify-content:center;}
+    display:flex; align-items:center; justify-content:center; touch-action:none;}
   .exp-prev-box.panning{cursor:grabbing;}
   .exp-prev-box canvas{position:absolute; left:50%; top:50%; transform-origin:center center;
     image-rendering:auto; display:block;}
@@ -770,7 +773,8 @@
     /* Stacked, the two halves have to push the column open rather than sit in
        rows the grid squeezed shut: min-height:0 let the sheet list collapse to
        nothing and spill over the preview instead of scrolling with it. */
-    .exp-body{grid-template-columns:1fr; grid-auto-rows:min-content; overflow-y:auto;}
+    .exp-body{grid-template-columns:1fr; grid-auto-rows:min-content; overflow-y:auto;
+      overscroll-behavior:contain;}   /* scrolling out of the dialog stops there */
     .exp-side{overflow:visible; min-height:min-content;}
     .exp-prev-box{min-height:300px;}
   }
