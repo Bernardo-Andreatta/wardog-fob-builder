@@ -3627,7 +3627,7 @@ function exportCandidates(){
       ST.builders.forEach(b=>{ const j=ST.builders.indexOf(b);
         if(!seen.some(p=>p.st===s.id && p.bd===b.id)) return;
         jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair', stageIdx:i,
-          title:s.name+' · '+b.name,
+          title:'Stage '+(i+1)+': '+s.name+' · '+b.name,
           inc:p=>p.st===s.id && p.bd===b.id,
           note:(s.note||'').trim(), col:C('pair'), fill:F('pair'),
           badge:{label:b.name, color:b.color}});
@@ -3640,7 +3640,10 @@ function exportCandidates(){
 }
 // A sheet the user has never touched follows its group's default, so adding a
 // stage adds its sheet without anyone going back to tick it.
-const GROUP_ON={whole:true, stagesAll:true, stage:true, buildersAll:true, builder:true, pair:false, key:false};
+// The hand-off pages are the point of tagging work in the first place - one
+// page saying what one builder puts down in one stage - so they ship by
+// default. Untick the ones you do not need.
+const GROUP_ON={whole:true, stagesAll:true, stage:true, buildersAll:true, builder:true, pair:true, key:false};
 function sheetOn(j){
   const pick=ST.expCfg.sheets||{};
   return (j.file in pick) ? !!pick[j.file] : !!GROUP_ON[j.group];
