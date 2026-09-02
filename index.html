@@ -384,6 +384,10 @@
        the bar's own actions are what you want. */
     #fab-kit, #fab-hand{display:none;}
     .rot-fab.ghost #fab-kit, .rot-fab.ghost #fab-hand{display:inline-flex;}
+    /* ink has no rotation or mirror to offer, so its bar is the kit and the
+       hand and nothing else */
+    .rot-fab.annot > .btn{display:none;}
+    .rot-fab.annot #fab-kit, .rot-fab.annot #fab-hand{display:inline-flex;}
     /* Held with nothing armed: the bar keeps only the way back to a structure,
        because there is no piece for the rest of it to act on. */
     .rot-fab.hold > .btn{display:none;}
@@ -410,6 +414,8 @@
       font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.04em;
       line-height:1.15; text-align:center; cursor:pointer;}
     .kit-tile img{width:34px; height:34px; object-fit:contain;}
+    .kit-mark svg{width:26px; height:26px; fill:none; stroke:currentColor;
+      stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;}
     .kit-tile.on{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
     .kit-cost{font-family:var(--font-mono); font-size:9px; opacity:.7; letter-spacing:0;}
     /* Undo and redo belong on the leading edge, under the plan bar - and under

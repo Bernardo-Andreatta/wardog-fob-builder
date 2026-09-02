@@ -1,4 +1,4 @@
-import { CATALOG, DRAW_COLORS, LOGI_ORDER, PIECE_ORDER } from './catalog.js';
+import { CATALOG, DRAW_COLORS, LOGI_ORDER, PIECE_ORDER, SYMBOLS } from './catalog.js';
 import { $ } from './dom.js';
 import { GRIP_SVG, TOOL_ICONS } from './svg.js';
 import { buildRecent, makeIcon } from './icons.js';
@@ -177,13 +177,40 @@ function kitSection(body, label, order){
   });
   body.appendChild(g);
 }
+// the annotate kit: no icons to draw at scale, so these are the rail's own
+// marks at thumb size
+const ANNOT_KIT=[['draw','Draw'],['erase','Erase'],['text','Text'],
+  ['sym-rect','Square'],['sym-tri','Triangle'],['sym-circle','Circle']];
+function kitTools(body, label, list){
+  const h=document.createElement('div'); h.className='kit-head'; h.textContent=label;
+  body.appendChild(h);
+  const g=document.createElement('div'); g.className='kit-grid';
+  list.forEach(([t,name])=>{
+    const b=document.createElement('button');
+    b.className='kit-tile kit-mark'+(ST.tool===t?' on':''); b.title=name;
+    b.innerHTML=(KIT_MARKS[t]||TOOL_ICONS[t]||'')+'<span>'+name+'</span>';
+    b.onclick=()=>{ ST.userPickedTool=true; setTool(t); closeKitSheet(); };
+    g.appendChild(b);
+  });
+  body.appendChild(g);
+}
+const KIT_MARKS={
+  'sym-rect':'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/></svg>',
+  'sym-tri':'<svg viewBox="0 0 24 24"><path d="M12 4l8 16H4z"/></svg>',
+  'sym-circle':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg>',
+};
 export function openKitSheet(){
   const el=$('kit-sheet'); if(!el) return;
   el.hidden=false; el.innerHTML='';
   const body=document.createElement('div'); body.className='kit-body';
   el.appendChild(body);
-  kitSection(body, 'Structures', PIECE_ORDER);
-  kitSection(body, 'Logistics', LOGI_ORDER);
+  // whichever kind of work is in hand is the kit you get
+  const annot = ST.tool==='draw'||ST.tool==='erase'||ST.tool==='text'||!!SYMBOLS[ST.tool];
+  if(annot){ kitTools(body, 'Annotate', ANNOT_KIT); }
+  else{
+    kitSection(body, 'Structures', PIECE_ORDER);
+    kitSection(body, 'Logistics', LOGI_ORDER);
+  }
   const done=document.createElement('button'); done.className='sheet-done';
   done.textContent='Close'; done.onclick=closeKitSheet;
   el.appendChild(done);
