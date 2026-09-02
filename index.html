@@ -944,8 +944,19 @@
        nothing and spill over the preview instead of scrolling with it. */
     .exp-body{grid-template-columns:1fr; grid-auto-rows:min-content; overflow-y:auto;
       overscroll-behavior:contain;}   /* scrolling out of the dialog stops there */
-    .exp-side{overflow:visible; min-height:min-content;}
-    .exp-prev-box{min-height:300px;}
+    /* The sheet is what you came to look at, so it opens the dialog and the
+       choices sit under it - stacked the other way you scrolled past a column
+       of settings to find out what they had done. Within the choices the list
+       of sheets leads, since picking one is what changes the preview; the
+       build name is a detail you set once and it goes last. */
+    .exp-main{order:-1;}
+    .exp-side{overflow:visible; min-height:min-content;
+      display:flex; flex-direction:column;}
+    .exp-sheets{order:1;}
+    .exp-side h4{order:0; margin-top:2px;}
+    .exp-more{order:2;}
+    .exp-name-row{order:3;}
+    .exp-prev-box{min-height:250px;}
   }
   /* On a narrow screen the footer and the preview bar have more in them than
      fits on one line. Left as nowrap rows, the tally was squeezed into a column
