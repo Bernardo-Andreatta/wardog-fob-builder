@@ -594,6 +594,12 @@
     font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.1em;
     font-size:9px; color:var(--accent); font-weight:600; padding:0 2px 6px;}
   .ph-sublab{flex:none;}
+  /* which General is which: quiet labels, so they name the row without
+     competing with the thing they are naming */
+  .ph-lab{font-family:var(--font-disp); text-transform:uppercase; letter-spacing:.14em;
+    font-size:8.5px; font-weight:600; color:var(--muted); opacity:.75; flex:none;}
+  .ph-crewlab{padding:4px 2px 3px; border-top:1px solid var(--line); margin-top:4px;}
+  .ph-chiplab{display:none;}
   .ph-row{display:flex; align-items:center; gap:8px; width:100%; padding:4px 5px;
     border:1px solid transparent; border-radius:6px; background:none; cursor:pointer;
     color:var(--muted); font-size:11.5px; text-align:left;}
@@ -661,6 +667,11 @@
     /* the stage's own name reads as the heading it is */
     .ph-stage .ph-name{color:var(--ink);}
     .ph-sub{display:none;}                     /* the count rides in the bar */
+    /* the crew's heading belongs in the sheet the crew is in, and the phone has
+       no room for it on the bar - the chip gets a word instead */
+    .ph-crewlab{display:none;}
+    .ph-chiplab{display:inline; align-self:center;}
+    .ph-lab{font-size:8px; letter-spacing:.1em;}
     /* basis 0 so the chip takes what the tally leaves rather than demanding a
        width of its own: asking for 118px meant a long bill ("6 pieces · 183
        supplies") could not fit beside it and dropped to a third line, so the

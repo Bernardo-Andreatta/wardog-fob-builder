@@ -189,6 +189,10 @@ export function renderPlanHud(){
       const b=document.createElement('button'); b.className='ph-btn '+cls;
       b.innerHTML=svg; b.title=title; b.onclick=fn; return b;
     };
+    // "General" is a real answer for both a stage and a builder, so with
+    // neither chosen the card said it twice with nothing to tell them apart
+    const slab=document.createElement('span'); slab.className='ph-lab'; slab.textContent='Stage';
+    head.appendChild(slab);
     head.appendChild(mkBtn('ph-prev', PH_PREV, 'Previous stage', ()=>stepStage(-1)));
     const dot=document.createElement('span'); dot.className='ph-dot'+(S?'':' plain');
     if(S) dot.style.background=S.color;
@@ -207,6 +211,9 @@ export function renderPlanHud(){
     chip.title='Choose the builder in view';
     chip.innerHTML='<span class="ph-dot plain"></span><span class="ph-name"></span>'
       +'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+    const blab=document.createElement('span'); blab.className='ph-lab ph-chiplab';
+    blab.textContent='Builder';
+    el.appendChild(blab);
     chip.onclick=ev=>{ ev.stopPropagation(); el.classList.toggle('sheet-open'); };
     el.appendChild(chip);
     // It shares the chip's line because it answers for the chip: pick a builder
@@ -220,6 +227,9 @@ export function renderPlanHud(){
     lab.textContent = S ? 'In this stage' : 'On the board';
     const tot=document.createElement('span'); tot.className='ph-n ph-total';
     sub.appendChild(lab); sub.appendChild(tot); el.appendChild(sub);
+    const clab=document.createElement('div'); clab.className='ph-lab ph-crewlab';
+    clab.textContent='Builders';
+    el.appendChild(clab);
     const list=document.createElement('div'); list.className='ph-list';
     el.appendChild(list);
     rows.forEach(r=>{
