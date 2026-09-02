@@ -63,9 +63,14 @@ export async function buildPdf(sheets, name, theme){
   };
   const imgs=[];
   for(const s of sheets) imgs.push(await sheetImage(s.canvas));
+  // link annotations are written after the pages they point at
+  const pendingAnnots=[];
 
-  // 1 catalog, 2 pages, 3 font, 4/5 the contents page, then three per sheet
-  const first=6, total=5+sheets.length*3;
+  // 1 catalog, 2 pages, 3 font, 4/5 the contents page, then three per sheet,
+  // then one link annotation per contents row. The row count can fall short of
+  // the sheet count when the list overruns the page, so the table's size is
+  // counted from what actually got written rather than predicted here.
+  const first=6, annotFirst=6+sheets.length*3;
   const pageIds=sheets.map((_,i)=>first+i*3);
   const idxId=4, idxContent=5;
   putStr('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
@@ -94,9 +99,17 @@ export async function buildPdf(sheets, name, theme){
         +' Td '+pdfStr(label)+' Tj ET');
       rows.push('BT /F1 '+fs.toFixed(1)+' Tf '+type+' rg '+(W-MARGIN-30).toFixed(2)+' '+y.toFixed(2)
         +' Td '+pdfStr(num)+' Tj ET');
-      annots.push('<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect ['
+      // Its own object, not a dictionary inline in /Annots. The spec allows
+      // either, but readers that build a link map want object identity and a
+      // phone's viewer is the strictest of them - inline, the rows drew fine
+      // and did nothing when tapped. /A with a GoTo action for the same reason:
+      // more widely honoured than a bare /Dest.
+      const aid=annotFirst+annots.length;
+      annots.push(aid);
+      pendingAnnots.push([aid,
+        '<< /Type /Annot /Subtype /Link /F 4 /Border [0 0 0] /Rect ['
         +(MARGIN+4).toFixed(2)+' '+(y-3).toFixed(2)+' '+(W-MARGIN).toFixed(2)+' '+(y+fs).toFixed(2)
-        +'] /Dest ['+(first+i*3)+' 0 R /Fit] >>');
+        +'] /A << /S /GoTo /D ['+(first+i*3)+' 0 R /Fit] >> >>']);
     });
     const head='BT /F1 15 Tf '+type+' rg '+MARGIN.toFixed(2)+' '+(H-MARGIN-24).toFixed(2)
       +' Td '+pdfStr(name ? name+' - contents' : 'Contents')+' Tj ET';
@@ -108,7 +121,7 @@ export async function buildPdf(sheets, name, theme){
       +rows.join('\n')+'\n');
     obj(idxId, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W.toFixed(2)+' '+H.toFixed(2)+']'
       +' /Resources << /Font << /F1 3 0 R >> >>'
-      +' /Annots ['+annots.join(' ')+']'
+      +' /Annots ['+annots.map(id=>id+' 0 R').join(' ')+']'
       +' /Contents '+idxContent+' 0 R >>');
     obj(idxContent, '<< /Length '+body.length+' >>', body);
   }
@@ -138,7 +151,9 @@ export async function buildPdf(sheets, name, theme){
       +pdfStr(foot)+' Tj ET\n');
     obj(cid, '<< /Length '+content.length+' >>', content);
   });
+  pendingAnnots.forEach(([id, body])=>obj(id, body));
 
+  const total=offsets.length-1;          // highest object id actually emitted
   const xref=len;
   let tbl='xref\n0 '+(total+1)+'\n0000000000 65535 f \n';
   for(let n=1;n<=total;n++) tbl+=String(offsets[n]||0).padStart(10,'0')+' 00000 n \n';
