@@ -22,7 +22,19 @@ export function updateStatus(){
   // whole screen is the thing you are aiming at (see .focus-edit)
   const app=document.querySelector('.app');
   const building = !!anySelected() || !!ghost || annot || ST.buildHold;
-  if(app) app.classList.toggle('focus-edit', isCoarse() && building);
+  const focus = isCoarse() && building;
+  if(app){
+    // Leaving the fullscreen board puts the rail back under the finger that
+    // just left it - the tap that dropped the selection would land on whatever
+    // structure tile now occupies that pixel. The rail ignores the pointer
+    // until the finger that caused the change is long gone.
+    if(app.classList.contains('focus-edit') && !focus){
+      app.classList.add('rail-deaf');
+      clearTimeout(ST.railDeafT);
+      ST.railDeafT=setTimeout(()=>app.classList.remove('rail-deaf'), 400);
+    }
+    app.classList.toggle('focus-edit', focus);
+  }
   // the structure sheet belongs to placement; leaving it takes the sheet too.
   // Closed here rather than through rail.js, which imports tools.js and would
   // make the pair a cycle.

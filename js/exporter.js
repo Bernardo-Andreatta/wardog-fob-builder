@@ -18,9 +18,27 @@ import { flashToast, saveFile } from './topbar.js';
 // big it is in blocks, and a legend for the stages / builders in front of them.
 // Which sheets to make is a per-sheet choice now (see sheetOn); these are the
 // options that change how every sheet is drawn.
-export const EXP_FIELDS=[['stagesCum','exp-stages-cum'],['fillBuilder','exp-fill-builder'],
+export const EXP_FIELDS=[
   ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
   ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['zip','exp-zip']];
+// The two colour channels are not on/off, they are "on where it says anything".
+// A stage wash on a single-stage sheet colours every piece the same, and so
+// does a builder outline on a single builder's sheet - the ink spends itself
+// saying what the badge already said. So each channel has a default that
+// depends on what the sheet covers, and a picker to overrule it.
+export const EXP_PICKS=[['stageFill','exp-stage-fill'],['builderCol','exp-builder-col']];
+// Sheets that hold more than one of the thing, and so have something to say by
+// colouring it. A single hand's sheet spans every stage they worked in, so the
+// stage wash belongs there - it is how they see which stage their own work is
+// for - while the builder colour does not, since it would all be one colour.
+// Whole build is the plain reference sheet and takes neither.
+const MANY_STAGES=g=>g==='stagesAll'||g==='buildersAll'||g==='builder';
+const MANY_HANDS =g=>g==='stagesAll'||g==='stage'||g==='buildersAll';
+function channel(mode, manyHere, value){
+  if(mode==='on') return value;
+  if(mode==='off') return null;
+  return manyHere ? value : null;              // auto
+}
 export function loadExpCfg(){
   try{ const o=JSON.parse(localStorage.getItem('wardog-fob-export')||'null');
     if(o&&typeof o==='object'){
@@ -32,6 +50,7 @@ export function loadExpCfg(){
 export function saveExpCfg(){ try{ localStorage.setItem('wardog-fob-export', JSON.stringify(ST.expCfg)); }catch(e){} }
 export function expToForm(){
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) el.checked=!!ST.expCfg[k]; });
+  EXP_PICKS.forEach(([k,id])=>{ const el=$(id); if(el) el.value=ST.expCfg[k]||'auto'; });
   $('exp-name').value=ST.expCfg.name||'';
   $('exp-ppb').value=String(ST.expCfg.ppb);
   if($('exp-format')) $('exp-format').value = ST.expCfg.format||'png';
@@ -40,6 +59,7 @@ export function expToForm(){
 export function expFromForm(){
   ST.expCfg.format = $('exp-format') ? $('exp-format').value : 'png';
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) ST.expCfg[k]=el.checked; });
+  EXP_PICKS.forEach(([k,id])=>{ const el=$(id); if(el) ST.expCfg[k]=el.value; });
   ST.expCfg.name=$('exp-name').value.slice(0,48);
   ST.expCfg.ppb=parseInt($('exp-ppb').value,10)||80;
   saveExpCfg(); updateExpCount();
@@ -62,29 +82,34 @@ export function usedPlan(kind){
 export function exportCandidates(){
   const jobs=[], all=()=>true;
   const uS=usedPlan('stage'), uB=usedPlan('builder');
-  // outline channel = builder, fill channel = stage; on a stage sheet the builder
-  // outline is the optional second read
-  const so = ST.expCfg.fillBuilder && uB.length ? 'builder' : null;
-  jobs.push({file:'whole-build', group:'whole', title:'Whole build', inc:all, col:null});
-  if(uS.length) jobs.push({file:'all-stages', group:'stagesAll', title:'All stages', inc:all, col:so, fill:'stage'});
+  const fillMode=ST.expCfg.stageFill||'auto', colMode=ST.expCfg.builderCol||'auto';
+  const F=g=>uS.length ? channel(fillMode, MANY_STAGES(g), 'stage') : null;
+  const C=g=>uB.length ? channel(colMode,  MANY_HANDS(g),  'builder') : null;
+  jobs.push({file:'whole-build', group:'whole', title:'Whole build', inc:all,
+    col:C('whole'), fill:F('whole')});
+  if(uS.length) jobs.push({file:'all-stages', group:'stagesAll', title:'All stages', inc:all,
+    col:C('stagesAll'), fill:F('stagesAll')});
   uS.forEach(s=>{
-    const i=ST.stages.indexOf(s), cum=ST.expCfg.stagesCum;
-    // Only ever one stage is drawn solid: the one the sheet is for. A cumulative
-    // sheet is a build-up, so everything already standing from the earlier
-    // stages sits behind it as a ghost - which is what makes the new work on
-    // this sheet readable at a glance. (Drawing them solid too, as it used to,
-    // made stage 1 and stage 2 indistinguishable on the stage 2 sheet.)
+    const i=ST.stages.indexOf(s);
+    // Only ever one stage is drawn solid: the one the sheet is for. Everything
+    // already standing from the earlier stages sits behind it as a ghost, which
+    // is what makes the new work on this sheet readable at a glance.
     jobs.push({file:jobFile('stage',i,s.name), group:'stage', stageIdx:i,
-      title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
+      title:'Stage '+(i+1)+': '+s.name,
       inc:p=>p.st===s.id,
-      rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
+      rest: p=>{ const k=stageIndex(p); return k>=0 && k<i; },
       note:(s.note||'').trim(),
-      col:so, fill:'stage', badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
+      col:C('stage'), fill:F('stage'), badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
   });
-  if(uB.length) jobs.push({file:'all-builders', group:'buildersAll', title:'All builders', inc:all, col:'builder'});
+  if(uB.length) jobs.push({file:'all-builders', group:'buildersAll', title:'All builders', inc:all,
+    col:C('buildersAll'), fill:F('buildersAll')});
+  // A single hand's sheet still shows which stage each piece belongs to - that
+  // is the thing they need to know about their own work - so the stage outline
+  // stays even where the builder colour drops out.
   uB.forEach(b=>
     jobs.push({file:jobFile('builder',ST.builders.indexOf(b),b.name), group:'builder', title:b.name,
-      inc:p=>p.bd===b.id, col:'builder', badge:{label:b.name, color:b.color}}));
+      inc:p=>p.bd===b.id, col:C('builder'), fill:F('builder'),
+      badge:{label:b.name, color:b.color}}));
   // One page per hand-off: "Stage 1 - Builder 2" is what a single builder is
   // asked to put down in a single stage, so only pairs with work get a sheet.
   {
@@ -95,7 +120,7 @@ export function exportCandidates(){
         jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair', stageIdx:i,
           title:s.name+' · '+b.name,
           inc:p=>p.st===s.id && p.bd===b.id,
-          note:(s.note||'').trim(), col:'builder', fill:'stage',
+          note:(s.note||'').trim(), col:C('pair'), fill:F('pair'),
           badge:{label:b.name, color:b.color}});
       });
     });

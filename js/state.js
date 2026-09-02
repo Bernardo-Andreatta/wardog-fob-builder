@@ -57,7 +57,7 @@ export const ST = {
   clearTimer: null,
   toastTimer: null,
   dragLayerId: null,
-  expCfg: {name:'', sheets:{}, stagesCum:false, fillBuilder:true, ghost:true, grid:true,
+  expCfg: {name:'', sheets:{}, stageFill:'auto', builderCol:'auto', ghost:true, grid:true,
            notes:true, header:true, ruler:true, legend:true, zip:true, ppb:80, format:'png'},
   _meas: null,
   expLegRows: 0,                            // legend depth reserved for the whole batch (see runExport)

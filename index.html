@@ -477,6 +477,8 @@
     .app.focus-edit #panel-toggle,
     .app.focus-edit .side-panel,
     .app.focus-edit .board-hud{display:none;}
+    /* just back from fullscreen: the rail is under the finger that left it */
+    .app.rail-deaf .rail{pointer-events:none;}
     /* landscape keeps the rail as a column, so its track has to close too */
     .app.focus-edit{grid-template-columns:0 1fr;}
   }
@@ -862,6 +864,9 @@
     font-size:10.5px; font-weight:600;}
   .exp-tab:hover{color:var(--ink);}
   .exp-tab.on{color:var(--accent); border-bottom-color:var(--accent);}
+  .exp-pick{display:flex; align-items:center; gap:8px; padding:3px 0; font-size:12px;}
+  .exp-pick label{flex:1; color:var(--muted);}
+  .exp-pick select{flex:none; max-width:62%;}
   .exp-filepane{display:flex; flex-direction:column; gap:12px; padding:4px 0 8px;}
   /* a display of their own beats the hidden attribute, so the tab that is not
      showing has to be told again - both panes were on screen at once */
@@ -1210,11 +1215,21 @@
             <label class="exp-opt" title="Build name, what the sheet shows, and the stage / builder badge"><input type="checkbox" id="exp-header"><span>Title bar</span></label>
             <label class="exp-opt" title="Dimension rulers ticked every block, numbered every 4"><input type="checkbox" id="exp-ruler"><span>Block ruler</span></label>
             <label class="exp-opt" title="Swatches and piece counts for the stages / builders on this sheet"><input type="checkbox" id="exp-legend"><span>Legend</span></label>
-            <label class="exp-opt" title="Stage sheets also draw each piece's outline in its builder's colour"><input type="checkbox" id="exp-fill-builder"><span>Mark builders with an outline colour</span></label>
+            <div class="exp-pick"><label for="exp-stage-fill">Stage background</label>
+              <select id="exp-stage-fill" title="The stage's colour wash and hatch behind each piece">
+                <option value="auto">Where it tells them apart</option>
+                <option value="on">On every sheet</option>
+                <option value="off">Never</option>
+              </select></div>
+            <div class="exp-pick"><label for="exp-builder-col">Builder colour</label>
+              <select id="exp-builder-col" title="Each piece outlined in the colour of the hand that builds it">
+                <option value="auto">Where it tells them apart</option>
+                <option value="on">On every sheet</option>
+                <option value="off">Never</option>
+              </select></div>
             <label class="exp-opt"><input type="checkbox" id="exp-ghost"><span>Ghost the pieces left out</span></label>
             <label class="exp-opt"><input type="checkbox" id="exp-grid"><span>Draw the grid</span></label>
             <label class="exp-opt"><input type="checkbox" id="exp-notes"><span>Include drawings &amp; labels</span></label>
-            <label class="exp-opt" title="A stage sheet also shows the stages before it, ghosted"><input type="checkbox" id="exp-stages-cum"><span>Stage sheets show the build-up</span></label>
             <label class="exp-opt" title="One .zip holding every sheet in a named folder, plus a build-info.txt"><input type="checkbox" id="exp-zip"><span>Package as a .zip folder</span></label>
             <div class="exp-row"><label for="exp-ppb">Quality</label>
               <select id="exp-ppb">

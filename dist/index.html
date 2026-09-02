@@ -477,6 +477,8 @@
     .app.focus-edit #panel-toggle,
     .app.focus-edit .side-panel,
     .app.focus-edit .board-hud{display:none;}
+    /* just back from fullscreen: the rail is under the finger that left it */
+    .app.rail-deaf .rail{pointer-events:none;}
     /* landscape keeps the rail as a column, so its track has to close too */
     .app.focus-edit{grid-template-columns:0 1fr;}
   }
@@ -862,6 +864,9 @@
     font-size:10.5px; font-weight:600;}
   .exp-tab:hover{color:var(--ink);}
   .exp-tab.on{color:var(--accent); border-bottom-color:var(--accent);}
+  .exp-pick{display:flex; align-items:center; gap:8px; padding:3px 0; font-size:12px;}
+  .exp-pick label{flex:1; color:var(--muted);}
+  .exp-pick select{flex:none; max-width:62%;}
   .exp-filepane{display:flex; flex-direction:column; gap:12px; padding:4px 0 8px;}
   /* a display of their own beats the hidden attribute, so the tab that is not
      showing has to be told again - both panes were on screen at once */
@@ -1210,11 +1215,21 @@
             <label class="exp-opt" title="Build name, what the sheet shows, and the stage / builder badge"><input type="checkbox" id="exp-header"><span>Title bar</span></label>
             <label class="exp-opt" title="Dimension rulers ticked every block, numbered every 4"><input type="checkbox" id="exp-ruler"><span>Block ruler</span></label>
             <label class="exp-opt" title="Swatches and piece counts for the stages / builders on this sheet"><input type="checkbox" id="exp-legend"><span>Legend</span></label>
-            <label class="exp-opt" title="Stage sheets also draw each piece's outline in its builder's colour"><input type="checkbox" id="exp-fill-builder"><span>Mark builders with an outline colour</span></label>
+            <div class="exp-pick"><label for="exp-stage-fill">Stage background</label>
+              <select id="exp-stage-fill" title="The stage's colour wash and hatch behind each piece">
+                <option value="auto">Where it tells them apart</option>
+                <option value="on">On every sheet</option>
+                <option value="off">Never</option>
+              </select></div>
+            <div class="exp-pick"><label for="exp-builder-col">Builder colour</label>
+              <select id="exp-builder-col" title="Each piece outlined in the colour of the hand that builds it">
+                <option value="auto">Where it tells them apart</option>
+                <option value="on">On every sheet</option>
+                <option value="off">Never</option>
+              </select></div>
             <label class="exp-opt"><input type="checkbox" id="exp-ghost"><span>Ghost the pieces left out</span></label>
             <label class="exp-opt"><input type="checkbox" id="exp-grid"><span>Draw the grid</span></label>
             <label class="exp-opt"><input type="checkbox" id="exp-notes"><span>Include drawings &amp; labels</span></label>
-            <label class="exp-opt" title="A stage sheet also shows the stages before it, ghosted"><input type="checkbox" id="exp-stages-cum"><span>Stage sheets show the build-up</span></label>
             <label class="exp-opt" title="One .zip holding every sheet in a named folder, plus a build-info.txt"><input type="checkbox" id="exp-zip"><span>Package as a .zip folder</span></label>
             <div class="exp-row"><label for="exp-ppb">Quality</label>
               <select id="exp-ppb">
@@ -1698,7 +1713,7 @@ const ST = {
   clearTimer: null,
   toastTimer: null,
   dragLayerId: null,
-  expCfg: {name:'', sheets:{}, stagesCum:false, fillBuilder:true, ghost:true, grid:true,
+  expCfg: {name:'', sheets:{}, stageFill:'auto', builderCol:'auto', ghost:true, grid:true,
            notes:true, header:true, ruler:true, legend:true, zip:true, ppb:80, format:'png'},
   _meas: null,
   expLegRows: 0,                            // legend depth reserved for the whole batch (see runExport)
@@ -3404,9 +3419,27 @@ async function buildPdf(sheets, name, theme){
 // big it is in blocks, and a legend for the stages / builders in front of them.
 // Which sheets to make is a per-sheet choice now (see sheetOn); these are the
 // options that change how every sheet is drawn.
-const EXP_FIELDS=[['stagesCum','exp-stages-cum'],['fillBuilder','exp-fill-builder'],
+const EXP_FIELDS=[
   ['ghost','exp-ghost'],['grid','exp-grid'],['notes','exp-notes'],
   ['header','exp-header'],['ruler','exp-ruler'],['legend','exp-legend'],['zip','exp-zip']];
+// The two colour channels are not on/off, they are "on where it says anything".
+// A stage wash on a single-stage sheet colours every piece the same, and so
+// does a builder outline on a single builder's sheet - the ink spends itself
+// saying what the badge already said. So each channel has a default that
+// depends on what the sheet covers, and a picker to overrule it.
+const EXP_PICKS=[['stageFill','exp-stage-fill'],['builderCol','exp-builder-col']];
+// Sheets that hold more than one of the thing, and so have something to say by
+// colouring it. A single hand's sheet spans every stage they worked in, so the
+// stage wash belongs there - it is how they see which stage their own work is
+// for - while the builder colour does not, since it would all be one colour.
+// Whole build is the plain reference sheet and takes neither.
+const MANY_STAGES=g=>g==='stagesAll'||g==='buildersAll'||g==='builder';
+const MANY_HANDS =g=>g==='stagesAll'||g==='stage'||g==='buildersAll';
+function channel(mode, manyHere, value){
+  if(mode==='on') return value;
+  if(mode==='off') return null;
+  return manyHere ? value : null;              // auto
+}
 function loadExpCfg(){
   try{ const o=JSON.parse(localStorage.getItem('wardog-fob-export')||'null');
     if(o&&typeof o==='object'){
@@ -3418,6 +3451,7 @@ function loadExpCfg(){
 function saveExpCfg(){ try{ localStorage.setItem('wardog-fob-export', JSON.stringify(ST.expCfg)); }catch(e){} }
 function expToForm(){
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) el.checked=!!ST.expCfg[k]; });
+  EXP_PICKS.forEach(([k,id])=>{ const el=$(id); if(el) el.value=ST.expCfg[k]||'auto'; });
   $('exp-name').value=ST.expCfg.name||'';
   $('exp-ppb').value=String(ST.expCfg.ppb);
   if($('exp-format')) $('exp-format').value = ST.expCfg.format||'png';
@@ -3426,6 +3460,7 @@ function expToForm(){
 function expFromForm(){
   ST.expCfg.format = $('exp-format') ? $('exp-format').value : 'png';
   EXP_FIELDS.forEach(([k,id])=>{ const el=$(id); if(el) ST.expCfg[k]=el.checked; });
+  EXP_PICKS.forEach(([k,id])=>{ const el=$(id); if(el) ST.expCfg[k]=el.value; });
   ST.expCfg.name=$('exp-name').value.slice(0,48);
   ST.expCfg.ppb=parseInt($('exp-ppb').value,10)||80;
   saveExpCfg(); updateExpCount();
@@ -3448,29 +3483,34 @@ function usedPlan(kind){
 function exportCandidates(){
   const jobs=[], all=()=>true;
   const uS=usedPlan('stage'), uB=usedPlan('builder');
-  // outline channel = builder, fill channel = stage; on a stage sheet the builder
-  // outline is the optional second read
-  const so = ST.expCfg.fillBuilder && uB.length ? 'builder' : null;
-  jobs.push({file:'whole-build', group:'whole', title:'Whole build', inc:all, col:null});
-  if(uS.length) jobs.push({file:'all-stages', group:'stagesAll', title:'All stages', inc:all, col:so, fill:'stage'});
+  const fillMode=ST.expCfg.stageFill||'auto', colMode=ST.expCfg.builderCol||'auto';
+  const F=g=>uS.length ? channel(fillMode, MANY_STAGES(g), 'stage') : null;
+  const C=g=>uB.length ? channel(colMode,  MANY_HANDS(g),  'builder') : null;
+  jobs.push({file:'whole-build', group:'whole', title:'Whole build', inc:all,
+    col:C('whole'), fill:F('whole')});
+  if(uS.length) jobs.push({file:'all-stages', group:'stagesAll', title:'All stages', inc:all,
+    col:C('stagesAll'), fill:F('stagesAll')});
   uS.forEach(s=>{
-    const i=ST.stages.indexOf(s), cum=ST.expCfg.stagesCum;
-    // Only ever one stage is drawn solid: the one the sheet is for. A cumulative
-    // sheet is a build-up, so everything already standing from the earlier
-    // stages sits behind it as a ghost - which is what makes the new work on
-    // this sheet readable at a glance. (Drawing them solid too, as it used to,
-    // made stage 1 and stage 2 indistinguishable on the stage 2 sheet.)
+    const i=ST.stages.indexOf(s);
+    // Only ever one stage is drawn solid: the one the sheet is for. Everything
+    // already standing from the earlier stages sits behind it as a ghost, which
+    // is what makes the new work on this sheet readable at a glance.
     jobs.push({file:jobFile('stage',i,s.name), group:'stage', stageIdx:i,
-      title:(cum?'Stages 1-'+(i+1)+': ':'Stage '+(i+1)+': ')+s.name,
+      title:'Stage '+(i+1)+': '+s.name,
       inc:p=>p.st===s.id,
-      rest: cum ? (p=>{ const k=stageIndex(p); return k>=0 && k<i; }) : null,
+      rest: p=>{ const k=stageIndex(p); return k>=0 && k<i; },
       note:(s.note||'').trim(),
-      col:so, fill:'stage', badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
+      col:C('stage'), fill:F('stage'), badge:{label:'Stage '+(i+1)+' · '+s.name, color:s.color, hatch:i}});
   });
-  if(uB.length) jobs.push({file:'all-builders', group:'buildersAll', title:'All builders', inc:all, col:'builder'});
+  if(uB.length) jobs.push({file:'all-builders', group:'buildersAll', title:'All builders', inc:all,
+    col:C('buildersAll'), fill:F('buildersAll')});
+  // A single hand's sheet still shows which stage each piece belongs to - that
+  // is the thing they need to know about their own work - so the stage outline
+  // stays even where the builder colour drops out.
   uB.forEach(b=>
     jobs.push({file:jobFile('builder',ST.builders.indexOf(b),b.name), group:'builder', title:b.name,
-      inc:p=>p.bd===b.id, col:'builder', badge:{label:b.name, color:b.color}}));
+      inc:p=>p.bd===b.id, col:C('builder'), fill:F('builder'),
+      badge:{label:b.name, color:b.color}}));
   // One page per hand-off: "Stage 1 - Builder 2" is what a single builder is
   // asked to put down in a single stage, so only pairs with work get a sheet.
   {
@@ -3481,7 +3521,7 @@ function exportCandidates(){
         jobs.push({file:'stage-'+(i+1)+'-builder-'+(j+1), group:'pair', stageIdx:i,
           title:s.name+' · '+b.name,
           inc:p=>p.st===s.id && p.bd===b.id,
-          note:(s.note||'').trim(), col:'builder', fill:'stage',
+          note:(s.note||'').trim(), col:C('pair'), fill:F('pair'),
           badge:{label:b.name, color:b.color}});
       });
     });
@@ -5010,7 +5050,19 @@ function updateStatus(){
   // whole screen is the thing you are aiming at (see .focus-edit)
   const app=document.querySelector('.app');
   const building = !!anySelected() || !!ghost || annot || ST.buildHold;
-  if(app) app.classList.toggle('focus-edit', isCoarse() && building);
+  const focus = isCoarse() && building;
+  if(app){
+    // Leaving the fullscreen board puts the rail back under the finger that
+    // just left it - the tap that dropped the selection would land on whatever
+    // structure tile now occupies that pixel. The rail ignores the pointer
+    // until the finger that caused the change is long gone.
+    if(app.classList.contains('focus-edit') && !focus){
+      app.classList.add('rail-deaf');
+      clearTimeout(ST.railDeafT);
+      ST.railDeafT=setTimeout(()=>app.classList.remove('rail-deaf'), 400);
+    }
+    app.classList.toggle('focus-edit', focus);
+  }
   // the structure sheet belongs to placement; leaving it takes the sheet too.
   // Closed here rather than through rail.js, which imports tools.js and would
   // make the pair a cycle.
